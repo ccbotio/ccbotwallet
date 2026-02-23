@@ -22,26 +22,19 @@ export default function TelegramGuard({ children }: TelegramGuardProps) {
   useEffect(() => {
     // Check if running inside Telegram WebApp
     const checkTelegram = () => {
-      const telegram = (window as unknown as { Telegram?: { WebApp?: { initData?: string; platform?: string } } }).Telegram;
+      const telegram = (window as unknown as { Telegram?: { WebApp?: { initData?: string; initDataUnsafe?: { user?: unknown } } } }).Telegram;
 
-      // Check for Telegram WebApp
-      if (telegram?.WebApp?.initData && telegram.WebApp.initData.length > 0) {
-        setIsInTelegram(true);
-        setIsLoading(false);
-      } else if (telegram?.WebApp?.platform) {
-        // Some platforms may not have initData but still have platform
+      // Only valid if initData has actual content (not empty string)
+      // initData is only populated when running inside Telegram
+      const hasValidInitData = telegram?.WebApp?.initData && telegram.WebApp.initData.length > 0;
+      const hasUserData = telegram?.WebApp?.initDataUnsafe?.user !== undefined;
+
+      if (hasValidInitData || hasUserData) {
         setIsInTelegram(true);
         setIsLoading(false);
       } else {
-        // Development mode bypass
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[TelegramGuard] Development mode - bypassing check');
-          setIsInTelegram(true);
-          setIsLoading(false);
-        } else {
-          // Not in Telegram - redirect immediately
-          window.location.href = BOT_URL;
-        }
+        // Not in Telegram - redirect to bot
+        window.location.href = BOT_URL;
       }
     };
 
