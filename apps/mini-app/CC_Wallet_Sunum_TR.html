@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CC Bot Wallet - Canton Network Entegrasyon Teklifi</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --yellow: #F3FF97;
+            --black: #030206;
+            --white: #FFFFFC;
+            --lilac: #D5A5E3;
+            --purple: #875CFF;
+            --taupe: #A89F91;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--black);
+            color: var(--white);
+            line-height: 1.6;
+        }
+
+        .page {
+            width: 100%;
+            min-height: 100vh;
+            padding: 60px 80px;
+            page-break-after: always;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: var(--black);
+        }
+
+        .page:last-child {
+            page-break-after: avoid;
+        }
+
+        .cc-logo-img {
+            width: 100px;
+            height: auto;
+        }
+
+        .cc-logo-small-img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+        }
+
+        .footer-logo-img {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            margin-right: 8px;
+        }
+
+        .cover {
+            background: var(--black);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .cover .cc-logo-img {
+            width: 120px;
+            margin-bottom: 40px;
+        }
+
+        .cover h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--yellow);
+            letter-spacing: -1px;
+        }
+
+        .cover .subtitle {
+            font-size: 18px;
+            color: var(--white);
+            margin-bottom: 6px;
+            font-weight: 400;
+        }
+
+        .cover .subtitle2 {
+            font-size: 14px;
+            color: var(--taupe);
+            margin-bottom: 60px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .cover .date {
+            font-size: 13px;
+            color: var(--purple);
+        }
+
+        .cover .confidential {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--taupe);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,252,0.06);
+        }
+
+        .page-header .cc-logo-small-img {
+            margin-right: 20px;
+        }
+
+        .page-header .section-info {
+            flex: 1;
+        }
+
+        .section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--purple);
+            margin-bottom: 6px;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--yellow);
+            letter-spacing: -0.5px;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--lilac);
+        }
+
+        h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--white);
+        }
+
+        p {
+            font-size: 14px;
+            margin-bottom: 14px;
+            color: var(--white);
+            line-height: 1.7;
+        }
+
+        .highlight-box {
+            background: rgba(135, 92, 255, 0.08);
+            border-left: 2px solid var(--purple);
+            padding: 20px 24px;
+            margin: 24px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .highlight-box.yellow {
+            background: rgba(243, 255, 151, 0.06);
+            border-left-color: var(--yellow);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin: 24px 0;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin: 24px 0;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .card {
+            background: rgba(255, 255, 252, 0.02);
+            border: 1px solid rgba(255, 255, 252, 0.06);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .card.purple {
+            border-color: rgba(135, 92, 255, 0.3);
+            background: rgba(135, 92, 255, 0.04);
+        }
+
+        .card.yellow {
+            border-color: rgba(243, 255, 151, 0.3);
+            background: rgba(243, 255, 151, 0.04);
+        }
+
+        ul {
+            list-style: none;
+            margin: 16px 0;
+        }
+
+        ul li {
+            padding: 10px 0;
+            padding-left: 20px;
+            position: relative;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,252,0.03);
+        }
+
+        ul li:last-child {
+            border-bottom: none;
+        }
+
+        ul li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 16px;
+            width: 5px;
+            height: 5px;
+            background: var(--yellow);
+            border-radius: 50%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 252, 0.06);
+        }
+
+        th {
+            background: rgba(135, 92, 255, 0.1);
+            color: var(--yellow);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 30px 0;
+            gap: 8px;
+        }
+
+        .flow-step {
+            background: rgba(255, 255, 252, 0.03);
+            border: 1px solid rgba(255, 255, 252, 0.06);
+            border-radius: 10px;
+            padding: 16px 20px;
+            text-align: center;
+            min-width: 110px;
+        }
+
+        .flow-step .number {
+            width: 26px;
+            height: 26px;
+            background: var(--purple);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .flow-step strong {
+            font-size: 12px;
+            display: block;
+        }
+
+        .flow-step p {
+            font-size: 10px;
+            margin: 6px 0 0 0;
+            color: var(--taupe);
+        }
+
+        .flow-arrow {
+            font-size: 16px;
+            color: var(--yellow);
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 24px;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--yellow);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--taupe);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .big-stat {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .big-stat .number {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--yellow);
+            line-height: 1;
+        }
+
+        .big-stat .label {
+            font-size: 12px;
+            color: var(--taupe);
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .big-stat .sublabel {
+            font-size: 11px;
+            color: var(--white);
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+
+        .architecture-box {
+            background: rgba(255, 255, 252, 0.02);
+            border: 1px solid rgba(255, 255, 252, 0.06);
+            border-radius: 12px;
+            padding: 28px;
+            margin: 24px 0;
+        }
+
+        .layer {
+            background: rgba(135, 92, 255, 0.06);
+            border: 1px solid rgba(135, 92, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .layer.yellow {
+            background: rgba(243, 255, 151, 0.06);
+            border-color: rgba(243, 255, 151, 0.3);
+        }
+        .layer.lilac {
+            background: rgba(213, 165, 227, 0.06);
+            border-color: rgba(213, 165, 227, 0.3);
+        }
+
+        .page-number {
+            position: absolute;
+            bottom: 30px;
+            right: 80px;
+            font-size: 10px;
+            color: var(--taupe);
+        }
+
+        .footer-logo {
+            position: absolute;
+            bottom: 30px;
+            left: 80px;
+            display: flex;
+            align-items: center;
+            font-size: 10px;
+            color: var(--taupe);
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,252,0.06);
+            font-size: 13px;
+        }
+
+        .metric-row:last-child { border-bottom: none; }
+        .metric-row .label { color: var(--taupe); }
+        .metric-row .value { color: var(--yellow); font-weight: 600; }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            margin: 16px 0;
+            padding: 20px;
+            background: rgba(255,255,252,0.02);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,252,0.04);
+        }
+
+        .feature-item .f-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--purple);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            flex-shrink: 0;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .feature-item h4 {
+            margin-bottom: 6px;
+            font-size: 15px;
+            color: var(--yellow);
+        }
+        .feature-item p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--white);
+            line-height: 1.6;
+        }
+
+        .security-layer {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 252, 0.02);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin: 10px 0;
+            border-left: 2px solid var(--purple);
+        }
+
+        .security-layer .layer-num {
+            width: 28px;
+            height: 28px;
+            background: var(--purple);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 16px;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+
+        .security-layer h4 { margin-bottom: 2px; font-size: 14px; }
+        .security-layer p { margin: 0; font-size: 12px; color: var(--taupe); }
+
+        .roadmap-phase {
+            background: rgba(255,255,252,0.02);
+            border: 1px solid rgba(255,255,252,0.06);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .roadmap-phase.active {
+            border-color: rgba(243, 255, 151, 0.3);
+            background: rgba(243, 255, 151, 0.03);
+        }
+
+        .roadmap-phase .phase-num {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--purple);
+            margin-bottom: 8px;
+        }
+
+        .roadmap-phase h4 {
+            color: var(--yellow);
+            margin-bottom: 14px;
+            font-size: 14px;
+        }
+
+        .roadmap-phase ul {
+            margin: 0;
+        }
+
+        .roadmap-phase ul li {
+            font-size: 12px;
+            padding: 6px 0;
+        }
+
+        .case-study {
+            background: rgba(135, 92, 255, 0.04);
+            border: 1px solid rgba(135, 92, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .case-study h4 {
+            color: var(--lilac);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .case-study .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 12px;
+        }
+
+        .case-study .stat {
+            text-align: center;
+        }
+
+        .case-study .stat .num {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--yellow);
+        }
+
+        .case-study .stat .lbl {
+            font-size: 10px;
+            color: var(--taupe);
+            text-transform: uppercase;
+        }
+
+        @media print {
+            .page {
+                height: 100vh;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+            body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Sayfa 1: Kapak -->
+    <div class="page cover">
+        <img src="ccbotlogo.png" alt="CC Bot Wallet" class="cc-logo-img">
+        <h1>CC Bot Wallet</h1>
+        <p class="subtitle">Telegram Üzerinde İlk AI Destekli Passkey Cüzdan</p>
+        <p class="subtitle2">Canton Network Teknik Entegrasyon Teklifi</p>
+        <p class="date">Canton Network Ekibi İçin Hazırlanmıştır</p>
+        <p class="confidential">Gizli</p>
+    </div>
+
+    <!-- Sayfa 2: Yönetici Özeti -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Yönetici Özeti</p>
+                <h2>Proje Genel Bakış</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0;font-size:15px"><strong>Misyon:</strong> Canton Network üzerinde ilk tüketici odaklı Telegram Mini App cüzdanını geliştirmek, 950 milyondan fazla Telegram kullanıcısına seed phrase gerektirmeyen kimlik doğrulama ve kurumsal düzeyde güvenlik ile blockchain erişilebilirliği sağlamak.</p>
+        </div>
+
+        <div class="grid-3">
+            <div class="card">
+                <h4>Seed Phrase'siz Mimari</h4>
+                <p style="font-size:13px;margin:0">PIN + Biyometrik kimlik doğrulama, tam self-custody'yi korurken seed phrase karmaşıklığını ortadan kaldırır.</p>
+            </div>
+            <div class="card">
+                <h4>Telegram Entegrasyonu</h4>
+                <p style="font-size:13px;margin:0">Uygulama yükleme gerektirmez. Telegram'ın devasa küresel kullanıcı tabanı üzerinden anında erişim.</p>
+            </div>
+            <div class="card">
+                <h4>Canton Entegrasyonu</h4>
+                <p style="font-size:13px;margin:0">Daml akıllı sözleşmeleri ve gizlilik öncelikli mimari ile tam External Party API entegrasyonu.</p>
+            </div>
+        </div>
+
+        <h3>Temel Farklılaştırıcılar</h3>
+        <div class="grid-2">
+            <div>
+                <ul>
+                    <li>Canton Network üzerinde ilk Telegram tabanlı AI destekli passkey cüzdan</li>
+                    <li>İstemci tarafı kriptografi (anahtarlar cihazdan çıkmaz)</li>
+                    <li>Alt-işlem gizlilik modeli uyumluluğu</li>
+                    <li>GDPR uyumlu veri mimarisi</li>
+                </ul>
+            </div>
+            <div>
+                <ul>
+                    <li>Güven doğrulaması için tekrarlanabilir yapılar</li>
+                    <li>Canton Name Service entegrasyonu</li>
+                    <li>Telegram Cloud üzerinden cihazlar arası kurtarma</li>
+                    <li>Kurumsal düzeyde güvenlik standartları</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">2</p>
+    </div>
+
+    <!-- Sayfa 3: Telegram Platform Potansiyeli -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Pazar Fırsatı</p>
+                <h2>Telegram Platform Potansiyeli</h2>
+            </div>
+        </div>
+
+        <div class="grid-4">
+            <div class="big-stat card">
+                <p class="number">950M+</p>
+                <p class="label">Aylık Aktif Kullanıcı</p>
+                <p class="sublabel">2024 itibarıyla</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">2.5M+</p>
+                <p class="label">Günlük Yeni Kullanıcı</p>
+                <p class="sublabel">En hızlı büyüyen uygulama</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">100M+</p>
+                <p class="label">Premium Abone</p>
+                <p class="sublabel">Ödeme yapan kullanıcılar</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">500M+</p>
+                <p class="label">Mini App MAU</p>
+                <p class="sublabel">Ekosistemde aktif</p>
+            </div>
+        </div>
+
+        <h3>Web3 için Neden Telegram?</h3>
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Kripto-Doğal Kullanıcı Tabanı</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Tarihsel olarak kripto topluluklarının evi</li>
+                    <li>Token ve cüzdanlara aşina kullanıcılar</li>
+                    <li>Blockchain projelerine yüksek katılım</li>
+                    <li>Yerleşik ödeme altyapısı</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Mini App Ekosistemi</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Sohbet içinde yerel uygulama deneyimi</li>
+                    <li>Sıfır sürtünmeli katılım (uygulama mağazası yok)</li>
+                    <li>Paylaşım yoluyla viral dağıtım</li>
+                    <li>Yerleşik kullanıcı kimliği (Telegram hesabı)</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Kanıtlanmış Başarı: TON Ekosistemi Vaka Çalışmaları</h3>
+        <div class="grid-3">
+            <div class="case-study">
+                <h4>Notcoin</h4>
+                <p style="font-size:12px;margin:0">Milyonlarca kişiyi kriptoya dahil eden dokunarak kazan oyunu</p>
+                <div class="stats">
+                    <div class="stat"><p class="num">35M+</p><p class="lbl">Kullanıcı</p></div>
+                    <div class="stat"><p class="num">$1B+</p><p class="lbl">Zirve Piyasa Değeri</p></div>
+                </div>
+            </div>
+            <div class="case-study">
+                <h4>Hamster Kombat</h4>
+                <p style="font-size:12px;margin:0">Devasa benimseme ile viral tıklama oyunu</p>
+                <div class="stats">
+                    <div class="stat"><p class="num">300M+</p><p class="lbl">Kullanıcı</p></div>
+                    <div class="stat"><p class="num">#1</p><p class="lbl">Mini App</p></div>
+                </div>
+            </div>
+            <div class="case-study">
+                <h4>TON Wallet</h4>
+                <p style="font-size:12px;margin:0">Yerel Telegram cüzdan entegrasyonu</p>
+                <div class="stats">
+                    <div class="stat"><p class="num">100M+</p><p class="lbl">Cüzdan</p></div>
+                    <div class="stat"><p class="num">Yerel</p><p class="lbl">Entegrasyon</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0"><strong>Önemli Bilgi:</strong> Telegram, yıllar yerine aylar içinde yüz milyonlarca kullanıcıyı Web3'e dahil edebildiğini kanıtladı. CC Bot Wallet bu dağıtım gücünü Canton Network'e getirmeyi planlıyor.</p>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">3</p>
+    </div>
+
+    <!-- Sayfa 4: Telegram Coğrafya & Demografik -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Pazar Analizi</p>
+                <h2>Telegram Küresel Erişim</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0"><strong>Küresel Dağılım:</strong> Telegram'ın kullanıcı tabanı her kıtaya yayılmıştır, özellikle geleneksel bankacılık altyapısının sınırlı olduğu gelişmekte olan pazarlarda güçlü bir varlık göstermektedir - tam olarak kriptonun en fazla etki yaratabileceği yerler.</p>
+        </div>
+
+        <h3>Coğrafi Dağılım</h3>
+        <div class="grid-2">
+            <div>
+                <table style="margin:0">
+                    <tr>
+                        <th>Bölge</th>
+                        <th>Kullanıcı</th>
+                        <th>Büyüme</th>
+                    </tr>
+                    <tr>
+                        <td>Hindistan</td>
+                        <td style="color:var(--yellow)">120M+</td>
+                        <td>+%45 YıY</td>
+                    </tr>
+                    <tr>
+                        <td>Rusya & BDT</td>
+                        <td style="color:var(--yellow)">100M+</td>
+                        <td>+%20 YıY</td>
+                    </tr>
+                    <tr>
+                        <td>Brezilya</td>
+                        <td style="color:var(--yellow)">80M+</td>
+                        <td>+%60 YıY</td>
+                    </tr>
+                    <tr>
+                        <td>Endonezya</td>
+                        <td style="color:var(--yellow)">70M+</td>
+                        <td>+%55 YıY</td>
+                    </tr>
+                    <tr>
+                        <td>ABD & Avrupa</td>
+                        <td style="color:var(--yellow)">150M+</td>
+                        <td>+%35 YıY</td>
+                    </tr>
+                    <tr>
+                        <td>Orta Doğu</td>
+                        <td style="color:var(--yellow)">80M+</td>
+                        <td>+%40 YıY</td>
+                    </tr>
+                </table>
+            </div>
+            <div>
+                <h4 style="margin-bottom:16px">Kullanıcı Demografisi</h4>
+                <div class="metric-row"><span class="label">Yaş 18-34</span><span class="value">%62</span></div>
+                <div class="metric-row"><span class="label">Yaş 35-54</span><span class="value">%28</span></div>
+                <div class="metric-row"><span class="label">Günlük Aktif Kullanıcı</span><span class="value">~%40</span></div>
+                <div class="metric-row"><span class="label">Ort. Oturum Süresi</span><span class="value">38 dk/gün</span></div>
+                <div class="metric-row"><span class="label">Günlük Mesaj</span><span class="value">15B+</span></div>
+                <div class="metric-row"><span class="label">Mobil Kullanıcı</span><span class="value">%85+</span></div>
+            </div>
+        </div>
+
+        <h3>Telegram Mini App Avantajları</h3>
+        <div class="grid-3">
+            <div class="card">
+                <h4>Anında Dağıtım</h4>
+                <p style="font-size:12px;margin:0">Bağlantı veya QR kod ile paylaşın. Kullanıcılar uygulama mağazası indirmeleri veya onayları olmadan cüzdana anında erişebilir.</p>
+            </div>
+            <div class="card">
+                <h4>Yerleşik Kimlik</h4>
+                <p style="font-size:12px;margin:0">Telegram hesapları doğrulanmış telefon numaraları ve kullanıcı adları sağlar - KYC ve sosyal özellikler için sürtünmeyi azaltır.</p>
+            </div>
+            <div class="card">
+                <h4>Yerel Bildirimler</h4>
+                <p style="font-size:12px;margin:0">İşlem uyarıları, fiyat bildirimleri ve güvenlik uyarıları Telegram'ın güvenilir push sistemi aracılığıyla iletilir.</p>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Viral Mekanikler</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>Grup sohbetlerinde kolay paylaşım</li>
+                    <li>Yerleşik referans takibi</li>
+                    <li>Kullanım yoluyla sosyal kanıt</li>
+                    <li>Topluluk odaklı benimseme</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Geliştirici Dostu</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>Zengin API'lerle WebApp SDK</li>
+                    <li>Kalıcılık için CloudStorage</li>
+                    <li>Biyometrik kimlik doğrulama desteği</li>
+                    <li>Ödeme entegrasyonu hazır</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">4</p>
+    </div>
+
+    <!-- Sayfa 5: Canton için Değer Önerisi -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Stratejik Değer</p>
+                <h2>Canton Network için Değer Önerisi</h2>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">01</div>
+            <div>
+                <h4>Ölçekte Perakende Kullanıcı Edinimi</h4>
+                <p>Canton Network şu anda kurumsal odaklıdır. CC Bot Wallet, Telegram'ın 950M+ kullanıcı tabanından perakende kullanıcıları dahil ederek bu boşluğu doldurur ve Canton ekosistemine ilk gerçek tüketici giriş noktasını oluşturur.</p>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">02</div>
+            <div>
+                <h4>Ağ Aktivitesi Büyümesi</h4>
+                <p>Her işlem ağ aktivite metriklerine katkıda bulunur. Daha fazla kullanıcı, daha fazla işlem, artan ağ kullanımı ve Canton için daha güçlü ekosistem sağlık göstergeleri anlamına gelir.</p>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">03</div>
+            <div>
+                <h4>Ekosistem Genişleme Platformu</h4>
+                <p>CC Bot Wallet, Canton dApp'leri için bir geçit görevi görmeyi hedefliyor. DeFi protokolleri entegrasyonu ile perakende kullanıcılar ve Canton uygulamaları arasında sorunsuz bağlantılar oluşturmayı planlıyoruz.</p>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">04</div>
+            <div>
+                <h4>Mobil-Öncelikli Referans Uygulaması</h4>
+                <p>Açık kaynak kod tabanı, Telegram Mini App + Canton entegrasyonu için bir referans uygulaması sağlar ve diğer geliştiricilerin temelimiz üzerine inşa etmesini sağlar.</p>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">05</div>
+            <div>
+                <h4>Küresel Finansal Kapsayıcılık</h4>
+                <p>Dünya çapında bankacılık hizmetlerine erişimi olmayan popülasyonlar için Canton erişimi. CC Bot Wallet, Telegram'ın bulunduğu her yerde mevcuttur, sadece bir akıllı telefon ve internet bağlantısı gerektirir.</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">5</p>
+    </div>
+
+    <!-- Sayfa 6: Ağ Katkısı -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Ağ Etkisi</p>
+                <h2>Canton Network'e Katkı</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0;font-size:15px"><strong>Ağ Büyüme Motoru:</strong> CC Bot Wallet, Canton Network için birincil perakende giriş noktası olarak hizmet edecek ve tüm temel ağ metriklerinde anlamlı büyüme sağlayacak.</p>
+        </div>
+
+        <h3>Öngörülen Ağ Etkisi</h3>
+        <div class="grid-4">
+            <div class="big-stat card">
+                <p class="number">100K+</p>
+                <p class="label">Hedef Kullanıcı</p>
+                <p class="sublabel">1. Yıl</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">500K+</p>
+                <p class="label">Günlük İşlem</p>
+                <p class="sublabel">Tam ölçekte</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">$5M+</p>
+                <p class="label">TVL Potansiyeli</p>
+                <p class="sublabel">CC Token'da</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">10+</p>
+                <p class="label">dApp Bağlantısı</p>
+                <p class="sublabel">Ekosistem büyümesi</p>
+            </div>
+        </div>
+
+        <h3>Doğrudan Ağ Katkıları</h3>
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>İşlem Hacmi Büyümesi</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Kullanıcılar arası günlük token transferleri</li>
+                    <li>DEX swap işlemleri</li>
+                    <li>Stake ve unstake operasyonları</li>
+                    <li>NFT basımı ve transferleri</li>
+                    <li>Mini oyunlar ve gaming işlemleri</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Ağ Aktivite Metrikleri</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Günlük Aktif Adresler (DAA)</li>
+                    <li>Benzersiz cüzdan oluşturma</li>
+                    <li>Sözleşme çalıştırma sıklığı</li>
+                    <li>Ağ ücreti üretimi</li>
+                    <li>Çapraz taraf işlem hacmi</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h4>Ekosistem Genişlemesi</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Canton dApp'leri için geçit platformu</li>
+                    <li>DeFi protokolleri ile entegrasyon</li>
+                    <li>Mini oyunlar ve gaming entegrasyonu</li>
+                    <li>Açık kaynak yoluyla geliştirici katılımı</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Marka & Görünürlük</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Telegram kullanıcılarına Canton tanıtımı</li>
+                    <li>Telegram'da Canton varlığının güçlendirilmesi</li>
+                    <li>Canton ekosistemindeki projelerle ortaklıklar</li>
+                    <li>Medya ve basın kapsamı</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0;text-align:center"><strong>Ağ Etkisi:</strong> Her yeni CC Bot Wallet kullanıcısı, artan likidite, fayda ve benimseme yoluyla Canton Network'ün mevcut tüm katılımcılar için değerini artırır.</p>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">6</p>
+    </div>
+
+    <!-- Sayfa 7: Temel Özellikler -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Ürün Özellikleri</p>
+                <h2>Temel Cüzdan Yetenekleri</h2>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Varlık Yönetimi</h4>
+                <ul style="margin:0">
+                    <li>CC Token transferleri (gönder/al)</li>
+                    <li>Çoklu token desteği</li>
+                    <li>Gerçek zamanlı bakiye takibi</li>
+                    <li>Filtreleme ile işlem geçmişi</li>
+                    <li>QR kod oluşturma ve tarama</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Kullanıcı Deneyimi</h4>
+                <ul style="margin:0">
+                    <li>30 saniyelik katılım akışı</li>
+                    <li>Canton Name Service (@kullanıcıadı)</li>
+                    <li>Biyometrik hızlı erişim</li>
+                    <li>Telegram üzerinden push bildirimleri</li>
+                    <li>Koyu/Açık tema desteği</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>AI Asistan Özellikleri</h4>
+                <ul style="margin:0">
+                    <li>Doğal dil ile işlem yapma</li>
+                    <li>Akıllı portföy önerileri</li>
+                    <li>Fiyat analizi ve tahminler</li>
+                    <li>7/24 soru-cevap desteği</li>
+                    <li>Kişiselleştirilmiş bildirimler</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Token İşlemleri</h4>
+                <ul style="margin:0">
+                    <li>Token swapları (DEX entegrasyonu)</li>
+                    <li>Stake fonksiyonelliği</li>
+                    <li>Likidite sağlama arayüzü</li>
+                    <li>Fiyat takibi ve uyarılar</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Gelişmiş Özellikler</h4>
+                <ul style="margin:0">
+                    <li>NFT görüntüleme ve transfer</li>
+                    <li>dApp tarayıcı entegrasyonu</li>
+                    <li>Mini oyunlar ve gaming</li>
+                    <li>Çoklu dil desteği</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Kullanıcı Akışı Genel Bakış</h3>
+        <div class="flow-diagram">
+            <div class="flow-step">
+                <div class="number">1</div>
+                <strong>Telegram Aç</strong>
+                <p>@CCBotWallet</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">2</div>
+                <strong>Uygulamayı Başlat</strong>
+                <p>Mini App</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">3</div>
+                <strong>PIN Oluştur</strong>
+                <p>6 haneli</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">4</div>
+                <strong>Biyometrik Ekle</strong>
+                <p>İsteğe Bağlı</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">5</div>
+                <strong>Hazır</strong>
+                <p>Cüzdan Aktif</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">7</p>
+    </div>
+
+    <!-- Sayfa 8: Rewards, Tasks & Anti-Farming -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Kullanıcı Katılımı</p>
+                <h2>Rewards, Tasks & Anti-Farming</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0;font-size:15px"><strong>Katılım Stratejisi:</strong> Kullanıcıları ödüllendirerek ekosisteme aktif katılımı teşvik ediyoruz. Aynı zamanda bot ve farming aktivitelerini önlemek için kapsamlı güvenlik önlemleri uyguluyoruz.</p>
+        </div>
+
+        <h3>Reward Sistemi</h3>
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Kazanım Yolları</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Günlük giriş ödülleri</li>
+                    <li>İşlem tamamlama bonusları</li>
+                    <li>Referans programı ödülleri</li>
+                    <li>Task tamamlama puanları</li>
+                    <li>Streak (ardışık gün) bonusları</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Ödül Türleri</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>CC Token ödülleri</li>
+                    <li>XP puanları ve seviye sistemi</li>
+                    <li>NFT rozetleri ve başarılar</li>
+                    <li>Özel özellik erişimi</li>
+                    <li>Airdrop önceliği</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Task Sistemi</h3>
+        <div class="grid-3">
+            <div class="card">
+                <h4>Günlük Tasks</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>Uygulamaya giriş yap</li>
+                    <li>Bakiyeni kontrol et</li>
+                    <li>Bir işlem gerçekleştir</li>
+                    <li>Mini oyun oyna</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Sosyal Tasks</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>Telegram grubuna katıl</li>
+                    <li>Twitter'da takip et</li>
+                    <li>Arkadaşını davet et</li>
+                    <li>İçerik paylaş</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Özel Tasks</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>KYC doğrulaması tamamla</li>
+                    <li>İlk stake işlemi</li>
+                    <li>NFT mint et</li>
+                    <li>dApp kullan</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Anti-Farming Önlemleri</h3>
+        <div class="grid-2">
+            <div class="card">
+                <h4>Bot Tespit Sistemi</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Telegram Premium hesap doğrulama</li>
+                    <li>Hesap yaşı kontrolü (minimum süre)</li>
+                    <li>Davranış analizi ve pattern tespiti</li>
+                    <li>IP ve cihaz parmak izi takibi</li>
+                    <li>Anormal aktivite algılama</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Sybil Saldırı Önleme</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Telefon numarası doğrulama</li>
+                    <li>KYC seviyelerine göre limit artışı</li>
+                    <li>Referans zinciri analizi</li>
+                    <li>Ödül dağıtımında gecikme mekanizması</li>
+                    <li>Şüpheli hesap karantinası</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0;text-align:center"><strong>Güvenlik Katmanı:</strong> Çok katmanlı doğrulama sistemi ile gerçek kullanıcıları ödüllendirirken, kötü niyetli aktörleri sistemden uzak tutuyoruz.</p>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">8</p>
+    </div>
+
+    <!-- Sayfa 9: Teknik Mimari -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Teknik Mimari</p>
+                <h2>Sistem Tasarımı</h2>
+            </div>
+        </div>
+
+        <div class="architecture-box">
+            <div class="layer yellow">
+                <strong>İSTEMCİ KATMANI</strong><br>
+                Telegram Mini App | WebCrypto API | Biyometrik Kimlik Doğrulama | PIN Koruması
+            </div>
+
+            <p style="text-align:center;padding:8px;color:var(--yellow);font-size:11px;letter-spacing:1px">↓ SADECE İMZALI İŞLEMLER (ÖZEL ANAHTAR İLETİMİ YOK) ↓</p>
+
+            <div class="layer">
+                <strong>CC WALLET BACKEND</strong><br>
+                İşlem Aktarımı | KYC Entegrasyonu | Analitik | Hız Sınırlama
+            </div>
+
+            <p style="text-align:center;padding:8px;color:var(--yellow);font-size:11px;letter-spacing:1px">↓ EXTERNAL PARTY API ↓</p>
+
+            <div class="layer lilac">
+                <strong>CANTON NETWORK</strong><br>
+                Doğrulayıcı Düğümler | Global Senkronizör | Daml Akıllı Sözleşmeler | BFT Konsensüs
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div>
+                <h3>İstemci Tarafı Teknoloji Yığını</h3>
+                <div class="metric-row"><span class="label">Framework</span><span class="value">Next.js 14</span></div>
+                <div class="metric-row"><span class="label">Kriptografi</span><span class="value">WebCrypto API</span></div>
+                <div class="metric-row"><span class="label">İmza Algoritması</span><span class="value">ECDSA P-256</span></div>
+                <div class="metric-row"><span class="label">Şifreleme</span><span class="value">AES-256-GCM</span></div>
+                <div class="metric-row"><span class="label">Anahtar Depolama</span><span class="value">Telegram CloudStorage</span></div>
+                <div class="metric-row"><span class="label">Paket Boyutu</span><span class="value">~80KB gzip</span></div>
+            </div>
+            <div>
+                <h3>Canton Entegrasyonu</h3>
+                <div class="metric-row"><span class="label">Ağ</span><span class="value">Canton Network</span></div>
+                <div class="metric-row"><span class="label">Sözleşmeler</span><span class="value">Daml</span></div>
+                <div class="metric-row"><span class="label">API</span><span class="value">External Party API</span></div>
+                <div class="metric-row"><span class="label">İsim Servisi</span><span class="value">CNS Entegrasyonu</span></div>
+                <div class="metric-row"><span class="label">KYC Sağlayıcı</span><span class="value">7Trust / Sumsub</span></div>
+                <div class="metric-row"><span class="label">Kimlik</span><span class="value">Doğrulanabilir Kimlik Bilgileri</span></div>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">9</p>
+    </div>
+
+    <!-- Sayfa 10: Güvenlik Modeli -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Güvenlik</p>
+                <h2>Güvenlik Mimarisi</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0"><strong>Güvenlik Felsefesi:</strong> İstemci tarafı kriptografi ile derinlemesine savunma. Özel anahtarlar yalnızca kullanıcının cihazında oluşturulur, şifrelenir ve saklanır. Ağa yalnızca imzalı işlemler iletilir.</p>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">1</div>
+            <div>
+                <h4>Yalnızca İstemci Tarafı Kriptografi</h4>
+                <p>Özel anahtarlar cihazdan asla çıkmaz. Tüm imzalama işlemleri WebCrypto API kullanılarak yerel olarak gerçekleşir.</p>
+            </div>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">2</div>
+            <div>
+                <h4>Tekrarlanabilir Yapılar</h4>
+                <p>Deterministik yapılarla açık kaynak kod tabanı. Herkes dağıtılan kodun kaynakla eşleştiğini doğrulayabilir.</p>
+            </div>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">3</div>
+            <div>
+                <h4>Formel Doğrulama</h4>
+                <p>Kritik kriptografik fonksiyonlar, formel doğrulama yöntemleri ile matematiksel olarak doğru kanıtlanmıştır.</p>
+            </div>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">4</div>
+            <div>
+                <h4>Açık Kaynak + Topluluk Denetimi</h4>
+                <p>Tam kod tabanı şeffaflığı, sürekli topluluk incelemesi ve üçüncü taraf güvenlik denetimlerini mümkün kılar.</p>
+            </div>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">5</div>
+            <div>
+                <h4>Canton Protokol Güvenliği</h4>
+                <p>Canton'un formel doğrulaması (Isabelle/HOL), BFT konsensüsü ve uçtan uca şifrelemesini devralır.</p>
+            </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:24px">
+            <div class="card">
+                <h4>Anahtar Koruması</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>AES-256-GCM bekleyen şifreleme</li>
+                    <li>PIN-türetilmiş anahtar şifreleme</li>
+                    <li>Biyometrik kilit açma desteği</li>
+                    <li>Mümkün olduğunda güvenli enclave</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>İşlem Güvenliği</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>İşlem imzalama onayı</li>
+                    <li>Tutar ve alıcı doğrulaması</li>
+                    <li>Gönderimlerde hız sınırlama</li>
+                    <li>Tekrar saldırısı koruması</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">10</p>
+    </div>
+
+    <!-- Sayfa 11: Gizlilik Mimarisi -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Gizlilik</p>
+                <h2>Gizlilik Öncelikli Mimari</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <h4 style="color:var(--yellow);margin-bottom:8px">Canton Gizlilik Modeli Uyumluluğu</h4>
+            <p style="margin:0">CC Bot Wallet, Canton'un alt-işlem gizlilik modelini tam olarak kullanır. Her taraf yalnızca kendi katılımıyla ilgili verileri görür. "Unutulma hakkı" desteği ile tam GDPR uyumluluğu.</p>
+        </div>
+
+        <div class="grid-2">
+            <div>
+                <h3>Veri Konum Matrisi</h3>
+                <table style="margin:0;font-size:12px">
+                    <tr>
+                        <th>Veri Türü</th>
+                        <th>Depolama Konumu</th>
+                    </tr>
+                    <tr>
+                        <td>Özel Anahtar</td>
+                        <td style="color:var(--yellow)">Cihaz (şifreli)</td>
+                    </tr>
+                    <tr>
+                        <td>PIN Hash</td>
+                        <td style="color:var(--yellow)">Cihaz SecureStorage</td>
+                    </tr>
+                    <tr>
+                        <td>Şifreli Anahtar Yedek</td>
+                        <td style="color:var(--yellow)">Telegram CloudStorage</td>
+                    </tr>
+                    <tr>
+                        <td>İşlem Geçmişi</td>
+                        <td style="color:var(--purple)">Canton Network (E2E)</td>
+                    </tr>
+                    <tr>
+                        <td>KYC Kimlik Bilgisi</td>
+                        <td style="color:var(--lilac)">7Trust (sadece VC)</td>
+                    </tr>
+                </table>
+            </div>
+            <div>
+                <h3>Veri İzolasyonu Garantileri</h3>
+                <ul style="font-size:13px">
+                    <li>Özel anahtarlar hiçbir sunucuya asla iletilmez</li>
+                    <li>İşlem detayları üçüncü taraflara görünmez</li>
+                    <li>Senkronizasyon alanı içeriğe erişemez</li>
+                    <li>KYC verileri saklanmaz (sadece Doğrulanabilir Kimlik)</li>
+                    <li>Analitik sıfır kişisel veri toplar</li>
+                    <li>IP loglama veya cihaz takibi yok</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Yeniden Kullanılabilir KYC Akışı (Canton Yerel)</h3>
+        <div class="flow-diagram">
+            <div class="flow-step">
+                <div class="number">1</div>
+                <strong>KYC Tamamla</strong>
+                <p>7Trust üzerinden</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">2</div>
+                <strong>VC Al</strong>
+                <p>Doğrulanabilir Kimlik</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">3</div>
+                <strong>Her Yerde Kullan</strong>
+                <p>Tüm Canton Uygulamaları</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">4</div>
+                <strong>Hiçbir Şey Paylaşma</strong>
+                <p>Sıfır-Bilgi Kanıtı</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">11</p>
+    </div>
+
+    <!-- Sayfa 12: Seed Phrase'siz Cüzdan Tasarımı -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">İnovasyon</p>
+                <h2>Seed Phrase'siz Cüzdan Mimarisi</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0"><strong>Problem:</strong> Geleneksel seed phrase'ler kripto varlık kaybının 1 numaralı nedenidir. Kullanıcılar ya onları kaybeder, ya ifşa eder ya da hiçbir zaman düzgün yedeklemez. Bu, ana akım benimseme için temel bir engel oluşturur.</p>
+        </div>
+
+        <h3>Çözümümüz: PIN + Biyometrik + Bulut Kurtarma</h3>
+
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Anahtar Oluşturma</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>ECDSA P-256 anahtar çifti istemci tarafında oluşturulur</li>
+                    <li>Özel anahtar PIN-türetilmiş anahtar ile şifrelenir</li>
+                    <li>100.000 iterasyonla PBKDF2</li>
+                    <li>Şifreli blob Telegram CloudStorage'da saklanır</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Kurtarma Mekanizması</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Aynı Telegram hesabı + PIN = Tam kurtarma</li>
+                    <li>Herhangi bir cihazda çalışır</li>
+                    <li>Kaybedilecek veya ifşa edilecek seed phrase yok</li>
+                    <li>KYC Seviye 2 PIN sıfırlamayı etkinleştirir</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Güvenlik Karşılaştırması</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Özellik</th>
+                    <th>Geleneksel Seed</th>
+                    <th>CC Bot Seed'siz</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Yedekleme Yöntemi</td>
+                    <td>Kağıt/Metal/Hafıza</td>
+                    <td>Şifreli Bulut + PIN</td>
+                </tr>
+                <tr>
+                    <td>Kurtarma Karmaşıklığı</td>
+                    <td>12-24 kelime gerekli</td>
+                    <td>Sadece 6 haneli PIN</td>
+                </tr>
+                <tr>
+                    <td>Oltalama Riski</td>
+                    <td>Yüksek (seed ifşası)</td>
+                    <td>Düşük (PIN tek başına işe yaramaz)</td>
+                </tr>
+                <tr>
+                    <td>Cihazlar Arası</td>
+                    <td>Manuel seed girişi</td>
+                    <td>Telegram üzerinden otomatik</td>
+                </tr>
+                <tr>
+                    <td>Self-Custody</td>
+                    <td>Evet</td>
+                    <td>Evet (istemci tarafı anahtarlar)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">12</p>
+    </div>
+
+    <!-- Sayfa 13: Canton External Party Entegrasyonu -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Canton Entegrasyonu</p>
+                <h2>External Party API Uygulaması</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0"><strong>External Party Modeli:</strong> CC Bot Wallet, Canton Network üzerinde bir External Party olarak çalışır ve kullanıcıların External Party API aracılığıyla tam ağ katılımını sürdürürken işlemleri yerel olarak imzalamasını sağlar.</p>
+        </div>
+
+        <h3>Entegrasyon Mimarisi</h3>
+        <div class="architecture-box">
+            <div class="grid-2" style="margin:0">
+                <div>
+                    <h4 style="color:var(--yellow)">İstemci Sorumlulukları</h4>
+                    <ul style="margin:0;font-size:13px">
+                        <li>Anahtar oluşturma ve yönetimi</li>
+                        <li>İşlem oluşturma</li>
+                        <li>Payload imzalama (ECDSA)</li>
+                        <li>Kullanıcı kimlik doğrulama</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="color:var(--yellow)">Backend Sorumlulukları</h4>
+                    <ul style="margin:0;font-size:13px">
+                        <li>İmzalı işlem aktarımı</li>
+                        <li>Katılımcı düğüm iletişimi</li>
+                        <li>Olay aboneliği yönetimi</li>
+                        <li>Hız sınırlama ve kötüye kullanım önleme</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h3>Daml Sözleşme Etkileşimleri</h3>
+        <div class="grid-2">
+            <div class="card">
+                <h4>Desteklenen İşlemler</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>CC Token transferleri</li>
+                    <li>Çok taraflı işlemler</li>
+                    <li>Atomik swaplar</li>
+                    <li>Sözleşme çalıştırma hakları</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Olay İşleme</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>İşlem onayları</li>
+                    <li>Bakiye güncelleme bildirimleri</li>
+                    <li>Sözleşme durum değişiklikleri</li>
+                    <li>Hata ve ret işleme</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>İşlem Akışı</h3>
+        <div class="flow-diagram">
+            <div class="flow-step">
+                <div class="number">1</div>
+                <strong>Kullanıcı Niyeti</strong>
+                <p>100 CC Gönder</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">2</div>
+                <strong>TX Oluştur</strong>
+                <p>İstemci tarafı</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">3</div>
+                <strong>İmzala</strong>
+                <p>Yerel ECDSA</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">4</div>
+                <strong>Gönder</strong>
+                <p>External API</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">5</div>
+                <strong>Onayla</strong>
+                <p>Canton BFT</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">13</p>
+    </div>
+
+    <!-- Sayfa 14: Geliştirme Yol Haritası -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Yol Haritası</p>
+                <h2>Geliştirme Yol Haritası</h2>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="roadmap-phase active">
+                <p class="phase-num">Faz 1</p>
+                <h4>Temel Cüzdan</h4>
+                <ul>
+                    <li>Kriptografik modüller</li>
+                    <li>Canton API entegrasyonu</li>
+                    <li>Telegram CloudStorage</li>
+                    <li>Gönder/Al arayüzü</li>
+                    <li>DevNet dağıtımı</li>
+                </ul>
+            </div>
+            <div class="roadmap-phase">
+                <p class="phase-num">Faz 2</p>
+                <h4>Güvenlik Katmanı</h4>
+                <ul>
+                    <li>Biyometrik kimlik doğrulama</li>
+                    <li>Tekrarlanabilir yapılar</li>
+                    <li>Güvenlik denetimi hazırlığı</li>
+                    <li>Bug bounty programı</li>
+                    <li>Penetrasyon testi</li>
+                </ul>
+            </div>
+            <div class="roadmap-phase">
+                <p class="phase-num">Faz 3</p>
+                <h4>KYC Entegrasyonu</h4>
+                <ul>
+                    <li>7Trust entegrasyonu</li>
+                    <li>Doğrulanabilir Kimlik Bilgileri</li>
+                    <li>Kademeli erişim sistemi</li>
+                    <li>Uyumluluk çerçevesi</li>
+                    <li>Kimlik doğrulama arayüzü</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="roadmap-phase">
+                <p class="phase-num">Faz 4</p>
+                <h4>Genel Lansman</h4>
+                <ul>
+                    <li>Topluluk betası</li>
+                    <li>Hata düzeltmeleri ve optimizasyon</li>
+                    <li>MainNet dağıtımı</li>
+                    <li>Pazarlama lansmanı</li>
+                    <li>Kullanıcı geri bildirimi toplama</li>
+                </ul>
+            </div>
+            <div class="roadmap-phase">
+                <p class="phase-num">Faz 5</p>
+                <h4>Ekosistem</h4>
+                <ul>
+                    <li>dApp tarayıcı</li>
+                    <li>DeFi protokolleri entegrasyonu</li>
+                    <li>DEX entegrasyonu</li>
+                    <li>Mini oyunlar platformu</li>
+                    <li>Çapraz zincir köprüleri</li>
+                </ul>
+            </div>
+            <div class="roadmap-phase">
+                <p class="phase-num">Faz 6</p>
+                <h4>Gelişmiş Özellikler</h4>
+                <ul>
+                    <li>NFT desteği</li>
+                    <li>AI asistan</li>
+                    <li>Portföy analitiği</li>
+                    <li>Otomatik stratejiler</li>
+                    <li>Kurumsal özellikler</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="highlight-box" style="margin-top:20px">
+            <p style="margin:0;text-align:center"><strong>Geliştirme Yaklaşımı:</strong> Sürekli kullanıcı geri bildirimi entegrasyonu ve güvenlik öncelikli metodoloji ile iteratif sürümler</p>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">14</p>
+    </div>
+
+    <!-- Sayfa 15: Ortaklık -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Ortaklık</p>
+                <h2>İşbirliği Teklifi</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0;font-size:15px"><strong>Ortaklık Vizyonu:</strong> Canton Network için resmi tüketici cüzdan ortağı olmayı hedefliyoruz ve ekosistem için birincil perakende kullanıcı dahil etme kanalını sağlamak istiyoruz.</p>
+        </div>
+
+        <h3>Canton'dan İhtiyaç Duyduklarımız</h3>
+        <div class="grid-2">
+            <div class="card">
+                <h4>Teknik Destek</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>DevNet/TestNet erişimi ve kimlik bilgileri</li>
+                    <li>External Party API dokümantasyonu</li>
+                    <li>Teknik entegrasyon desteği</li>
+                    <li>Daml sözleşme şablonları</li>
+                    <li>Canton Name Service entegrasyonu</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Ekosistem Desteği</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Resmi ortak tanınırlığı</li>
+                    <li>Ortak pazarlama fırsatları</li>
+                    <li>Doğrulayıcı ortaklık görüşmeleri</li>
+                    <li>Yeni özelliklere erken erişim</li>
+                    <li>Geliştirici topluluğu tanıtımı</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Canton'a Getirdiklerimiz</h3>
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Kullanıcı Edinimi</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Telegram kullanıcı tabanına erişim</li>
+                    <li>Tüketici dostu katılım</li>
+                    <li>Viral dağıtım potansiyeli</li>
+                    <li>Perakende pazar penetrasyonu</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Teknik Katkı</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Açık kaynak referans uygulaması</li>
+                    <li>Mobil öncelikli en iyi uygulamalar</li>
+                    <li>Güvenlik denetimi sonuçlarının paylaşımı</li>
+                    <li>Hata raporları ve geri bildirim</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Hemen Sonraki Adımlar</h3>
+        <div class="grid-3">
+            <div class="card">
+                <h4 style="font-size:13px">1. Teknik Başlangıç</h4>
+                <p style="font-size:12px;margin:0">API erişimi, dokümantasyon incelemesi, entegrasyon planlaması</p>
+            </div>
+            <div class="card">
+                <h4 style="font-size:13px">2. DevNet Dağıtımı</h4>
+                <p style="font-size:12px;margin:0">Çalışan prototip, ilk testler, geri bildirim döngüsü</p>
+            </div>
+            <div class="card">
+                <h4 style="font-size:13px">3. Ortaklık Anlaşması</h4>
+                <p style="font-size:12px;margin:0">Şartlar, sorumluluklar, pazara çıkış stratejisi</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">15</p>
+    </div>
+
+    <!-- Sayfa 16: Teşekkürler -->
+    <div class="page cover" style="justify-content:center">
+        <img src="ccbotlogo.png" alt="CC Bot Wallet" class="cc-logo-img" style="margin-bottom:40px">
+        <h1 style="font-size:36px">Teşekkürler</h1>
+        <p class="subtitle" style="margin-bottom:50px">Sorular ve Tartışma</p>
+
+        <div style="margin-top:40px">
+            <p style="color:var(--taupe);font-size:13px;margin-bottom:30px">CC Bot Wallet Ekibi</p>
+            <p style="color:var(--purple);font-size:12px">Canton'un geleceğini birlikte inşa etmeyi dört gözle bekliyoruz.</p>
+        </div>
+
+        <p class="confidential">Gizli - Sadece Canton Network Ekibi İçin</p>
+    </div>
+
+</body>
+</html>

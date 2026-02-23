@@ -1,0 +1,58 @@
+{
+  "name": "@repo/crypto",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./key-derivation": {
+      "types": "./dist/key-derivation.d.ts",
+      "import": "./dist/key-derivation.js"
+    },
+    "./signing": {
+      "types": "./dist/signing.d.ts",
+      "import": "./dist/signing.js"
+    },
+    "./encryption": {
+      "types": "./dist/encryption.d.ts",
+      "import": "./dist/encryption.js"
+    },
+    "./mpc": {
+      "types": "./dist/mpc/index.d.ts",
+      "import": "./dist/mpc/index.js"
+    },
+    "./mpc/shamir": {
+      "types": "./dist/mpc/shamir.d.ts",
+      "import": "./dist/mpc/shamir.js"
+    },
+    "./mpc/tss": {
+      "types": "./dist/mpc/tss.d.ts",
+      "import": "./dist/mpc/tss.js"
+    },
+    "./mpc/session": {
+      "types": "./dist/mpc/session.d.ts",
+      "import": "./dist/mpc/session.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@noble/hashes": "^1.6.0",
+    "@noble/curves": "^1.7.0",
+    "@noble/ciphers": "^1.2.0"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "eslint": "^9.17.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}

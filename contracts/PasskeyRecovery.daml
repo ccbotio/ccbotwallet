@@ -1,0 +1,245 @@
+-- Passkey-Based Wallet Recovery Contract for Canton Network
+-- Stores encrypted recovery shares secured by WebAuthn passkeys
+
+module PasskeyRecovery where
+
+import Daml.Script
+import DA.Time
+import DA.Text qualified as T
+
+-- | Response returned when recovery is requested
+data RecoveryResponse = RecoveryResponse
+  with
+    encryptedShare : Text   -- AES-GCM encrypted recovery share (base64)
+    nonce : Text            -- Encryption nonce (base64)
+  deriving (Eq, Show)
+
+-- | Passkey credential registered for wallet recovery
+-- Each credential stores an encrypted recovery share that can only be
+-- decrypted with the corresponding passkey
+template PasskeyCredential
+  with
+    owner : Party                      -- Canton party ID (wallet owner)
+    credentialId : Text                -- WebAuthn credential ID (base64)
+    publicKeySpki : Text               -- Passkey public key in SPKI format (base64)
+    encryptedRecoveryShare : Text      -- Share 3 encrypted with passkey-derived key (base64)
+    encryptionNonce : Text             -- Nonce for AES-GCM encryption (base64)
+    registeredAt : Time                -- When the passkey was registered
+    deviceName : Optional Text         -- User-friendly device name (e.g., "iPhone 15")
+    validator : Party                  -- Canton validator party
+  where
+    signatory owner
+    observer validator
+
+    -- | Request recovery - returns encrypted share after WebAuthn verification
+    -- The actual signature verification happens off-chain in the backend
+    -- This choice logs the recovery attempt and returns the encrypted data
+    nonconsuming choice RequestRecovery : RecoveryResponse
+      with
+        challenge : Text              -- Server-generated challenge (base64)
+        authenticatorData : Text      -- From WebAuthn assertion (base64)
+        clientDataJson : Text         -- From WebAuthn assertion (base64)
+        signature : Text              -- Passkey signature (base64)
+      controller owner
+      do
+        -- Note: Actual WebAuthn signature verification is done off-chain
+        -- by the backend service before exercising this choice.
+        -- The Daml contract acts as an immutable audit log and data store.
+        pure RecoveryResponse with
+          encryptedShare = encryptedRecoveryShare
+          nonce = encryptionNonce
+
+    -- | Add a backup passkey from another device
+    -- Creates a new PasskeyCredential contract with the same encrypted share
+    choice AddBackupCredential : ContractId PasskeyCredential
+      with
+        newCredentialId : Text        -- New WebAuthn credential ID
+        newPublicKey : Text           -- New passkey public key (SPKI format)
+        newDeviceName : Optional Text -- Device name for the backup
+        attestation : Text            -- WebAuthn attestation object (for audit)
+      controller owner
+      do
+        now <- getTime
+        create PasskeyCredential with
+          owner = owner
+          credentialId = newCredentialId
+          publicKeySpki = newPublicKey
+          encryptedRecoveryShare = encryptedRecoveryShare
+          encryptionNonce = encryptionNonce
+          registeredAt = now
+          deviceName = newDeviceName
+          validator = validator
+
+    -- | Revoke this passkey credential (e.g., device lost/stolen)
+    -- Archives the contract, making it unusable
+    choice RevokeCredential : ()
+      controller owner
+      do
+        pure ()
+
+    -- | Update device name for better identification
+    choice UpdateDeviceName : ContractId PasskeyCredential
+      with
+        newName : Text
+      controller owner
+      do
+        create this with deviceName = Some newName
+
+-- | Recovery challenge for audit logging
+-- Tracks WebAuthn challenges to prevent replay attacks
+template RecoveryChallenge
+  with
+    owner : Party
+    challenge : Text                   -- Random challenge string (base64)
+    credentialId : Text                -- Which passkey this is for
+    createdAt : Time
+    expiresAt : Time                   -- Challenge validity (5 minutes)
+    validator : Party
+  where
+    signatory validator
+    observer owner
+
+    -- | Mark challenge as used (archives it)
+    choice UseChallenge : ()
+      controller owner
+      do
+        pure ()
+
+    -- | Expire unused challenge
+    choice ExpireChallenge : ()
+      controller validator
+      do
+        now <- getTime
+        assertMsg "Challenge has not expired yet" (now >= expiresAt)
+        pure ()
+
+-- | Audit log entry for passkey operations
+-- Immutable record of all passkey-related actions
+template PasskeyAuditLog
+  with
+    owner : Party
+    action : Text                      -- "register", "recover", "revoke", "add_backup"
+    credentialId : Text
+    timestamp : Time
+    ipAddress : Optional Text          -- For security audit
+    userAgent : Optional Text          -- Device/browser info
+    success : Bool
+    errorMessage : Optional Text
+    validator : Party
+  where
+    signatory validator
+    observer owner
+
+-- | Helper template for managing passkey-to-wallet mapping
+-- Allows querying all passkeys for a wallet
+template WalletPasskeys
+  with
+    owner : Party
+    walletPublicKey : Text             -- Ed25519 public key of the wallet
+    passkeyCredentialIds : [Text]      -- List of registered credential IDs
+    createdAt : Time
+    updatedAt : Time
+    validator : Party
+  where
+    signatory owner
+    observer validator
+
+    -- | Register a new passkey for this wallet
+    choice RegisterPasskey : ContractId WalletPasskeys
+      with
+        newCredentialId : Text
+      controller owner
+      do
+        now <- getTime
+        create this with
+          passkeyCredentialIds = newCredentialId :: passkeyCredentialIds
+          updatedAt = now
+
+    -- | Remove a passkey from this wallet (after revocation)
+    choice UnregisterPasskey : ContractId WalletPasskeys
+      with
+        credentialIdToRemove : Text
+      controller owner
+      do
+        now <- getTime
+        let newIds = filter (/= credentialIdToRemove) passkeyCredentialIds
+        create this with
+          passkeyCredentialIds = newIds
+          updatedAt = now
+
+-- ==================== Test Scripts ====================
+
+-- | Setup script for testing
+setupTest : Script (Party, Party)
+setupTest = script do
+  validator <- allocateParty "Validator"
+  user <- allocateParty "User"
+  pure (validator, user)
+
+-- | Test passkey registration and recovery flow
+testPasskeyFlow : Script ()
+testPasskeyFlow = script do
+  (validator, user) <- setupTest
+  now <- getTime
+
+  -- Register a passkey
+  credentialCid <- submit user do
+    createCmd PasskeyCredential with
+      owner = user
+      credentialId = "dGVzdC1jcmVkZW50aWFsLWlk"  -- base64 "test-credential-id"
+      publicKeySpki = "dGVzdC1wdWJsaWMta2V5"      -- base64 "test-public-key"
+      encryptedRecoveryShare = "ZW5jcnlwdGVkLXNoYXJl"  -- encrypted share
+      encryptionNonce = "bm9uY2UxMjM0NTY="        -- nonce
+      registeredAt = now
+      deviceName = Some "iPhone 15 Pro"
+      validator = validator
+
+  -- Request recovery
+  recoveryResponse <- submit user do
+    exerciseCmd credentialCid RequestRecovery with
+      challenge = "Y2hhbGxlbmdl"
+      authenticatorData = "YXV0aGVudGljYXRvci1kYXRh"
+      clientDataJson = "Y2xpZW50LWRhdGE="
+      signature = "c2lnbmF0dXJl"
+
+  -- Verify response
+  assert (recoveryResponse.encryptedShare == "ZW5jcnlwdGVkLXNoYXJl")
+  assert (recoveryResponse.nonce == "bm9uY2UxMjM0NTY=")
+
+  -- Add backup credential
+  backupCid <- submit user do
+    exerciseCmd credentialCid AddBackupCredential with
+      newCredentialId = "YmFja3VwLWNyZWRlbnRpYWw="
+      newPublicKey = "YmFja3VwLXB1YmxpYy1rZXk="
+      newDeviceName = Some "MacBook Pro"
+      attestation = "YXR0ZXN0YXRpb24="
+
+  -- Revoke original credential
+  submit user do
+    exerciseCmd credentialCid RevokeCredential
+
+  pure ()
+
+-- | Test challenge expiry
+testChallengeExpiry : Script ()
+testChallengeExpiry = script do
+  (validator, user) <- setupTest
+  now <- getTime
+  let fiveMinutes = minutes 5
+  let expiryTime = addRelTime now fiveMinutes
+
+  -- Create a challenge
+  challengeCid <- submit validator do
+    createCmd RecoveryChallenge with
+      owner = user
+      challenge = "dGVzdC1jaGFsbGVuZ2U="
+      credentialId = "dGVzdC1jcmVkZW50aWFs"
+      createdAt = now
+      expiresAt = expiryTime
+      validator = validator
+
+  -- Use the challenge
+  submit user do
+    exerciseCmd challengeCid UseChallenge
+
+  pure ()

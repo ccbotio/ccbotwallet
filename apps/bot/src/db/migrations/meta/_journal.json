@@ -1,0 +1,48 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1768593728125,
+      "tag": "0000_powerful_james_howlett",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1768600000000,
+      "tag": "0001_add_shares_sessions_emails",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770931253322,
+      "tag": "0002_add_transfer_nonce",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1771160080974,
+      "tag": "0003_medical_cerise",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1771247400000,
+      "tag": "0005_add_passkey_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1771775025309,
+      "tag": "0005_friendly_ares",
+      "breakpoints": true
+    }
+  ]
+}

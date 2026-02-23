@@ -1,0 +1,26 @@
+import type { Context, NextFunction } from 'grammy';
+import { redis } from '../../lib/redis.js';
+import { RATE_LIMITS } from '../../config/constants.js';
+
+export async function rateLimitMiddleware(ctx: Context, next: NextFunction) {
+  const userId = ctx.from?.id;
+
+  if (!userId) {
+    await next();
+    return;
+  }
+
+  const key = `rate:cmd:${userId}`;
+  const current = await redis.incr(key);
+
+  if (current === 1) {
+    await redis.expire(key, RATE_LIMITS.commands.window);
+  }
+
+  if (current > RATE_LIMITS.commands.max) {
+    await ctx.reply('Too many requests. Please slow down.');
+    return;
+  }
+
+  await next();
+}

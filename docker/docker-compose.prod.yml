@@ -1,0 +1,124 @@
+services:
+  # Bot API + Telegram Bot
+  bot:
+    build:
+      context: ..
+      dockerfile: apps/bot/Dockerfile
+    container_name: ccbot-api
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
+      REDIS_URL: redis://redis:6379
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      TELEGRAM_WEBHOOK_URL: ${TELEGRAM_WEBHOOK_URL}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET}
+      TELEGRAM_MINI_APP_URL: ${TELEGRAM_MINI_APP_URL}
+      APP_SECRET: ${APP_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      CANTON_NETWORK: ${CANTON_NETWORK}
+      CANTON_LEDGER_API_URL: ${CANTON_LEDGER_API_URL}
+      CANTON_VALIDATOR_API_URL: ${CANTON_VALIDATOR_API_URL}
+      CANTON_PARTICIPANT_ID: ${CANTON_PARTICIPANT_ID}
+      CANTON_LEDGER_API_USER: ${CANTON_LEDGER_API_USER:-ledger-api-user}
+      CANTON_VALIDATOR_AUDIENCE: ${CANTON_VALIDATOR_AUDIENCE}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - ccbot-network
+    restart: unless-stopped
+
+  # Mini App (Next.js)
+  mini-app:
+    build:
+      context: ..
+      dockerfile: apps/mini-app/Dockerfile
+    container_name: ccbot-mini-app
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${TELEGRAM_WEBHOOK_URL:-https://localhost}/api
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - ccbot-network
+    restart: unless-stopped
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: ccbot-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ccbot-network
+    restart: unless-stopped
+
+  # Redis Cache & BullMQ
+  redis:
+    image: redis:7-alpine
+    container_name: ccbot-redis
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ccbot-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: ccbot-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/logs:/var/log/nginx
+    depends_on:
+      bot:
+        condition: service_healthy
+      mini-app:
+        condition: service_healthy
+    networks:
+      - ccbot-network
+    restart: unless-stopped
+
+networks:
+  ccbot-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local

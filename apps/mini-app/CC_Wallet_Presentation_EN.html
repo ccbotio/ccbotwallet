@@ -1,0 +1,1759 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CC Bot Wallet - Canton Network Integration Proposal</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --yellow: #F3FF97;
+            --black: #030206;
+            --white: #FFFFFC;
+            --lilac: #D5A5E3;
+            --purple: #875CFF;
+            --taupe: #A89F91;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Space Grotesk', sans-serif;
+            background: var(--black);
+            color: var(--white);
+            line-height: 1.6;
+        }
+
+        .page {
+            width: 100%;
+            min-height: 100vh;
+            padding: 60px 80px;
+            page-break-after: always;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            background: var(--black);
+        }
+
+        .page:last-child {
+            page-break-after: avoid;
+        }
+
+        .cc-logo-img {
+            width: 100px;
+            height: auto;
+        }
+
+        .cc-logo-small-img {
+            width: 36px;
+            height: 36px;
+            object-fit: contain;
+        }
+
+        .footer-logo-img {
+            width: 20px;
+            height: 20px;
+            object-fit: contain;
+            margin-right: 8px;
+        }
+
+        .cover {
+            background: var(--black);
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+
+        .cover .cc-logo-img {
+            width: 120px;
+            margin-bottom: 40px;
+        }
+
+        .cover h1 {
+            font-size: 48px;
+            font-weight: 700;
+            margin-bottom: 12px;
+            color: var(--yellow);
+            letter-spacing: -1px;
+        }
+
+        .cover .subtitle {
+            font-size: 18px;
+            color: var(--white);
+            margin-bottom: 6px;
+            font-weight: 400;
+        }
+
+        .cover .subtitle2 {
+            font-size: 14px;
+            color: var(--taupe);
+            margin-bottom: 60px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .cover .date {
+            font-size: 13px;
+            color: var(--purple);
+        }
+
+        .cover .confidential {
+            position: absolute;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 10px;
+            color: var(--taupe);
+            text-transform: uppercase;
+            letter-spacing: 4px;
+        }
+
+        .page-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255,255,252,0.06);
+        }
+
+        .page-header .cc-logo-small-img {
+            margin-right: 20px;
+        }
+
+        .page-header .section-info {
+            flex: 1;
+        }
+
+        .section-title {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: var(--purple);
+            margin-bottom: 6px;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--yellow);
+            letter-spacing: -0.5px;
+        }
+
+        h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: var(--lilac);
+        }
+
+        h4 {
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: var(--white);
+        }
+
+        p {
+            font-size: 14px;
+            margin-bottom: 14px;
+            color: var(--white);
+            line-height: 1.7;
+        }
+
+        .highlight-box {
+            background: rgba(135, 92, 255, 0.08);
+            border-left: 2px solid var(--purple);
+            padding: 20px 24px;
+            margin: 24px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .highlight-box.yellow {
+            background: rgba(243, 255, 151, 0.06);
+            border-left-color: var(--yellow);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin: 24px 0;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 20px;
+            margin: 24px 0;
+        }
+
+        .grid-4 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .card {
+            background: rgba(255, 255, 252, 0.02);
+            border: 1px solid rgba(255, 255, 252, 0.06);
+            border-radius: 12px;
+            padding: 24px;
+        }
+
+        .card.purple {
+            border-color: rgba(135, 92, 255, 0.3);
+            background: rgba(135, 92, 255, 0.04);
+        }
+
+        .card.yellow {
+            border-color: rgba(243, 255, 151, 0.3);
+            background: rgba(243, 255, 151, 0.04);
+        }
+
+        ul {
+            list-style: none;
+            margin: 16px 0;
+        }
+
+        ul li {
+            padding: 10px 0;
+            padding-left: 20px;
+            position: relative;
+            font-size: 14px;
+            border-bottom: 1px solid rgba(255,255,252,0.03);
+        }
+
+        ul li:last-child {
+            border-bottom: none;
+        }
+
+        ul li::before {
+            content: "";
+            position: absolute;
+            left: 0;
+            top: 16px;
+            width: 5px;
+            height: 5px;
+            background: var(--yellow);
+            border-radius: 50%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 13px;
+        }
+
+        th, td {
+            padding: 14px 16px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 252, 0.06);
+        }
+
+        th {
+            background: rgba(135, 92, 255, 0.1);
+            color: var(--yellow);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 1px;
+        }
+
+        .flow-diagram {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 30px 0;
+            gap: 8px;
+        }
+
+        .flow-step {
+            background: rgba(255, 255, 252, 0.03);
+            border: 1px solid rgba(255, 255, 252, 0.06);
+            border-radius: 10px;
+            padding: 16px 20px;
+            text-align: center;
+            min-width: 110px;
+        }
+
+        .flow-step .number {
+            width: 26px;
+            height: 26px;
+            background: var(--purple);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-weight: 700;
+            font-size: 11px;
+        }
+
+        .flow-step strong {
+            font-size: 12px;
+            display: block;
+        }
+
+        .flow-step p {
+            font-size: 10px;
+            margin: 6px 0 0 0;
+            color: var(--taupe);
+        }
+
+        .flow-arrow {
+            font-size: 16px;
+            color: var(--yellow);
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 24px;
+        }
+
+        .stat-number {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--yellow);
+            line-height: 1;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: var(--taupe);
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .big-stat {
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .big-stat .number {
+            font-size: 48px;
+            font-weight: 700;
+            color: var(--yellow);
+            line-height: 1;
+        }
+
+        .big-stat .label {
+            font-size: 12px;
+            color: var(--taupe);
+            margin-top: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .big-stat .sublabel {
+            font-size: 11px;
+            color: var(--white);
+            margin-top: 4px;
+            opacity: 0.7;
+        }
+
+        .architecture-box {
+            background: rgba(255, 255, 252, 0.02);
+            border: 1px solid rgba(255, 255, 252, 0.06);
+            border-radius: 12px;
+            padding: 28px;
+            margin: 24px 0;
+        }
+
+        .layer {
+            background: rgba(135, 92, 255, 0.06);
+            border: 1px solid rgba(135, 92, 255, 0.3);
+            border-radius: 8px;
+            padding: 16px;
+            margin: 12px 0;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .layer.yellow {
+            background: rgba(243, 255, 151, 0.06);
+            border-color: rgba(243, 255, 151, 0.3);
+        }
+        .layer.lilac {
+            background: rgba(213, 165, 227, 0.06);
+            border-color: rgba(213, 165, 227, 0.3);
+        }
+
+        .page-number {
+            position: absolute;
+            bottom: 30px;
+            right: 80px;
+            font-size: 10px;
+            color: var(--taupe);
+        }
+
+        .footer-logo {
+            position: absolute;
+            bottom: 30px;
+            left: 80px;
+            display: flex;
+            align-items: center;
+            font-size: 10px;
+            color: var(--taupe);
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid rgba(255,255,252,0.06);
+            font-size: 13px;
+        }
+
+        .metric-row:last-child { border-bottom: none; }
+        .metric-row .label { color: var(--taupe); }
+        .metric-row .value { color: var(--yellow); font-weight: 600; }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            margin: 16px 0;
+            padding: 20px;
+            background: rgba(255,255,252,0.02);
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,252,0.04);
+        }
+
+        .feature-item .f-icon {
+            width: 40px;
+            height: 40px;
+            background: var(--purple);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 16px;
+            flex-shrink: 0;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .feature-item h4 {
+            margin-bottom: 6px;
+            font-size: 15px;
+            color: var(--yellow);
+        }
+        .feature-item p {
+            margin: 0;
+            font-size: 13px;
+            color: var(--white);
+            line-height: 1.6;
+        }
+
+        .security-layer {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 252, 0.02);
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin: 10px 0;
+            border-left: 2px solid var(--purple);
+        }
+
+        .security-layer .layer-num {
+            width: 28px;
+            height: 28px;
+            background: var(--purple);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            margin-right: 16px;
+            flex-shrink: 0;
+            font-size: 12px;
+        }
+
+        .security-layer h4 { margin-bottom: 2px; font-size: 14px; }
+        .security-layer p { margin: 0; font-size: 12px; color: var(--taupe); }
+
+        .roadmap-phase {
+            background: rgba(255,255,252,0.02);
+            border: 1px solid rgba(255,255,252,0.06);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .roadmap-phase.active {
+            border-color: rgba(243, 255, 151, 0.3);
+            background: rgba(243, 255, 151, 0.03);
+        }
+
+        .roadmap-phase .phase-num {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            color: var(--purple);
+            margin-bottom: 8px;
+        }
+
+        .roadmap-phase h4 {
+            color: var(--yellow);
+            margin-bottom: 14px;
+            font-size: 14px;
+        }
+
+        .roadmap-phase ul {
+            margin: 0;
+        }
+
+        .roadmap-phase ul li {
+            font-size: 12px;
+            padding: 6px 0;
+        }
+
+        .case-study {
+            background: rgba(135, 92, 255, 0.04);
+            border: 1px solid rgba(135, 92, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+        }
+
+        .case-study h4 {
+            color: var(--lilac);
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .case-study .stats {
+            display: flex;
+            gap: 20px;
+            margin-top: 12px;
+        }
+
+        .case-study .stat {
+            text-align: center;
+        }
+
+        .case-study .stat .num {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--yellow);
+        }
+
+        .case-study .stat .lbl {
+            font-size: 10px;
+            color: var(--taupe);
+            text-transform: uppercase;
+        }
+
+        @media print {
+            .page {
+                height: 100vh;
+                page-break-after: always;
+                page-break-inside: avoid;
+            }
+            body {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Page 1: Cover -->
+    <div class="page cover">
+        <img src="ccbotlogo.png" alt="CC Bot Wallet" class="cc-logo-img">
+        <h1>CC Bot Wallet</h1>
+        <p class="subtitle">First AI-Powered Passkey Wallet on Telegram</p>
+        <p class="subtitle2">Canton Network Technical Integration Proposal</p>
+        <p class="date">Prepared for Canton Network Team</p>
+        <p class="confidential">Confidential</p>
+    </div>
+
+    <!-- Page 2: Executive Summary -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Executive Summary</p>
+                <h2>Project Overview</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0;font-size:15px"><strong>Mission:</strong> To develop the first Telegram-based AI-powered passkey wallet on Canton Network, providing blockchain accessibility to Telegram users with seedless authentication and enterprise-grade security.</p>
+        </div>
+
+        <div class="grid-3">
+            <div class="card">
+                <h4>Seedless Architecture</h4>
+                <p style="font-size:13px;margin:0">PIN + Biometric authentication eliminates seed phrase complexity while maintaining full self-custody.</p>
+            </div>
+            <div class="card">
+                <h4>Telegram Integration</h4>
+                <p style="font-size:13px;margin:0">No app installation required. Instant access through Telegram's massive global user base.</p>
+            </div>
+            <div class="card">
+                <h4>Canton Integration</h4>
+                <p style="font-size:13px;margin:0">Full External Party API integration with Daml smart contracts and privacy-first architecture.</p>
+            </div>
+        </div>
+
+        <h3>Key Differentiators</h3>
+        <div class="grid-2">
+            <div>
+                <ul>
+                    <li>First Telegram-based AI-powered passkey wallet on Canton Network</li>
+                    <li>Client-side cryptography (keys never leave device)</li>
+                    <li>Sub-transaction privacy model compliance</li>
+                    <li>GDPR-compliant data architecture</li>
+                </ul>
+            </div>
+            <div>
+                <ul>
+                    <li>Reproducible builds for trust verification</li>
+                    <li>Canton Name Service integration</li>
+                    <li>Cross-device recovery via Telegram Cloud</li>
+                    <li>Enterprise-grade security standards</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">2</p>
+    </div>
+
+    <!-- Page 3: Telegram Platform Potential -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Market Opportunity</p>
+                <h2>Telegram Platform Potential</h2>
+            </div>
+        </div>
+
+        <div class="grid-4">
+            <div class="big-stat card">
+                <p class="number">950M+</p>
+                <p class="label">Monthly Active Users</p>
+                <p class="sublabel">As of 2024</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">2.5M+</p>
+                <p class="label">Daily New Users</p>
+                <p class="sublabel">Fastest growing app</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">100M+</p>
+                <p class="label">Premium Subscribers</p>
+                <p class="sublabel">Paying users</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">500M+</p>
+                <p class="label">Mini App MAU</p>
+                <p class="sublabel">Active in ecosystem</p>
+            </div>
+        </div>
+
+        <h3>Why Telegram for Web3?</h3>
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Crypto-Native User Base</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Historically home to crypto communities</li>
+                    <li>Users familiar with tokens and wallets</li>
+                    <li>High engagement with blockchain projects</li>
+                    <li>Built-in payment infrastructure</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Mini App Ecosystem</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Native app experience within chat</li>
+                    <li>Zero-friction onboarding (no app store)</li>
+                    <li>Viral distribution through sharing</li>
+                    <li>Built-in user identity (Telegram account)</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Proven Success: TON Ecosystem Case Studies</h3>
+        <div class="grid-3">
+            <div class="case-study">
+                <h4>Notcoin</h4>
+                <p style="font-size:12px;margin:0">Tap-to-earn game that onboarded millions to crypto</p>
+                <div class="stats">
+                    <div class="stat"><p class="num">35M+</p><p class="lbl">Users</p></div>
+                    <div class="stat"><p class="num">$1B+</p><p class="lbl">Peak Market Cap</p></div>
+                </div>
+            </div>
+            <div class="case-study">
+                <h4>Hamster Kombat</h4>
+                <p style="font-size:12px;margin:0">Viral clicker game with massive adoption</p>
+                <div class="stats">
+                    <div class="stat"><p class="num">300M+</p><p class="lbl">Users</p></div>
+                    <div class="stat"><p class="num">#1</p><p class="lbl">Mini App</p></div>
+                </div>
+            </div>
+            <div class="case-study">
+                <h4>TON Wallet</h4>
+                <p style="font-size:12px;margin:0">Native Telegram wallet integration</p>
+                <div class="stats">
+                    <div class="stat"><p class="num">100M+</p><p class="lbl">Wallets</p></div>
+                    <div class="stat"><p class="num">Native</p><p class="lbl">Integration</p></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0"><strong>Key Insight:</strong> Telegram has proven it can onboard hundreds of millions of users to Web3 in months rather than years. CC Bot Wallet plans to bring this distribution power to Canton Network.</p>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">3</p>
+    </div>
+
+    <!-- Page 4: Telegram Geography & Demographics -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Market Analysis</p>
+                <h2>Telegram Global Reach</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0"><strong>Global Distribution:</strong> Telegram's user base spans every continent, with particularly strong presence in emerging markets where traditional banking infrastructure is limited - exactly where crypto can have the most impact.</p>
+        </div>
+
+        <h3>Geographic Distribution</h3>
+        <div class="grid-2">
+            <div>
+                <table style="margin:0">
+                    <tr>
+                        <th>Region</th>
+                        <th>Users</th>
+                        <th>Growth</th>
+                    </tr>
+                    <tr>
+                        <td>India</td>
+                        <td style="color:var(--yellow)">120M+</td>
+                        <td>+45% YoY</td>
+                    </tr>
+                    <tr>
+                        <td>Russia & CIS</td>
+                        <td style="color:var(--yellow)">100M+</td>
+                        <td>+20% YoY</td>
+                    </tr>
+                    <tr>
+                        <td>Brazil</td>
+                        <td style="color:var(--yellow)">80M+</td>
+                        <td>+60% YoY</td>
+                    </tr>
+                    <tr>
+                        <td>Indonesia</td>
+                        <td style="color:var(--yellow)">70M+</td>
+                        <td>+55% YoY</td>
+                    </tr>
+                    <tr>
+                        <td>USA & Europe</td>
+                        <td style="color:var(--yellow)">150M+</td>
+                        <td>+35% YoY</td>
+                    </tr>
+                    <tr>
+                        <td>Middle East</td>
+                        <td style="color:var(--yellow)">80M+</td>
+                        <td>+40% YoY</td>
+                    </tr>
+                </table>
+            </div>
+            <div>
+                <h4 style="margin-bottom:16px">User Demographics</h4>
+                <div class="metric-row"><span class="label">Age 18-34</span><span class="value">62%</span></div>
+                <div class="metric-row"><span class="label">Age 35-54</span><span class="value">28%</span></div>
+                <div class="metric-row"><span class="label">Daily Active Users</span><span class="value">~40%</span></div>
+                <div class="metric-row"><span class="label">Avg. Session Time</span><span class="value">38 min/day</span></div>
+                <div class="metric-row"><span class="label">Daily Messages</span><span class="value">15B+</span></div>
+                <div class="metric-row"><span class="label">Mobile Users</span><span class="value">85%+</span></div>
+            </div>
+        </div>
+
+        <h3>Telegram Mini App Advantages</h3>
+        <div class="grid-3">
+            <div class="card">
+                <h4>Instant Distribution</h4>
+                <p style="font-size:12px;margin:0">Share via link or QR code. Users can instantly access the wallet without app store downloads or approvals.</p>
+            </div>
+            <div class="card">
+                <h4>Built-in Identity</h4>
+                <p style="font-size:12px;margin:0">Telegram accounts provide verified phone numbers and usernames - reducing friction for KYC and social features.</p>
+            </div>
+            <div class="card">
+                <h4>Native Notifications</h4>
+                <p style="font-size:12px;margin:0">Transaction alerts, price notifications, and security warnings delivered via Telegram's reliable push system.</p>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Viral Mechanics</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>Easy sharing in group chats</li>
+                    <li>Built-in referral tracking</li>
+                    <li>Social proof through usage</li>
+                    <li>Community-driven adoption</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Developer Friendly</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>WebApp SDK with rich APIs</li>
+                    <li>CloudStorage for persistence</li>
+                    <li>Biometric authentication support</li>
+                    <li>Payment integration ready</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">4</p>
+    </div>
+
+    <!-- Page 5: Value Proposition for Canton -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Strategic Value</p>
+                <h2>Value Proposition for Canton Network</h2>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">01</div>
+            <div>
+                <h4>Retail User Acquisition at Scale</h4>
+                <p>Canton Network is currently enterprise-focused. CC Bot Wallet fills this gap by onboarding retail users from Telegram's user base, creating the first true consumer entry point to the Canton ecosystem.</p>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">02</div>
+            <div>
+                <h4>Network Activity Growth</h4>
+                <p>Every transaction contributes to network activity metrics. More users mean more transactions, increased network usage, and stronger ecosystem health indicators for Canton.</p>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">03</div>
+            <div>
+                <h4>Ecosystem Expansion Platform</h4>
+                <p>CC Bot Wallet aims to serve as a gateway to Canton dApps. DeFi protocol integration will create seamless connections between retail users and Canton applications.</p>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">04</div>
+            <div>
+                <h4>Mobile-First Reference Implementation</h4>
+                <p>Open-source codebase provides a reference implementation for Telegram Mini App + Canton integration, enabling other developers to build upon our foundation.</p>
+            </div>
+        </div>
+
+        <div class="feature-item">
+            <div class="f-icon">05</div>
+            <div>
+                <h4>Global Financial Inclusion</h4>
+                <p>Canton access for unbanked populations worldwide. CC Bot Wallet is available wherever Telegram is, requiring only a smartphone and internet connection.</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">5</p>
+    </div>
+
+    <!-- Page 6: Network Contribution -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Network Impact</p>
+                <h2>Contribution to Canton Network</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0;font-size:15px"><strong>Network Growth Engine:</strong> CC Bot Wallet will serve as a primary retail entry point for Canton Network, driving meaningful growth in all core network metrics.</p>
+        </div>
+
+        <h3>Projected Network Impact</h3>
+        <div class="grid-4">
+            <div class="big-stat card">
+                <p class="number">100K+</p>
+                <p class="label">Target Users</p>
+                <p class="sublabel">Year 1</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">500K+</p>
+                <p class="label">Daily Transactions</p>
+                <p class="sublabel">At full scale</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">$5M+</p>
+                <p class="label">TVL Potential</p>
+                <p class="sublabel">In CC Token</p>
+            </div>
+            <div class="big-stat card">
+                <p class="number">10+</p>
+                <p class="label">dApp Connections</p>
+                <p class="sublabel">Ecosystem growth</p>
+            </div>
+        </div>
+
+        <h3>Direct Network Contributions</h3>
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Transaction Volume Growth</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Daily token transfers between users</li>
+                    <li>DEX swap transactions</li>
+                    <li>Stake and unstake operations</li>
+                    <li>NFT minting and transfers</li>
+                    <li>Mini games and gaming transactions</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Network Activity Metrics</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Daily Active Addresses (DAA)</li>
+                    <li>Unique wallet creation</li>
+                    <li>Contract execution frequency</li>
+                    <li>Network fee generation</li>
+                    <li>Cross-party transaction volume</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card">
+                <h4>Ecosystem Expansion</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Gateway platform for Canton dApps</li>
+                    <li>DeFi protocol integration</li>
+                    <li>Mini games and gaming integration</li>
+                    <li>Developer engagement through open source</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Brand & Visibility</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Canton introduction to Telegram users</li>
+                    <li>Strengthening Canton presence on Telegram</li>
+                    <li>Partnerships with Canton ecosystem projects</li>
+                    <li>Media and press coverage</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0;text-align:center"><strong>Network Effect:</strong> Every new CC Bot Wallet user increases Canton Network's value for all existing participants through increased liquidity, utility, and adoption.</p>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">6</p>
+    </div>
+
+    <!-- Page 7: Core Features -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Product Features</p>
+                <h2>Core Wallet Capabilities</h2>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Asset Management</h4>
+                <ul style="margin:0">
+                    <li>CC Token transfers (send/receive)</li>
+                    <li>Multi-token support</li>
+                    <li>Real-time balance tracking</li>
+                    <li>Transaction history with filtering</li>
+                    <li>QR code generation and scanning</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>User Experience</h4>
+                <ul style="margin:0">
+                    <li>30-second onboarding flow</li>
+                    <li>Canton Name Service (@username)</li>
+                    <li>Biometric quick access</li>
+                    <li>Push notifications via Telegram</li>
+                    <li>Dark/Light theme support</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>AI Assistant Features</h4>
+                <ul style="margin:0">
+                    <li>Natural language transactions</li>
+                    <li>Smart portfolio recommendations</li>
+                    <li>Price analysis and predictions</li>
+                    <li>24/7 Q&A support</li>
+                    <li>Personalized notifications</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Token Operations</h4>
+                <ul style="margin:0">
+                    <li>Token swaps (DEX integration)</li>
+                    <li>Staking functionality</li>
+                    <li>Liquidity provision interface</li>
+                    <li>Price tracking and alerts</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Advanced Features</h4>
+                <ul style="margin:0">
+                    <li>NFT viewing and transfer</li>
+                    <li>dApp browser integration</li>
+                    <li>Mini games and gaming</li>
+                    <li>Multi-language support</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>User Flow Overview</h3>
+        <div class="flow-diagram">
+            <div class="flow-step">
+                <div class="number">1</div>
+                <strong>Open Telegram</strong>
+                <p>@CCBotWallet</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">2</div>
+                <strong>Launch App</strong>
+                <p>Mini App</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">3</div>
+                <strong>Create PIN</strong>
+                <p>6-digit</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">4</div>
+                <strong>Add Biometric</strong>
+                <p>Optional</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">5</div>
+                <strong>Ready</strong>
+                <p>Wallet Active</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">7</p>
+    </div>
+
+    <!-- Page 8: Rewards, Tasks & Anti-Farming -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">User Engagement</p>
+                <h2>Rewards, Tasks & Anti-Farming</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0;font-size:15px"><strong>Engagement Strategy:</strong> We encourage active ecosystem participation by rewarding users. At the same time, we implement comprehensive security measures to prevent bot and farming activities.</p>
+        </div>
+
+        <h3>Reward System</h3>
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Earning Methods</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Daily login rewards</li>
+                    <li>Transaction completion bonuses</li>
+                    <li>Referral program rewards</li>
+                    <li>Task completion points</li>
+                    <li>Streak (consecutive day) bonuses</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Reward Types</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>CC Token rewards</li>
+                    <li>XP points and level system</li>
+                    <li>NFT badges and achievements</li>
+                    <li>Special feature access</li>
+                    <li>Airdrop priority</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Task System</h3>
+        <div class="grid-3">
+            <div class="card">
+                <h4>Daily Tasks</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>Log in to the app</li>
+                    <li>Check your balance</li>
+                    <li>Complete a transaction</li>
+                    <li>Play a mini game</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Social Tasks</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>Join Telegram group</li>
+                    <li>Follow on Twitter</li>
+                    <li>Invite a friend</li>
+                    <li>Share content</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Special Tasks</h4>
+                <ul style="margin:0;font-size:12px">
+                    <li>Complete KYC verification</li>
+                    <li>First stake transaction</li>
+                    <li>Mint an NFT</li>
+                    <li>Use a dApp</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Anti-Farming Measures</h3>
+        <div class="grid-2">
+            <div class="card">
+                <h4>Bot Detection System</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Telegram Premium account verification</li>
+                    <li>Account age check (minimum duration)</li>
+                    <li>Behavior analysis and pattern detection</li>
+                    <li>IP and device fingerprint tracking</li>
+                    <li>Abnormal activity detection</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Sybil Attack Prevention</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Phone number verification</li>
+                    <li>Limit increase based on KYC levels</li>
+                    <li>Referral chain analysis</li>
+                    <li>Reward distribution delay mechanism</li>
+                    <li>Suspicious account quarantine</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0;text-align:center"><strong>Security Layer:</strong> Multi-layered verification system rewards real users while keeping malicious actors out of the system.</p>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">8</p>
+    </div>
+
+    <!-- Page 9: Technical Architecture -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Technical Architecture</p>
+                <h2>System Design</h2>
+            </div>
+        </div>
+
+        <div class="architecture-box">
+            <div class="layer yellow">
+                <strong>CLIENT LAYER</strong><br>
+                Telegram Mini App | WebCrypto API | Biometric Auth | PIN Protection
+            </div>
+
+            <p style="text-align:center;padding:8px;color:var(--yellow);font-size:11px;letter-spacing:1px">↓ SIGNED TRANSACTIONS ONLY (NO PRIVATE KEY TRANSMISSION) ↓</p>
+
+            <div class="layer">
+                <strong>CC WALLET BACKEND</strong><br>
+                Transaction Relay | KYC Integration | Analytics | Rate Limiting
+            </div>
+
+            <p style="text-align:center;padding:8px;color:var(--yellow);font-size:11px;letter-spacing:1px">↓ EXTERNAL PARTY API ↓</p>
+
+            <div class="layer lilac">
+                <strong>CANTON NETWORK</strong><br>
+                Validator Nodes | Global Synchronizer | Daml Smart Contracts | BFT Consensus
+            </div>
+        </div>
+
+        <div class="grid-2">
+            <div>
+                <h3>Client-Side Tech Stack</h3>
+                <div class="metric-row"><span class="label">Framework</span><span class="value">Next.js 14</span></div>
+                <div class="metric-row"><span class="label">Cryptography</span><span class="value">WebCrypto API</span></div>
+                <div class="metric-row"><span class="label">Signature Algorithm</span><span class="value">ECDSA P-256</span></div>
+                <div class="metric-row"><span class="label">Encryption</span><span class="value">AES-256-GCM</span></div>
+                <div class="metric-row"><span class="label">Key Storage</span><span class="value">Telegram CloudStorage</span></div>
+                <div class="metric-row"><span class="label">Bundle Size</span><span class="value">~80KB gzip</span></div>
+            </div>
+            <div>
+                <h3>Canton Integration</h3>
+                <div class="metric-row"><span class="label">Network</span><span class="value">Canton Network</span></div>
+                <div class="metric-row"><span class="label">Contracts</span><span class="value">Daml</span></div>
+                <div class="metric-row"><span class="label">API</span><span class="value">External Party API</span></div>
+                <div class="metric-row"><span class="label">Name Service</span><span class="value">CNS Integration</span></div>
+                <div class="metric-row"><span class="label">KYC Provider</span><span class="value">7Trust / Sumsub</span></div>
+                <div class="metric-row"><span class="label">Identity</span><span class="value">Verifiable Credentials</span></div>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">9</p>
+    </div>
+
+    <!-- Page 10: Security Model -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Security</p>
+                <h2>Security Architecture</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0"><strong>Security Philosophy:</strong> Defense in depth with client-side cryptography. Private keys are generated, encrypted, and stored only on the user's device. Only signed transactions are transmitted to the network.</p>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">1</div>
+            <div>
+                <h4>Client-Side Only Cryptography</h4>
+                <p>Private keys never leave the device. All signing operations happen locally using WebCrypto API.</p>
+            </div>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">2</div>
+            <div>
+                <h4>Reproducible Builds</h4>
+                <p>Open-source codebase with deterministic builds. Anyone can verify deployed code matches source.</p>
+            </div>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">3</div>
+            <div>
+                <h4>Formal Verification</h4>
+                <p>Critical cryptographic functions are mathematically proven correct using formal verification methods.</p>
+            </div>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">4</div>
+            <div>
+                <h4>Open Source + Community Audit</h4>
+                <p>Full codebase transparency enables continuous community review and third-party security audits.</p>
+            </div>
+        </div>
+
+        <div class="security-layer">
+            <div class="layer-num">5</div>
+            <div>
+                <h4>Canton Protocol Security</h4>
+                <p>Inherits Canton's formal verification (Isabelle/HOL), BFT consensus, and end-to-end encryption.</p>
+            </div>
+        </div>
+
+        <div class="grid-2" style="margin-top:24px">
+            <div class="card">
+                <h4>Key Protection</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>AES-256-GCM at-rest encryption</li>
+                    <li>PIN-derived key encryption</li>
+                    <li>Biometric unlock support</li>
+                    <li>Secure enclave when available</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Transaction Security</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Transaction signing confirmation</li>
+                    <li>Amount and recipient verification</li>
+                    <li>Rate limiting on sends</li>
+                    <li>Replay attack protection</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">10</p>
+    </div>
+
+    <!-- Page 11: Privacy Architecture -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Privacy</p>
+                <h2>Privacy-First Architecture</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <h4 style="color:var(--yellow);margin-bottom:8px">Canton Privacy Model Compliance</h4>
+            <p style="margin:0">CC Bot Wallet fully utilizes Canton's sub-transaction privacy model. Each party only sees data relevant to their participation. Full GDPR compliance with "right to be forgotten" support.</p>
+        </div>
+
+        <div class="grid-2">
+            <div>
+                <h3>Data Location Matrix</h3>
+                <table style="margin:0;font-size:12px">
+                    <tr>
+                        <th>Data Type</th>
+                        <th>Storage Location</th>
+                    </tr>
+                    <tr>
+                        <td>Private Key</td>
+                        <td style="color:var(--yellow)">Device (encrypted)</td>
+                    </tr>
+                    <tr>
+                        <td>PIN Hash</td>
+                        <td style="color:var(--yellow)">Device SecureStorage</td>
+                    </tr>
+                    <tr>
+                        <td>Encrypted Key Backup</td>
+                        <td style="color:var(--yellow)">Telegram CloudStorage</td>
+                    </tr>
+                    <tr>
+                        <td>Transaction History</td>
+                        <td style="color:var(--purple)">Canton Network (E2E)</td>
+                    </tr>
+                    <tr>
+                        <td>KYC Credentials</td>
+                        <td style="color:var(--lilac)">7Trust (VC only)</td>
+                    </tr>
+                </table>
+            </div>
+            <div>
+                <h3>Data Isolation Guarantees</h3>
+                <ul style="font-size:13px">
+                    <li>Private keys never transmitted to any server</li>
+                    <li>Transaction details invisible to third parties</li>
+                    <li>Sync domain cannot access content</li>
+                    <li>KYC data not stored (Verifiable Credential only)</li>
+                    <li>Analytics collects zero personal data</li>
+                    <li>No IP logging or device tracking</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Reusable KYC Flow (Canton Native)</h3>
+        <div class="flow-diagram">
+            <div class="flow-step">
+                <div class="number">1</div>
+                <strong>Complete KYC</strong>
+                <p>Via 7Trust</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">2</div>
+                <strong>Receive VC</strong>
+                <p>Verifiable Credential</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">3</div>
+                <strong>Use Everywhere</strong>
+                <p>All Canton Apps</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">4</div>
+                <strong>Share Nothing</strong>
+                <p>Zero-Knowledge Proof</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">11</p>
+    </div>
+
+    <!-- Page 12: Seedless Wallet Design -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Innovation</p>
+                <h2>Seedless Wallet Architecture</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box">
+            <p style="margin:0"><strong>Problem:</strong> Traditional seed phrases are the #1 cause of crypto asset loss. Users either lose them, expose them, or never properly back them up. This creates a fundamental barrier to mainstream adoption.</p>
+        </div>
+
+        <h3>Our Solution: PIN + Biometric + Cloud Recovery</h3>
+
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>Key Generation</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>ECDSA P-256 key pair generated client-side</li>
+                    <li>Private key encrypted with PIN-derived key</li>
+                    <li>PBKDF2 with 100,000 iterations</li>
+                    <li>Encrypted blob stored in Telegram CloudStorage</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Recovery Mechanism</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Same Telegram account + PIN = Full recovery</li>
+                    <li>Works on any device</li>
+                    <li>No seed phrase to lose or expose</li>
+                    <li>KYC Level 2 enables PIN reset</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Security Comparison</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Traditional Seed</th>
+                    <th>CC Bot Seedless</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Backup Method</td>
+                    <td>Paper/Metal/Memory</td>
+                    <td>Encrypted Cloud + PIN</td>
+                </tr>
+                <tr>
+                    <td>Recovery Complexity</td>
+                    <td>12-24 words required</td>
+                    <td>Just 6-digit PIN</td>
+                </tr>
+                <tr>
+                    <td>Phishing Risk</td>
+                    <td>High (seed exposure)</td>
+                    <td>Low (PIN alone useless)</td>
+                </tr>
+                <tr>
+                    <td>Cross-Device</td>
+                    <td>Manual seed entry</td>
+                    <td>Automatic via Telegram</td>
+                </tr>
+                <tr>
+                    <td>Self-Custody</td>
+                    <td>Yes</td>
+                    <td>Yes (client-side keys)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">12</p>
+    </div>
+
+    <!-- Page 13: Canton External Party Integration -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Canton Integration</p>
+                <h2>External Party API Implementation</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0"><strong>External Party Model:</strong> CC Bot Wallet operates as an External Party on Canton Network, enabling users to sign transactions locally while maintaining full network participation via the External Party API.</p>
+        </div>
+
+        <h3>Integration Architecture</h3>
+        <div class="architecture-box">
+            <div class="grid-2" style="margin:0">
+                <div>
+                    <h4 style="color:var(--yellow)">Client Responsibilities</h4>
+                    <ul style="margin:0;font-size:13px">
+                        <li>Key generation and management</li>
+                        <li>Transaction construction</li>
+                        <li>Payload signing (ECDSA)</li>
+                        <li>User authentication</li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 style="color:var(--yellow)">Backend Responsibilities</h4>
+                    <ul style="margin:0;font-size:13px">
+                        <li>Signed transaction relay</li>
+                        <li>Participant node communication</li>
+                        <li>Event subscription management</li>
+                        <li>Rate limiting and abuse prevention</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <h3>Daml Contract Interactions</h3>
+        <div class="grid-2">
+            <div class="card">
+                <h4>Supported Operations</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>CC Token transfers</li>
+                    <li>Multi-party transactions</li>
+                    <li>Atomic swaps</li>
+                    <li>Contract execution rights</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Event Handling</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Transaction confirmations</li>
+                    <li>Balance update notifications</li>
+                    <li>Contract state changes</li>
+                    <li>Error and rejection handling</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Transaction Flow</h3>
+        <div class="flow-diagram">
+            <div class="flow-step">
+                <div class="number">1</div>
+                <strong>User Intent</strong>
+                <p>Send 100 CC</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">2</div>
+                <strong>Build TX</strong>
+                <p>Client-side</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">3</div>
+                <strong>Sign</strong>
+                <p>Local ECDSA</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">4</div>
+                <strong>Submit</strong>
+                <p>External API</p>
+            </div>
+            <span class="flow-arrow">→</span>
+            <div class="flow-step">
+                <div class="number">5</div>
+                <strong>Confirm</strong>
+                <p>Canton BFT</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">13</p>
+    </div>
+
+    <!-- Page 14: Development Roadmap -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Roadmap</p>
+                <h2>Development Roadmap</h2>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="roadmap-phase active">
+                <p class="phase-num">Phase 1</p>
+                <h4>Core Wallet</h4>
+                <ul>
+                    <li>Cryptographic modules</li>
+                    <li>Canton API integration</li>
+                    <li>Telegram CloudStorage</li>
+                    <li>Send/Receive interface</li>
+                    <li>DevNet deployment</li>
+                </ul>
+            </div>
+            <div class="roadmap-phase">
+                <p class="phase-num">Phase 2</p>
+                <h4>Security Layer</h4>
+                <ul>
+                    <li>Biometric authentication</li>
+                    <li>Reproducible builds</li>
+                    <li>Security audit preparation</li>
+                    <li>Bug bounty program</li>
+                    <li>Penetration testing</li>
+                </ul>
+            </div>
+            <div class="roadmap-phase">
+                <p class="phase-num">Phase 3</p>
+                <h4>KYC Integration</h4>
+                <ul>
+                    <li>7Trust integration</li>
+                    <li>Verifiable Credentials</li>
+                    <li>Tiered access system</li>
+                    <li>Compliance framework</li>
+                    <li>Identity verification UI</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="grid-3">
+            <div class="roadmap-phase">
+                <p class="phase-num">Phase 4</p>
+                <h4>Public Launch</h4>
+                <ul>
+                    <li>Community beta</li>
+                    <li>Bug fixes and optimization</li>
+                    <li>MainNet deployment</li>
+                    <li>Marketing launch</li>
+                    <li>User feedback collection</li>
+                </ul>
+            </div>
+            <div class="roadmap-phase">
+                <p class="phase-num">Phase 5</p>
+                <h4>Ecosystem</h4>
+                <ul>
+                    <li>dApp browser</li>
+                    <li>DeFi protocol integration</li>
+                    <li>DEX integration</li>
+                    <li>Mini games platform</li>
+                    <li>Cross-chain bridges</li>
+                </ul>
+            </div>
+            <div class="roadmap-phase">
+                <p class="phase-num">Phase 6</p>
+                <h4>Advanced Features</h4>
+                <ul>
+                    <li>NFT support</li>
+                    <li>AI assistant</li>
+                    <li>Portfolio analytics</li>
+                    <li>Automated strategies</li>
+                    <li>Enterprise features</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="highlight-box" style="margin-top:20px">
+            <p style="margin:0;text-align:center"><strong>Development Approach:</strong> Iterative releases with continuous user feedback integration and security-first methodology</p>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">14</p>
+    </div>
+
+    <!-- Page 15: Partnership -->
+    <div class="page">
+        <div class="page-header">
+            <img src="ccbotlogo.png" alt="CC Bot" class="cc-logo-small-img">
+            <div class="section-info">
+                <p class="section-title">Partnership</p>
+                <h2>Collaboration Proposal</h2>
+            </div>
+        </div>
+
+        <div class="highlight-box yellow">
+            <p style="margin:0;font-size:15px"><strong>Partnership Vision:</strong> We aim to become the official consumer wallet partner for Canton Network, providing the primary retail user onboarding channel for the ecosystem.</p>
+        </div>
+
+        <h3>What We Need from Canton</h3>
+        <div class="grid-2">
+            <div class="card">
+                <h4>Technical Support</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>DevNet/TestNet access and credentials</li>
+                    <li>External Party API documentation</li>
+                    <li>Technical integration support</li>
+                    <li>Daml contract templates</li>
+                    <li>Canton Name Service integration</li>
+                </ul>
+            </div>
+            <div class="card">
+                <h4>Ecosystem Support</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Official partner recognition</li>
+                    <li>Co-marketing opportunities</li>
+                    <li>Validator partnership discussions</li>
+                    <li>Early access to new features</li>
+                    <li>Developer community introduction</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>What We Bring to Canton</h3>
+        <div class="grid-2">
+            <div class="card purple">
+                <h4>User Acquisition</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Access to Telegram user base</li>
+                    <li>Consumer-friendly onboarding</li>
+                    <li>Viral distribution potential</li>
+                    <li>Retail market penetration</li>
+                </ul>
+            </div>
+            <div class="card yellow">
+                <h4>Technical Contribution</h4>
+                <ul style="margin:0;font-size:13px">
+                    <li>Open-source reference implementation</li>
+                    <li>Mobile-first best practices</li>
+                    <li>Security audit results sharing</li>
+                    <li>Bug reports and feedback</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Immediate Next Steps</h3>
+        <div class="grid-3">
+            <div class="card">
+                <h4 style="font-size:13px">1. Technical Kickoff</h4>
+                <p style="font-size:12px;margin:0">API access, documentation review, integration planning</p>
+            </div>
+            <div class="card">
+                <h4 style="font-size:13px">2. DevNet Deployment</h4>
+                <p style="font-size:12px;margin:0">Working prototype, initial testing, feedback loop</p>
+            </div>
+            <div class="card">
+                <h4 style="font-size:13px">3. Partnership Agreement</h4>
+                <p style="font-size:12px;margin:0">Terms, responsibilities, go-to-market strategy</p>
+            </div>
+        </div>
+
+        <div class="footer-logo"><img src="ccbotlogo.png" alt="CC" class="footer-logo-img">CC Bot Wallet</div>
+        <p class="page-number">15</p>
+    </div>
+
+    <!-- Page 16: Thank You -->
+    <div class="page cover" style="justify-content:center">
+        <img src="ccbotlogo.png" alt="CC Bot Wallet" class="cc-logo-img" style="margin-bottom:40px">
+        <h1 style="font-size:36px">Thank You</h1>
+        <p class="subtitle" style="margin-bottom:50px">Questions & Discussion</p>
+
+        <div style="margin-top:40px">
+            <p style="color:var(--taupe);font-size:13px;margin-bottom:30px">CC Bot Wallet Team</p>
+            <p style="color:var(--purple);font-size:12px">We look forward to building the future of Canton together.</p>
+        </div>
+
+        <p class="confidential">Confidential - For Canton Network Team Only</p>
+    </div>
+
+</body>
+</html>
