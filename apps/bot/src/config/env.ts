@@ -41,6 +41,9 @@ const envSchema = z.object({
 
   PORT: z.coerce.number().default(3000),
   HOST: z.string().default('0.0.0.0'),
+
+  // Whitelist - comma-separated Telegram IDs (empty = everyone allowed)
+  WHITELIST_TELEGRAM_IDS: z.string().optional().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

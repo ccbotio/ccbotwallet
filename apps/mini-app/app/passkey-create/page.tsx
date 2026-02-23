@@ -98,31 +98,23 @@ function PasskeyCreateContent() {
         sessionData.displayName
       );
 
-      // Get codeVerifier from localStorage (required for PKCE verification)
-      // NOTE: Using localStorage because sessionStorage doesn't persist across tabs
-      const codeVerifier = localStorage.getItem('pkce_code_verifier');
-      if (!codeVerifier) {
-        setError('PKCE verifier not found. Please restart the process.');
-        setPhase('error');
-        return;
-      }
-
       // Complete passkey-only session on backend
+      // NOTE: No codeVerifier needed here - PKCE verification happens when Telegram polls
       await api.completePasskeyOnlySession(sessionId, {
         credentialId: credential.credentialId,
         publicKeySpki: credential.publicKeySpki,
-        codeVerifier,
         deviceName: getDeviceName(),
       });
-
-      // Clean up localStorage
-      localStorage.removeItem('pkce_code_verifier');
-      localStorage.removeItem('pkce_session_id');
 
       // Store credential ID locally (in Safari)
       localStorage.setItem('cc_passkey_credential_id', credential.credentialId);
 
       setPhase('success');
+
+      // Auto-close the page after 2 seconds
+      setTimeout(() => {
+        window.close();
+      }, 2000);
 
     } catch (err) {
       console.error('Passkey setup failed:', err);

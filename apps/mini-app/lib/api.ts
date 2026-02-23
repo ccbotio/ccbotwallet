@@ -178,7 +178,7 @@ class ApiClient {
   async authenticate(initData: string, signal?: AbortSignal) {
     const result = await this.request<{
       success: boolean;
-      data: { accessToken: string; refreshToken: string; expiresIn: number }
+      data: { accessToken: string; refreshToken: string; expiresIn: number; isWhitelisted?: boolean }
     }>(
       '/auth/telegram',
       { method: 'POST', body: { initData }, signal }
@@ -188,6 +188,7 @@ class ApiClient {
     return {
       token: result.data.accessToken,
       refreshToken: result.data.refreshToken,
+      isWhitelisted: result.data.isWhitelisted ?? true,
       user: { id: 'from-token', telegramId }
     };
   }
@@ -650,8 +651,8 @@ class ApiClient {
   async completePasskeyOnlySession(sessionId: string, data: {
     credentialId: string;
     publicKeySpki: string;
-    codeVerifier: string;
     deviceName?: string;
+    // codeVerifier removed - PKCE verification happens during polling from Telegram
   }) {
     const result = await this.request<{
       success: boolean;

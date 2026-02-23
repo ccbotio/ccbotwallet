@@ -212,16 +212,16 @@ export const passkeySessions = pgTable('passkey_sessions', {
     .notNull()
     .references(() => users.id, { onDelete: 'cascade' }),
   telegramId: varchar('telegram_id', { length: 32 }).notNull(),
+  // walletId and partyId are nullable for passkey-only flow (created before wallet)
   walletId: uuid('wallet_id')
-    .notNull()
     .references(() => wallets.id, { onDelete: 'cascade' }),
-  partyId: varchar('party_id', { length: 256 }).notNull(),
+  partyId: varchar('party_id', { length: 256 }),
 
   // Email that must match user's verified email
   emailAtCreation: varchar('email_at_creation', { length: 256 }).notNull(),
 
-  // Encrypted user share (stored securely, never in URL)
-  encryptedUserShare: varchar('encrypted_user_share', { length: 1024 }).notNull(),
+  // Encrypted user share (stored securely, never in URL) - nullable for passkey-only flow
+  encryptedUserShare: varchar('encrypted_user_share', { length: 1024 }),
 
   // User display name for passkey
   displayName: varchar('display_name', { length: 128 }),

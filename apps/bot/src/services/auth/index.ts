@@ -29,6 +29,17 @@ export interface AuthResult {
   refreshToken: string;
   expiresIn: number;
   userId: string;
+  isWhitelisted: boolean;
+}
+
+// Whitelist - comma-separated Telegram IDs in env, or empty for open access
+function isUserWhitelisted(telegramId: string): boolean {
+  const whitelist = env.WHITELIST_TELEGRAM_IDS;
+  if (!whitelist || whitelist.trim() === '') {
+    return true; // No whitelist = everyone allowed
+  }
+  const allowedIds = whitelist.split(',').map(id => id.trim());
+  return allowedIds.includes(telegramId);
 }
 
 /**
@@ -203,6 +214,7 @@ export async function authenticateTelegram(initData: string): Promise<AuthResult
     refreshToken: refreshTokenValue,
     expiresIn: 900, // 15 minutes in seconds
     userId: user.id,
+    isWhitelisted: isUserWhitelisted(telegramId),
   };
 }
 
@@ -311,6 +323,7 @@ export async function refreshAccessToken(refreshToken: string): Promise<AuthResu
     refreshToken: newRefreshToken, // Return NEW refresh token
     expiresIn: 900,
     userId: user.id,
+    isWhitelisted: isUserWhitelisted(session.telegramId),
   };
 }
 

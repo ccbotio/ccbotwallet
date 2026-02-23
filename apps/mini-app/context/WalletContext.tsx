@@ -42,6 +42,7 @@ interface WalletContextType {
   // Auth
   isAuthenticated: boolean;
   isAuthLoading: boolean;
+  isWhitelisted: boolean;
   user: User | null;
 
   // Wallet
@@ -120,6 +121,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [isWhitelisted, setIsWhitelisted] = useState(true);
   const [user, setUser] = useState<User | null>(null);
 
   // Wallet state
@@ -170,6 +172,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
           if (abortController.signal.aborted || !isMountedRef.current) return;
 
           api.setTokens(result.token, result.refreshToken);
+          setIsWhitelisted(result.isWhitelisted);
 
           const tgUser = tg.initDataUnsafe?.user;
           setUser({
@@ -191,6 +194,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
             console.log('[WalletContext] Auth result:', result);
             api.setTokens(result.token, result.refreshToken);
+            setIsWhitelisted(result.isWhitelisted);
             setUser({
               id: result.user.id,
               telegramId: result.user.telegramId,
@@ -853,6 +857,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       value={{
         isAuthenticated,
         isAuthLoading,
+        isWhitelisted,
         user,
         hasWallet,
         isWalletLoading,

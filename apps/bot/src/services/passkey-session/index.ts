@@ -24,8 +24,8 @@ export interface CreateSessionParams {
  */
 export interface SessionData {
   sessionId: string;
-  walletId: string;
-  partyId: string;
+  walletId: string | null;  // Nullable for passkey-only flow
+  partyId: string | null;   // Nullable for passkey-only flow
   displayName: string;
   status: string;
 }
@@ -37,7 +37,7 @@ export interface SessionData {
 export interface InternalSessionData extends SessionData {
   userId: string;
   email: string; // Email at session creation
-  userShareHex: string;
+  userShareHex: string | null; // Nullable for passkey-only flow
 }
 
 export class PasskeySessionService {
@@ -134,8 +134,10 @@ export class PasskeySessionService {
       return null;
     }
 
-    // Decrypt userShare for internal server-side use
-    const userShareHex = Buffer.from(session.encryptedUserShare, 'base64').toString('hex');
+    // Decrypt userShare for internal server-side use (only for normal flow with wallet)
+    const userShareHex = session.encryptedUserShare
+      ? Buffer.from(session.encryptedUserShare, 'base64').toString('hex')
+      : null;
 
     return {
       sessionId: session.sessionId,
@@ -214,7 +216,9 @@ export class PasskeySessionService {
 
     // Decrypt userShare for internal server-side use ONLY
     // SECURITY: This is returned to the caller (route handler) but must NEVER be in an API response
-    const userShareHex = Buffer.from(session.encryptedUserShare, 'base64').toString('hex');
+    const userShareHex = session.encryptedUserShare
+      ? Buffer.from(session.encryptedUserShare, 'base64').toString('hex')
+      : null;
 
     return {
       success: true,
@@ -402,16 +406,17 @@ export class PasskeySessionService {
   }
 
   /**
-   * Complete passkey-only session with PKCE verification
+   * Complete passkey-only session - store credential (NO PKCE verification here)
+   * PKCE verification happens when Telegram polls for status
+   * This is called by Safari which doesn't have access to codeVerifier
    */
   async completePasskeyOnlySession(
     sessionId: string,
     credentialId: string,
     publicKeySpki: string,
-    codeVerifier: string,
     deviceName?: string
   ): Promise<{ success: boolean; error?: string }> {
-    // Fetch session to verify PKCE
+    // Fetch session (no PKCE verification - that happens in status check)
     const [session] = await db
       .select()
       .from(passkeySessions)
@@ -432,28 +437,17 @@ export class PasskeySessionService {
 
     console.log(`[PasskeySession] Found session: status=${session.status}, walletId=${session.walletId}, expires=${session.expiresAt}`);
 
-    // Verify PKCE
-    const computedChallenge = createHash('sha256')
-      .update(codeVerifier)
-      .digest('base64url');
-
-    if (computedChallenge !== session.codeChallenge) {
-      console.log(`[PasskeySession] PKCE verification failed for passkey-only session ${sessionId}`);
-      return { success: false, error: 'PKCE verification failed' };
-    }
-
-    // Store the credential data in a special way for later retrieval
+    // Store the credential data - status stays 'pending' until PKCE is verified via polling
     // We'll store publicKeySpki in the encryptedUserShare field (repurposed for passkey-only)
     const credentialData = JSON.stringify({ credentialId, publicKeySpki, deviceName: deviceName || 'Unknown Device' });
 
-    // Complete the session
+    // Store credential but keep status as 'pending' - will be 'completed' after PKCE verification
     const result = await db
       .update(passkeySessions)
       .set({
-        status: 'completed',
+        status: 'cred_ready', // Intermediate status (max 16 chars)
         completedCredentialId: credentialId,
         encryptedUserShare: credentialData, // Store credential data here
-        completedAt: new Date(),
       })
       .where(
         and(
@@ -465,7 +459,7 @@ export class PasskeySessionService {
     // Debug: log the full result to understand drizzle's return format
     console.log(`[PasskeySession] Update result:`, JSON.stringify(result));
     const updated = (result as any).rowCount > 0 || (result as any).changes > 0 || (result as any).count > 0;
-    console.log(`[PasskeySession] Completed passkey-only session ${sessionId}: ${updated}`);
+    console.log(`[PasskeySession] Stored credential for passkey-only session ${sessionId}: ${updated}`);
 
     return { success: updated };
   }
@@ -508,8 +502,40 @@ export class PasskeySessionService {
       return { status: 'expired' };
     }
 
+    // Handle cred_ready status - PKCE verified, now mark as completed
+    if (session.status === 'cred_ready') {
+      // PKCE verified! Mark session as completed
+      await db
+        .update(passkeySessions)
+        .set({
+          status: 'completed',
+          completedAt: new Date(),
+        })
+        .where(eq(passkeySessions.sessionId, sessionId));
+
+      // Parse credential data
+      try {
+        if (!session.encryptedUserShare) {
+          throw new Error('No credential data');
+        }
+        const credentialData = JSON.parse(session.encryptedUserShare);
+        return {
+          status: 'completed' as const,
+          credentialId: credentialData.credentialId as string,
+          publicKeySpki: credentialData.publicKeySpki as string,
+        };
+      } catch {
+        // Fallback if parsing fails
+        const credId = session.completedCredentialId;
+        return {
+          status: 'completed' as const,
+          ...(credId && { credentialId: credId }),
+        };
+      }
+    }
+
     if (session.status === 'completed') {
-      // Mark as used
+      // Already completed - mark as used
       await db
         .update(passkeySessions)
         .set({ status: 'used' })
@@ -517,6 +543,9 @@ export class PasskeySessionService {
 
       // Parse credential data
       try {
+        if (!session.encryptedUserShare) {
+          throw new Error('No credential data');
+        }
         const credentialData = JSON.parse(session.encryptedUserShare);
         return {
           status: 'completed' as const,

@@ -27,7 +27,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" className="h-full" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link
           rel="stylesheet"
@@ -37,9 +37,60 @@ export default function RootLayout({
           src="https://telegram.org/js/telegram-web-app.js"
           strategy="beforeInteractive"
         />
+        {/* Critical: Initialize viewport before React hydration */}
+        <Script id="tg-viewport-init" strategy="beforeInteractive">
+          {`
+            (function() {
+              function initViewport() {
+                var tg = window.Telegram && window.Telegram.WebApp;
+                var height = (tg && tg.viewportHeight) ? tg.viewportHeight : window.innerHeight;
+                var stableHeight = (tg && tg.viewportStableHeight) ? tg.viewportStableHeight : height;
+
+                document.documentElement.style.setProperty('--tg-viewport-height', height + 'px');
+                document.documentElement.style.setProperty('--tg-viewport-stable-height', stableHeight + 'px');
+                document.documentElement.style.height = height + 'px';
+                document.body.style.height = height + 'px';
+                document.body.style.minHeight = height + 'px';
+                document.body.style.maxHeight = height + 'px';
+
+                if (tg && tg.expand) {
+                  tg.expand();
+                }
+              }
+
+              // Run immediately
+              if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initViewport);
+              } else {
+                initViewport();
+              }
+
+              // Also run on load
+              window.addEventListener('load', initViewport);
+
+              // Listen for Telegram viewport changes
+              if (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.onEvent) {
+                window.Telegram.WebApp.onEvent('viewportChanged', initViewport);
+              }
+
+              // Window resize
+              window.addEventListener('resize', initViewport);
+
+              // Periodic updates for slow initialization
+              var i = 0;
+              var interval = setInterval(function() {
+                initViewport();
+                i++;
+                if (i > 30) clearInterval(interval);
+              }, 100);
+            })();
+          `}
+        </Script>
       </head>
-      <body className="h-full overflow-hidden bg-[#1a1a1a]" suppressHydrationWarning>
-        {children}
+      <body suppressHydrationWarning>
+        <div id="app-root">
+          {children}
+        </div>
       </body>
     </html>
   )

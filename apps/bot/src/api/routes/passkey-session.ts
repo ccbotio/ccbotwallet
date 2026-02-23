@@ -154,6 +154,14 @@ export async function passkeySessionRoutes(fastify: FastifyInstance) {
       });
     }
 
+    // Validate required fields for normal flow (with wallet)
+    if (!result.session.walletId || !result.session.userShareHex) {
+      return reply.status(400).send({
+        error: 'Invalid session type for this endpoint',
+        code: 'INVALID_SESSION_TYPE',
+      });
+    }
+
     // PKCE verified - register the passkey credential using the server-side share
     // SECURITY: userShareHex is used here but NEVER returned in the response
     await passkeyService.registerPasskey(
@@ -313,18 +321,17 @@ export async function passkeySessionRoutes(fastify: FastifyInstance) {
       credentialId: z.string(),
       publicKeySpki: z.string(),
       deviceName: z.string().optional(),
-      codeVerifier: z.string().min(43).max(128),
+      // codeVerifier removed - PKCE verification happens during polling from Telegram
     });
 
     const { sessionId } = paramsSchema.parse(request.params);
     const body = bodySchema.parse(request.body);
 
-    // Verify PKCE and complete the session
+    // Store credential (PKCE verification happens when Telegram polls for status)
     const result = await passkeySessionService.completePasskeyOnlySession(
       sessionId,
       body.credentialId,
       body.publicKeySpki,
-      body.codeVerifier,
       body.deviceName
     );
 

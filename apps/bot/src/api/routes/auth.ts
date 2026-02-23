@@ -30,6 +30,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresIn: result.expiresIn,
+          isWhitelisted: result.isWhitelisted,
         },
       });
     } catch (error) {
@@ -57,6 +58,7 @@ export const authRoutes: FastifyPluginAsync = async (fastify) => {
           accessToken: result.accessToken,
           refreshToken: result.refreshToken,
           expiresIn: result.expiresIn,
+          isWhitelisted: result.isWhitelisted,
         },
       });
     } catch (error) {
