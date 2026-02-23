@@ -6,7 +6,7 @@ interface TelegramGuardProps {
   children: ReactNode;
 }
 
-const BOT_URL = 'https://t.me/ccbot_wallet_bot';
+const BOT_URL = 'https://t.me/ccbotwallet_bot';
 
 /**
  * TelegramGuard - Ensures the app is only accessible within Telegram WebApp

@@ -23,7 +23,7 @@ export const config = {
   securityDomain: process.env.NEXT_PUBLIC_SECURITY_DOMAIN || 'security.ccbot.io',
 
   // Telegram bot username
-  botUsername: process.env.NEXT_PUBLIC_BOT_USERNAME || 'ccbot_wallet_bot',
+  botUsername: process.env.NEXT_PUBLIC_BOT_USERNAME || 'ccbotwallet_bot',
 
   // Feature flags
   features: {
