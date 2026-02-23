@@ -549,13 +549,13 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
 function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; onExisting: () => void }) {
   return (
     <motion.div
-      className="h-full flex flex-col px-5 pt-4 pb-5 overflow-y-auto"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, x: -100 }}
     >
-      {/* Content area */}
-      <div className="flex flex-col items-center">
+      {/* Content area - scrollable if needed */}
+      <div className="flex-1 flex flex-col items-center overflow-y-auto min-h-0">
         <motion.div
           className="flex items-center justify-center mb-4"
           animate={{ y: [0, -8, 0] }}
@@ -612,8 +612,8 @@ function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; 
         </div>
       </div>
 
-      {/* Flexible spacer — grows but never more than 40px */}
-      <div className="flex-1 min-h-4" style={{ maxHeight: 40 }} />
+      {/* Small spacer */}
+      <div className="h-4 flex-shrink-0" />
 
       {/* Bottom buttons — always visible */}
       <div className="flex-shrink-0">
@@ -6651,8 +6651,8 @@ function TelegramAppContent() {
             ))}
           </div>
 
-          <div className="relative z-10 h-full flex justify-center">
-            <div className="w-full h-full" style={{ maxWidth: '430px' }}>
+          <div className="absolute inset-0 z-10 flex justify-center">
+            <div className="relative w-full h-full" style={{ maxWidth: '430px' }}>
               <AnimatePresence mode="wait">
                 {showSplash ? (
                   <SplashScreen key="splash" onComplete={() => setShowSplash(false)} />
