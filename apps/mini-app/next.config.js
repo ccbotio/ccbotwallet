@@ -1,17 +1,11 @@
 const path = require('path');
 
-const workspaceRoot = path.resolve(__dirname, '../..');
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Disable development indicators (Next.js logo in bottom right)
   devIndicators: false,
-  // Monorepo settings - both must match
-  outputFileTracingRoot: workspaceRoot,
-  turbopack: {
-    root: workspaceRoot,
-  },
+  // Monorepo - required for Cloudflare Pages
+  outputFileTracingRoot: path.resolve(__dirname, '../..'),
 }
 
 module.exports = nextConfig

@@ -16,7 +16,7 @@
     "@repo/shared": "workspace:*",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.574.0",
-    "next": "^16.1.6",
+    "next": "^15.1.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-qr-code": "^2.0.18",
