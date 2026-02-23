@@ -3,12 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   // Disable development indicators (Next.js logo in bottom right)
   devIndicators: false,
-  // Required for Cloudflare Pages
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
+  // Monorepo turbopack root
+  turbopack: {
+    root: '..',
   },
 }
 
