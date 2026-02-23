@@ -6584,16 +6584,9 @@ function TelegramAppContent() {
   const isTelegram = typeof window !== "undefined" && window.Telegram?.WebApp?.initData;
 
   return (
-    <div
-      className="w-full overflow-hidden"
-      style={{
-        background: "#030206",
-        height: "var(--tg-viewport-height, 100dvh)",
-        maxHeight: "var(--tg-viewport-height, 100dvh)",
-      }}
-    >
+    <div className="absolute inset-0 overflow-hidden bg-[#030206]">
       {/* App Content */}
-      <div className="relative w-full h-full overflow-hidden" style={{ background: "#030206" }}>
+      <div className="absolute inset-0 overflow-hidden bg-[#030206]">
           {/* Starfield - Space/Sky Effect */}
           <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
             {/* Static twinkling stars */}
@@ -6704,7 +6697,7 @@ const ALLOWED_USERS = ['bihruze', 'ferhat_n', 'martinedermi', 'serhateth', 'theh
 function ComingSoonScreen() {
   return (
     <div
-      className="min-h-screen flex flex-col items-center justify-center p-6"
+      className="absolute inset-0 flex flex-col items-center justify-center p-6"
       style={{ background: 'linear-gradient(180deg, #030206 0%, #0d0b14 100%)' }}
     >
       {/* Logo */}
@@ -6822,7 +6815,7 @@ export default function TelegramApp() {
   if (isAllowed === null) {
     return (
       <div
-        className="min-h-screen flex items-center justify-center"
+        className="absolute inset-0 flex items-center justify-center"
         style={{ background: 'linear-gradient(180deg, #030206 0%, #0d0b14 100%)' }}
       >
         <div className="animate-spin w-8 h-8 border-2 border-[#875CFF] border-t-transparent rounded-full" />
