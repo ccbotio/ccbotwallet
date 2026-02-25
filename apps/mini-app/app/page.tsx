@@ -849,7 +849,7 @@ function EmailVerifyScreen({
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
   };
 
-  // Keyboard support for PC/desktop
+  // Keyboard and paste support for PC/desktop
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
@@ -866,8 +866,25 @@ function EmailVerifyScreen({
         try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
       }
     };
+
+    // Paste support
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData("text") || "";
+      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+      if (digits.length > 0) {
+        setCode(digits);
+        setError("");
+        try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("paste", onPaste);
+    };
   }, []);
 
   return (
@@ -961,7 +978,7 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
   };
 
-  // Keyboard support for PC/desktop
+  // Keyboard and paste support for PC/desktop
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key >= "0" && e.key <= "9") {
@@ -977,8 +994,25 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
         try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
       }
     };
+
+    // Paste support for PIN
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData("text") || "";
+      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+      if (digits.length > 0) {
+        setPin(digits);
+        try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+        if (digits.length === 6) setTimeout(() => onComplete(digits), 300);
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("paste", onPaste);
+    };
   }, [onComplete]);
 
   return (
@@ -1059,7 +1093,7 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
   };
 
-  // Keyboard support for PC/desktop
+  // Keyboard and paste support for PC/desktop
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (isLoading) return;
@@ -1087,8 +1121,35 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
         try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
       }
     };
+
+    // Paste support for PIN
+    const onPaste = (e: ClipboardEvent) => {
+      if (isLoading) return;
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData("text") || "";
+      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+      if (digits.length > 0) {
+        setPin(digits);
+        setError("");
+        if (digits.length === 6) {
+          if (digits === originalPin) {
+            try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+            setTimeout(() => onComplete(), 300);
+          } else {
+            try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
+            setError("PINs don't match");
+            setTimeout(() => setPin(""), 500);
+          }
+        }
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("paste", onPaste);
+    };
   }, [isLoading, originalPin, onComplete]);
 
   return (
@@ -1232,7 +1293,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
   };
 
-  // Keyboard support for PC/desktop - use ref to avoid stale closure on async handler
+  // Keyboard and paste support for PC/desktop - use ref to avoid stale closure on async handler
   const handlePressRef = useRef(handlePress);
   handlePressRef.current = handlePress;
   useEffect(() => {
@@ -1245,8 +1306,24 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
         try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
       }
     };
+
+    // Paste support for PIN
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData("text") || "";
+      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+      // Input each digit using the handlePress function
+      for (const digit of digits) {
+        handlePressRef.current(digit);
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("paste", onPaste);
+    };
   }, []);
 
   return (
@@ -2736,7 +2813,7 @@ function SendScreen({ onBack }: { onBack: () => void }) {
     }
   };
 
-  // Keyboard support for PIN modal on PC/desktop
+  // Keyboard and paste support for PIN modal on PC/desktop
   const handleConfirmPinRef = useRef(handleConfirmPin);
   handleConfirmPinRef.current = handleConfirmPin;
   useEffect(() => {
@@ -2755,8 +2832,24 @@ function SendScreen({ onBack }: { onBack: () => void }) {
         setShowPinModal(false); setPin(""); setPinError("");
       }
     };
+
+    // Paste support for PIN
+    const onPaste = (e: ClipboardEvent) => {
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData("text") || "";
+      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+      if (digits.length > 0) {
+        setPin(digits);
+        if (digits.length === 6) setTimeout(() => handleConfirmPinRef.current(), 100);
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("paste", onPaste);
+    };
   }, [showPinModal]);
 
   if (success) {
@@ -4779,7 +4872,7 @@ function PinChangeScreen({ onBack }: { onBack: () => void }) {
     }
   };
 
-  // Keyboard support for PC/desktop
+  // Keyboard and paste support for PC/desktop
   const handlePinInputRef = useRef(handlePinInput);
   handlePinInputRef.current = handlePinInput;
   useEffect(() => {
@@ -4789,8 +4882,25 @@ function PinChangeScreen({ onBack }: { onBack: () => void }) {
       else if (e.key === "Backspace" || e.key === "Delete") handlePinInputRef.current("del");
       else if (e.key === "Escape") handleCancel();
     };
+
+    // Paste support for PIN
+    const onPaste = (e: ClipboardEvent) => {
+      if (success || isProcessing || attempts >= 5) return;
+      e.preventDefault();
+      const pastedText = e.clipboardData?.getData("text") || "";
+      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+      // Input each digit sequentially
+      for (const digit of digits) {
+        handlePinInputRef.current(digit);
+      }
+    };
+
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("paste", onPaste);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("paste", onPaste);
+    };
   }, [success, isProcessing, attempts]);
 
   return (

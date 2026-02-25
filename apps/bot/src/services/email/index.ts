@@ -245,6 +245,18 @@ export class EmailService {
                 </tr>
               </table>
 
+              <!-- Copyable Code Box -->
+              <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <td align="center" style="padding: 0 0 16px;">
+                    <div style="display: inline-block; background: #f4f4f5; border: 2px dashed #d4d4d8; border-radius: 8px; padding: 12px 24px;">
+                      <span style="font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Fira Code', 'Courier New', monospace; font-size: 24px; font-weight: 600; color: #18181b; letter-spacing: 4px; user-select: all; -webkit-user-select: all;">${code}</span>
+                    </div>
+                    <p style="margin: 8px 0 0; font-size: 11px; color: #a1a1aa;">Tap to copy</p>
+                  </td>
+                </tr>
+              </table>
+
               <!-- Expiry Notice -->
               <table role="presentation" style="width: 100%; border-collapse: collapse;">
                 <tr>
