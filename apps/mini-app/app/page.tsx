@@ -15,6 +15,8 @@ import PasskeyRecovery from "../components/PasskeyRecovery";
 import { clearLockState } from "../hooks/useActivityTracker";
 import TelegramGuard from "../components/TelegramGuard";
 import { isProduction } from "../lib/config";
+import { readClipboard, extractDigits, hapticSuccess, hapticLight, hapticError } from "../lib/clipboard";
+import { setupKeyboardListeners } from "../lib/keyboard";
 
 // ==================== STARS (pre-computed space/sky effect) ====================
 // Tiny twinkling stars
@@ -850,7 +852,7 @@ function EmailVerifyScreen({
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
   };
 
-  // Keyboard and paste support for PC/desktop
+  // Keyboard and paste support - uses refs to avoid stale closures
   const handleVerifyRef = useRef(handleVerify);
   handleVerifyRef.current = handleVerify;
   const codeRef = useRef(code);
@@ -858,46 +860,49 @@ function EmailVerifyScreen({
   const isLoadingRef = useRef(isLoading);
   isLoadingRef.current = isLoading;
 
+  // Hidden input ref for better focus management
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && codeRef.current.length === 6 && !isLoadingRef.current) {
-        handleVerifyRef.current();
-        return;
-      }
-      if (e.key >= "0" && e.key <= "9") {
+    // Focus hidden input to capture keyboard events
+    hiddenInputRef.current?.focus();
+
+    return setupKeyboardListeners({
+      onDigit: (digit) => {
         setCode(prev => {
           if (prev.length >= 6) return prev;
-          const next = prev + e.key;
           setError("");
-          try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
-          return next;
+          return prev + digit;
         });
-      } else if (e.key === "Backspace" || e.key === "Delete") {
+      },
+      onBackspace: () => {
         setCode(prev => prev.slice(0, -1));
         setError("");
-        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
+      },
+      onEnter: () => {
+        if (codeRef.current.length === 6 && !isLoadingRef.current) {
+          handleVerifyRef.current();
+        }
       }
-    };
+    });
+  }, []);
 
-    // Paste support
-    const onPaste = (e: ClipboardEvent) => {
-      e.preventDefault();
-      const pastedText = e.clipboardData?.getData("text") || "";
-      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+  // Paste handler for button
+  const handlePaste = async () => {
+    const result = await readClipboard();
+    if (result.success && result.text) {
+      const digits = extractDigits(result.text, 6);
       if (digits.length > 0) {
         setCode(digits);
         setError("");
-        try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+        hapticSuccess();
+      } else {
+        hapticError();
       }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("paste", onPaste);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("paste", onPaste);
-    };
-  }, []);
+    } else {
+      hapticError();
+    }
+  };
 
   return (
     <motion.div
@@ -930,40 +935,34 @@ function EmailVerifyScreen({
           ))}
         </div>
 
-        {/* Paste button for Telegram */}
-        <button
-          className="flex items-center gap-2 text-purple text-sm mb-4"
-          onClick={async () => {
-            try {
-              // Try Telegram's clipboard API first
-              const tgWebApp = window.Telegram?.WebApp as { readTextFromClipboard?: (callback: (text: string) => void) => void } | undefined;
-              if (tgWebApp?.readTextFromClipboard) {
-                tgWebApp.readTextFromClipboard((text: string) => {
-                  if (text) {
-                    const digits = text.replace(/\D/g, "").slice(0, 6);
-                    if (digits.length > 0) {
-                      setCode(digits);
-                      setError("");
-                      try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
-                    }
-                  }
-                });
-              } else {
-                // Fallback to standard clipboard API
-                const text = await navigator.clipboard.readText();
-                const digits = text.replace(/\D/g, "").slice(0, 6);
-                if (digits.length > 0) {
-                  setCode(digits);
-                  setError("");
-                  try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
-                }
-              }
-            } catch {
-              // Clipboard access denied
+        {/* Hidden input for keyboard capture */}
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="one-time-code"
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData?.getData("text") || "";
+            const digits = extractDigits(text, 6);
+            if (digits.length > 0) {
+              setCode(digits);
+              setError("");
+              hapticSuccess();
             }
           }}
+        />
+
+        {/* Paste button */}
+        <button
+          className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
+          onClick={handlePaste}
         >
-          <span className="material-symbols-outlined text-sm">content_paste</span>
+          <span className="material-symbols-outlined text-base">content_paste</span>
           <span>Paste code</span>
         </button>
 
@@ -1027,42 +1026,44 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
   };
 
-  // Keyboard and paste support for PC/desktop
+  // Ref for onComplete to avoid stale closure
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  // Hidden input for keyboard capture
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+
+  // Keyboard support
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key >= "0" && e.key <= "9") {
+    hiddenInputRef.current?.focus();
+
+    return setupKeyboardListeners({
+      onDigit: (digit) => {
         setPin(prev => {
           if (prev.length >= 6) return prev;
-          const next = prev + e.key;
-          try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
-          if (next.length === 6) setTimeout(() => onComplete(next), 300);
+          const next = prev + digit;
+          if (next.length === 6) setTimeout(() => onCompleteRef.current(next), 300);
           return next;
         });
-      } else if (e.key === "Backspace" || e.key === "Delete") {
-        setPin(prev => prev.slice(0, -1));
-        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
-      }
-    };
+      },
+      onBackspace: () => setPin(prev => prev.slice(0, -1))
+    });
+  }, []);
 
-    // Paste support for PIN
-    const onPaste = (e: ClipboardEvent) => {
-      e.preventDefault();
-      const pastedText = e.clipboardData?.getData("text") || "";
-      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+  // Paste handler
+  const handlePinPaste = async () => {
+    const result = await readClipboard();
+    if (result.success && result.text) {
+      const digits = extractDigits(result.text, 6);
       if (digits.length > 0) {
         setPin(digits);
-        try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
-        if (digits.length === 6) setTimeout(() => onComplete(digits), 300);
+        hapticSuccess();
+        if (digits.length === 6) setTimeout(() => onCompleteRef.current(digits), 300);
       }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("paste", onPaste);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("paste", onPaste);
-    };
-  }, [onComplete]);
+    } else {
+      hapticError();
+    }
+  };
 
   return (
     <motion.div
@@ -1081,7 +1082,7 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
         <h2 className="text-white text-xl font-bold mb-1">Create PIN</h2>
         <p className="text-taupe text-center text-sm mb-6">Enter a 6-digit PIN to secure your wallet</p>
 
-        <div className="flex gap-3 mb-6">
+        <div className="flex gap-3 mb-4">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <motion.div
               key={i}
@@ -1091,6 +1092,37 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
             />
           ))}
         </div>
+
+        {/* Hidden input for keyboard/paste capture */}
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="off"
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData?.getData("text") || "";
+            const digits = extractDigits(text, 6);
+            if (digits.length > 0) {
+              setPin(digits);
+              hapticSuccess();
+              if (digits.length === 6) setTimeout(() => onCompleteRef.current(digits), 300);
+            }
+          }}
+        />
+
+        {/* Paste button */}
+        <button
+          className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
+          onClick={handlePinPaste}
+        >
+          <span className="material-symbols-outlined text-base">content_paste</span>
+          <span>Paste PIN</span>
+        </button>
 
         <div className="grid grid-cols-3 gap-2">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
@@ -1142,64 +1174,69 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
   };
 
-  // Keyboard and paste support for PC/desktop
+  // Refs to avoid stale closures
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
+  const originalPinRef = useRef(originalPin);
+  originalPinRef.current = originalPin;
+  const onCompleteRef = useRef(onComplete);
+  onCompleteRef.current = onComplete;
+
+  // Hidden input for keyboard capture
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+
+  // PIN verification logic
+  const verifyPin = (digits: string) => {
+    if (digits.length === 6) {
+      if (digits === originalPinRef.current) {
+        hapticSuccess();
+        setTimeout(() => onCompleteRef.current(), 300);
+      } else {
+        hapticError();
+        setError("PINs don't match");
+        setTimeout(() => setPin(""), 500);
+      }
+    }
+  };
+
+  // Keyboard support
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (isLoading) return;
-      if (e.key >= "0" && e.key <= "9") {
+    hiddenInputRef.current?.focus();
+
+    return setupKeyboardListeners({
+      onDigit: (digit) => {
+        if (isLoadingRef.current) return;
         setPin(prev => {
           if (prev.length >= 6) return prev;
-          const next = prev + e.key;
+          const next = prev + digit;
           setError("");
-          try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
-          if (next.length === 6) {
-            if (next === originalPin) {
-              try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
-              setTimeout(() => onComplete(), 300);
-            } else {
-              try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
-              setError("PINs don't match");
-              setTimeout(() => setPin(""), 500);
-            }
-          }
+          verifyPin(next);
           return next;
         });
-      } else if (e.key === "Backspace" || e.key === "Delete") {
+      },
+      onBackspace: () => {
+        if (isLoadingRef.current) return;
         setPin(prev => prev.slice(0, -1));
         setError("");
-        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
       }
-    };
+    });
+  }, []);
 
-    // Paste support for PIN
-    const onPaste = (e: ClipboardEvent) => {
-      if (isLoading) return;
-      e.preventDefault();
-      const pastedText = e.clipboardData?.getData("text") || "";
-      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
+  // Paste handler
+  const handlePinPaste = async () => {
+    if (isLoading) return;
+    const result = await readClipboard();
+    if (result.success && result.text) {
+      const digits = extractDigits(result.text, 6);
       if (digits.length > 0) {
         setPin(digits);
         setError("");
-        if (digits.length === 6) {
-          if (digits === originalPin) {
-            try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
-            setTimeout(() => onComplete(), 300);
-          } else {
-            try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
-            setError("PINs don't match");
-            setTimeout(() => setPin(""), 500);
-          }
-        }
+        verifyPin(digits);
       }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("paste", onPaste);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("paste", onPaste);
-    };
-  }, [isLoading, originalPin, onComplete]);
+    } else {
+      hapticError();
+    }
+  };
 
   return (
     <motion.div
@@ -1228,6 +1265,40 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
         </div>
 
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+
+        {/* Hidden input for keyboard/paste capture */}
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="off"
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+          onPaste={(e) => {
+            e.preventDefault();
+            if (isLoading) return;
+            const text = e.clipboardData?.getData("text") || "";
+            const digits = extractDigits(text, 6);
+            if (digits.length > 0) {
+              setPin(digits);
+              setError("");
+              verifyPin(digits);
+            }
+          }}
+        />
+
+        {/* Paste button */}
+        {!isLoading && (
+          <button
+            className="flex items-center gap-2 text-purple text-sm mb-3 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
+            onClick={handlePinPaste}
+          >
+            <span className="material-symbols-outlined text-base">content_paste</span>
+            <span>Paste PIN</span>
+          </button>
+        )}
 
         <div className="grid grid-cols-3 gap-2 mt-2">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
@@ -1343,37 +1414,39 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
   };
 
   // Keyboard and paste support for PC/desktop - use ref to avoid stale closure on async handler
+  // Keyboard support with refs to avoid stale closures
   const handlePressRef = useRef(handlePress);
   handlePressRef.current = handlePress;
+
+  // Hidden input ref for keyboard/paste capture
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key >= "0" && e.key <= "9") {
-        handlePressRef.current(e.key);
-      } else if (e.key === "Backspace" || e.key === "Delete") {
+    // Focus hidden input
+    hiddenInputRef.current?.focus();
+
+    return setupKeyboardListeners({
+      onDigit: (digit) => handlePressRef.current(digit),
+      onBackspace: () => {
         setPin(prev => prev.slice(0, -1));
         setError("");
-        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
       }
-    };
+    });
+  }, []);
 
-    // Paste support for PIN
-    const onPaste = (e: ClipboardEvent) => {
-      e.preventDefault();
-      const pastedText = e.clipboardData?.getData("text") || "";
-      const digits = pastedText.replace(/\D/g, "").slice(0, 6);
-      // Input each digit using the handlePress function
+  // Paste handler
+  const handlePinPaste = async () => {
+    const result = await readClipboard();
+    if (result.success && result.text) {
+      const digits = extractDigits(result.text, 6);
       for (const digit of digits) {
         handlePressRef.current(digit);
       }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    window.addEventListener("paste", onPaste);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-      window.removeEventListener("paste", onPaste);
-    };
-  }, []);
+      if (digits.length > 0) hapticSuccess();
+    } else {
+      hapticError();
+    }
+  };
 
   return (
     <motion.div
@@ -1525,38 +1598,37 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
           ))}
         </motion.div>
 
-        {/* Paste button for Telegram */}
+        {/* Hidden input for keyboard/paste capture */}
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="off"
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData?.getData("text") || "";
+            const digits = extractDigits(text, 6);
+            for (const digit of digits) {
+              handlePressRef.current(digit);
+            }
+            if (digits.length > 0) hapticSuccess();
+          }}
+        />
+
+        {/* Paste button */}
         {!showSuccess && !isLockedOut && (
           <motion.button
-            className="flex items-center gap-2 text-purple text-sm mb-4"
+            className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.32 }}
-            onClick={async () => {
-              try {
-                const tgWebApp = window.Telegram?.WebApp as { readTextFromClipboard?: (callback: (text: string) => void) => void } | undefined;
-                if (tgWebApp?.readTextFromClipboard) {
-                  tgWebApp.readTextFromClipboard((text: string) => {
-                    if (text) {
-                      const digits = text.replace(/\D/g, "").slice(0, 6);
-                      for (const digit of digits) {
-                        handlePressRef.current(digit);
-                      }
-                    }
-                  });
-                } else {
-                  const text = await navigator.clipboard.readText();
-                  const digits = text.replace(/\D/g, "").slice(0, 6);
-                  for (const digit of digits) {
-                    handlePressRef.current(digit);
-                  }
-                }
-              } catch {
-                // Clipboard access denied
-              }
-            }}
+            onClick={handlePinPaste}
           >
-            <span className="material-symbols-outlined text-sm">content_paste</span>
+            <span className="material-symbols-outlined text-base">content_paste</span>
             <span>Paste PIN</span>
           </motion.button>
         )}
