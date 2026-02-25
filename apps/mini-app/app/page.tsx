@@ -703,15 +703,15 @@ function EmailSetupScreen({
 
   return (
     <motion.div
-      className="h-full flex flex-col p-6"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
     >
       {onBack && (
-        <button onClick={onBack} className="text-taupe mb-4 self-start">← Back</button>
+        <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
         <span className="material-symbols-outlined text-5xl text-purple mb-6">mail</span>
         <h2 className="text-white text-2xl font-bold mb-2">Verify Your Email</h2>
         <p className="text-taupe text-center mb-8">We'll send a verification code to your email for account recovery</p>
@@ -889,13 +889,13 @@ function EmailVerifyScreen({
 
   return (
     <motion.div
-      className="h-full flex flex-col p-6"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
     >
-      <button onClick={onBack} className="text-taupe mb-4 self-start">← Back</button>
+      <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
         <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
           <span className="material-symbols-outlined text-3xl text-purple">mark_email_read</span>
         </div>
@@ -1017,15 +1017,15 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
 
   return (
     <motion.div
-      className="h-full flex flex-col p-6"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
     >
       {onBack && (
-        <button onClick={onBack} className="text-taupe mb-4 self-start">← Back</button>
+        <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
         <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
           <span className="material-symbols-outlined text-3xl text-purple">lock</span>
         </div>
@@ -1154,13 +1154,13 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
 
   return (
     <motion.div
-      className="h-full flex flex-col p-6"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
     >
-      <button onClick={onBack} className="text-taupe mb-4 self-start">← Back</button>
+      <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
         <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
           <span className="material-symbols-outlined text-3xl text-purple">{isLoading ? "hourglass_top" : "shield_lock"}</span>
         </div>
@@ -1359,7 +1359,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
       />
 
       {/* Main content */}
-      <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6">
+      <div className="relative z-10 flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto min-h-0">
         {/* User avatar/icon */}
         <motion.div
           className="relative mb-6"
@@ -1747,12 +1747,12 @@ function RecoveryCodeInputScreen({ onRecovered, onBack }: {
 
   return (
     <motion.div
-      className="h-full flex flex-col p-6"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-4 mb-6 flex-shrink-0">
         <motion.button
           className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center"
           whileTap={{ scale: 0.95 }}
@@ -1770,7 +1770,7 @@ function RecoveryCodeInputScreen({ onRecovered, onBack }: {
 
       {/* Recovery Code Step */}
       {step === "code" && (
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
           <div className="flex-1">
             <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-purple/20 flex items-center justify-center">
               <span className="material-symbols-outlined text-3xl text-purple">key</span>
@@ -1789,7 +1789,7 @@ function RecoveryCodeInputScreen({ onRecovered, onBack }: {
             )}
           </div>
           <motion.button
-            className={`w-full py-4 rounded-2xl font-bold text-lg ${
+            className={`w-full py-4 rounded-2xl font-bold text-lg flex-shrink-0 mt-4 ${
               recoveryCodeInput.length >= 10
                 ? "bg-gradient-to-r from-purple to-yellow text-black"
                 : "bg-white/10 text-taupe"
@@ -1805,7 +1805,7 @@ function RecoveryCodeInputScreen({ onRecovered, onBack }: {
 
       {/* PIN Entry Steps */}
       {(step === "pin" || step === "confirm") && (
-        <div className="flex-1 flex flex-col items-center">
+        <div className="flex-1 flex flex-col items-center overflow-y-auto min-h-0">
           <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-purple/20 flex items-center justify-center">
             <span className="material-symbols-outlined text-3xl text-purple">lock</span>
           </div>
@@ -1891,7 +1891,7 @@ function RecoveryCodeInputScreen({ onRecovered, onBack }: {
 
       {/* Recovering Step */}
       {step === "recovering" && (
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
           <div className="w-20 h-20 mb-6 relative">
             <motion.div
               className="absolute inset-0 rounded-full border-4 border-purple/30"
@@ -1938,11 +1938,11 @@ function WalletReadyScreen({ onComplete, recoveryCode, onClearRecovery, partyId 
   if (showRecovery && recoveryCode) {
     return (
       <motion.div
-        className="h-full flex flex-col p-6"
+        className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
       >
-        <div className="flex-1 flex flex-col items-center justify-center">
+        <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
           <div className="w-16 h-16 rounded-full bg-yellow/20 flex items-center justify-center text-3xl mb-6">
             🔐
           </div>
@@ -1974,7 +1974,7 @@ function WalletReadyScreen({ onComplete, recoveryCode, onClearRecovery, partyId 
         </div>
 
         <motion.button
-          className="w-full py-4 bg-gradient-to-r from-yellow to-purple rounded-2xl text-black font-bold text-lg"
+          className="w-full py-4 bg-gradient-to-r from-yellow to-purple rounded-2xl text-black font-bold text-lg flex-shrink-0"
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowRecovery(false)}
         >
@@ -1986,11 +1986,11 @@ function WalletReadyScreen({ onComplete, recoveryCode, onClearRecovery, partyId 
 
   return (
     <motion.div
-      className="h-full flex flex-col p-6"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
       initial={{ opacity: 0, scale: 0.9 }}
       animate={{ opacity: 1, scale: 1 }}
     >
-      <div className="flex-1 flex flex-col items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
         <motion.div
           className="w-32 h-32 rounded-full bg-gradient-to-br from-yellow to-purple flex items-center justify-center mb-8"
           initial={{ scale: 0, rotate: -180 }}
@@ -2051,7 +2051,7 @@ function WalletReadyScreen({ onComplete, recoveryCode, onClearRecovery, partyId 
       </div>
 
       <motion.button
-        className="w-full py-4 bg-gradient-to-r from-yellow to-purple rounded-2xl text-black font-bold text-lg"
+        className="w-full py-4 bg-gradient-to-r from-yellow to-purple rounded-2xl text-black font-bold text-lg flex-shrink-0"
         whileTap={{ scale: 0.98 }}
         onClick={handleContinue}
         initial={{ opacity: 0, y: 20 }}
