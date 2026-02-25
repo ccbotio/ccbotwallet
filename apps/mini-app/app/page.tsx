@@ -6437,6 +6437,9 @@ function TelegramAppContent() {
     setNavigation({ screen: "passkey-recovery" });
   }, []);
 
+  // Track viewport height for proper rendering
+  const [viewportKey, setViewportKey] = useState(0);
+
   useEffect(() => {
     if (typeof window !== "undefined" && window.Telegram?.WebApp) {
       const tg = window.Telegram.WebApp;
@@ -6450,13 +6453,25 @@ function TelegramAppContent() {
       const setViewportHeight = () => {
         const vh = tg.viewportHeight || window.innerHeight;
         document.documentElement.style.setProperty('--tg-viewport-height', `${vh}px`);
+        // Force re-render by updating key
+        setViewportKey(prev => prev + 1);
       };
 
       setViewportHeight();
 
+      // Handle viewport stable event (when expansion animation completes)
+      const handleViewportStable = () => {
+        setViewportHeight();
+      };
+
       // Update on viewport change
       tg.onEvent('viewportChanged', setViewportHeight);
       window.addEventListener('resize', setViewportHeight);
+
+      // Also handle orientation change
+      window.addEventListener('orientationchange', () => {
+        setTimeout(setViewportHeight, 100);
+      });
 
       return () => {
         tg.offEvent('viewportChanged', setViewportHeight);
