@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import QRCode from "react-qr-code";
+import api from "../lib/api";
 import { WalletProvider, useWalletContext } from "../context/WalletContext";
 import { SecurityProvider, useSecurity } from "../context/SecurityContext";
 import { ShieldCheck, KeyRound, Network } from "lucide-react";
@@ -661,6 +662,7 @@ function EmailSetupScreen({
   onBack?: () => void;
   onExistingWallet?: (email: string, partyId: string) => void;
 }) {
+  const { isAuthLoading } = useWalletContext();
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -671,6 +673,12 @@ function EmailSetupScreen({
   };
 
   const handleContinue = async () => {
+    // Wait for auth to complete before making API calls
+    if (isAuthLoading) {
+      setError("Please wait, loading...");
+      return;
+    }
+
     if (!validateEmail(email)) {
       setError("Please enter a valid email address");
       try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
@@ -681,7 +689,13 @@ function EmailSetupScreen({
     setError("");
 
     try {
-      const { api } = await import("../lib/api");
+      // Verify token is set before making API call
+      if (!api.hasToken()) {
+        console.error('[EmailSetupScreen] No auth token available!');
+        setError("Authentication not ready. Please wait and try again.");
+        setIsLoading(false);
+        return;
+      }
 
       // First check if email already has a wallet
       const emailCheck = await api.checkEmail(email);
@@ -767,9 +781,9 @@ function EmailSetupScreen({
             className="w-full max-w-sm py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-lg disabled:opacity-50"
             whileTap={{ scale: 0.98 }}
             onClick={handleContinue}
-            disabled={!email || isLoading}
+            disabled={!email || isLoading || isAuthLoading}
           >
-            {isLoading ? "Checking..." : "Continue"}
+            {isAuthLoading ? "Loading..." : isLoading ? "Checking..." : "Continue"}
           </motion.button>
         )}
       </div>
@@ -813,8 +827,7 @@ function EmailVerifyScreen({
     setError("");
 
     try {
-      const { api } = await import("../lib/api");
-      const result = await api.verifyEmailCode(email, code);
+            const result = await api.verifyEmailCode(email, code);
       if (result.verified) {
         try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
         onComplete();
@@ -1992,8 +2005,7 @@ function WalletRecoveryEmailScreen({ onContinue, onBack }: {
     setError("");
 
     try {
-      const { api } = await import("../lib/api");
-      const result = await api.recoveryCheckEmail(email);
+            const result = await api.recoveryCheckEmail(email);
 
       if (!result.hasWallet) {
         setError("No wallet found for this email address");
@@ -2139,8 +2151,7 @@ function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
     setError("");
 
     try {
-      const { api } = await import("../lib/api");
-      const result = await api.recoveryVerifyCode(email, code);
+            const result = await api.recoveryVerifyCode(email, code);
 
       hapticSuccess();
       onContinue(result.sessionId);
@@ -2161,8 +2172,7 @@ function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
     setError("");
 
     try {
-      const { api } = await import("../lib/api");
-      const result = await api.recoverySendCode(email);
+            const result = await api.recoverySendCode(email);
       if (result.message?.includes("sent")) {
         hapticSuccess();
       } else {
@@ -2286,8 +2296,7 @@ function WalletRecoveryPasskeyScreen({ email, partyId, sessionId, onRecovered, o
 
   const checkPasskeys = async () => {
     try {
-      const { api } = await import("../lib/api");
-      const challengeData = await api.recoveryChallenge(sessionId, partyId);
+            const challengeData = await api.recoveryChallenge(sessionId, partyId);
       setCredentialCount(challengeData.allowCredentials?.length || 0);
     } catch (err) {
       console.error("Failed to check passkeys:", err);
@@ -2299,8 +2308,7 @@ function WalletRecoveryPasskeyScreen({ email, partyId, sessionId, onRecovered, o
     setError(null);
 
     try {
-      const { api } = await import("../lib/api");
-
+      
       // Get challenge
       const challengeData = await api.recoveryChallenge(sessionId, partyId);
 
@@ -2528,8 +2536,7 @@ function ForgotPinEmailScreen({ onContinue, onBack }: {
     setError("");
 
     try {
-      const { api } = await import("../lib/api");
-      const result = await api.recoveryCheckEmail(email);
+            const result = await api.recoveryCheckEmail(email);
 
       if (!result.hasWallet) {
         setError("No wallet found for this email address");
@@ -2675,8 +2682,7 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
     setError("");
 
     try {
-      const { api } = await import("../lib/api");
-      const result = await api.recoveryVerifyCode(email, code);
+            const result = await api.recoveryVerifyCode(email, code);
       hapticSuccess();
       onContinue(result.sessionId, result.partyId, result.walletId);
     } catch (err) {
@@ -2696,8 +2702,7 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
     setError("");
 
     try {
-      const { api } = await import("../lib/api");
-      const result = await api.recoverySendCode(email);
+            const result = await api.recoverySendCode(email);
       if (result.message?.includes("sent")) {
         hapticSuccess();
       } else {
@@ -2823,8 +2828,7 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
 
   const checkPasskeys = async () => {
     try {
-      const { api } = await import("../lib/api");
-      const challengeData = await api.recoveryChallenge(sessionId, partyId);
+            const challengeData = await api.recoveryChallenge(sessionId, partyId);
       setCredentialCount(challengeData.allowCredentials?.length || 0);
     } catch (err) {
       console.error("Failed to check passkeys:", err);
@@ -2836,8 +2840,7 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
     setError(null);
 
     try {
-      const { api } = await import("../lib/api");
-      const { recoverWithPasskey } = await import("../crypto/passkey");
+            const { recoverWithPasskey } = await import("../crypto/passkey");
 
       // Get challenge and encrypted share from backend
       const challengeData = await api.recoveryChallenge(sessionId, partyId);
@@ -3192,8 +3195,7 @@ function ForgotPinConfirmScreen({ originalPin, sessionId, recoveredShareHex, onC
     setIsProcessing(true);
 
     try {
-      const { api } = await import("../lib/api");
-      const { encryptWithPin } = await import("../crypto/pin");
+            const { encryptWithPin } = await import("../crypto/pin");
       const { storeEncryptedShare, storePinCheck, PIN_CHECK_VALUE } = await import("../crypto/keystore");
 
       // Get user ID for storage
@@ -4107,8 +4109,7 @@ function SendScreen({ onBack }: { onBack: () => void }) {
     const timer = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const { api } = await import("../lib/api");
-        const users = await api.searchUsernames(query, 5);
+                const users = await api.searchUsernames(query, 5);
         setSearchResults(users);
         setShowResults(users.length > 0);
       } catch {
@@ -4140,8 +4141,7 @@ function SendScreen({ onBack }: { onBack: () => void }) {
 
     if (recipient.startsWith("@") && !recipientPartyId) {
       try {
-        const { api } = await import("../lib/api");
-        const resolved = await api.resolveUsername(recipient.slice(1));
+                const resolved = await api.resolveUsername(recipient.slice(1));
         resolvedPartyId = resolved.partyId;
         setRecipientPartyId(resolved.partyId);
       } catch {
@@ -6734,8 +6734,7 @@ function NotificationsScreen({ onBack }: { onBack: () => void }) {
   const loadNotifications = async () => {
     setIsLoading(true);
     try {
-      const { api } = await import("../lib/api");
-      const result = await api.request<{
+            const result = await api.request<{
         success: boolean;
         data: { notifications: typeof notifications; total: number };
       }>("/api/notifications");
@@ -6751,8 +6750,7 @@ function NotificationsScreen({ onBack }: { onBack: () => void }) {
 
   const markAsRead = async (id: string) => {
     try {
-      const { api } = await import("../lib/api");
-      await api.request(`/api/notifications/${id}/read`, { method: "POST" });
+            await api.request(`/api/notifications/${id}/read`, { method: "POST" });
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } catch (err) {
       console.error("Failed to mark as read:", err);
@@ -6761,8 +6759,7 @@ function NotificationsScreen({ onBack }: { onBack: () => void }) {
 
   const markAllAsRead = async () => {
     try {
-      const { api } = await import("../lib/api");
-      await api.request("/api/notifications/read-all", { method: "POST" });
+            await api.request("/api/notifications/read-all", { method: "POST" });
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
       window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("success");
     } catch (err) {
@@ -7385,8 +7382,7 @@ function CNSScreen({ onBack }: { onBack: () => void }) {
     setIsRegistering(true);
     setError("");
     try {
-      const { api } = await import("../lib/api");
-
+      
       // Re-authenticate to ensure fresh token (handles expired token in dev mode)
       const tg = window.Telegram?.WebApp;
       const initData = tg?.initData || (process.env.NODE_ENV === 'development' ? 'dev_mode_555666777' : '');
@@ -7862,8 +7858,7 @@ function TelegramAppContent() {
   // Handle username selection
   const handleSetUsername = useCallback(async (username: string) => {
     try {
-      const { api } = await import("../lib/api");
-      await api.setUsername(username);
+            await api.setUsername(username);
       // Show passkey setup after username selection
       setNavigation({ screen: "passkey-setup" });
     } catch (err) {
@@ -7976,8 +7971,7 @@ function TelegramAppContent() {
   const handleResendCode = useCallback(async () => {
     if (!userEmail) return;
     try {
-      const { api } = await import("../lib/api");
-      await api.sendEmailCode(userEmail);
+            await api.sendEmailCode(userEmail);
     } catch (err) {
       console.error("Failed to resend code:", err);
     }
@@ -8305,7 +8299,7 @@ function TelegramAppContent() {
             ))}
           </div>
 
-          <div className="absolute inset-0 z-10 flex justify-center">
+          <div className="absolute inset-0 z-10 flex justify-center safe-top">
             <div className="relative w-full h-full" style={{ maxWidth: '430px' }}>
               <AnimatePresence mode="wait">
                 {showSplash ? (

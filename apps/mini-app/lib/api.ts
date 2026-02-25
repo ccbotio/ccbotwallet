@@ -75,11 +75,20 @@ class ApiClient {
   setTokens(token: string, refreshToken?: string) {
     this.token = token;
     if (refreshToken) this.refreshToken = refreshToken;
+    console.log('[API] Token set:', token ? 'yes' : 'no');
   }
 
   clearTokens() {
     this.token = null;
     this.refreshToken = null;
+  }
+
+  hasToken(): boolean {
+    return !!this.token;
+  }
+
+  getTokenDebug(): string {
+    return this.token ? `${this.token.substring(0, 20)}...` : 'null';
   }
 
   private async doRequest<T>(endpoint: string, options: ApiOptions = {}): Promise<Response> {
@@ -183,6 +192,10 @@ class ApiClient {
       '/auth/telegram',
       { method: 'POST', body: { initData }, signal }
     );
+
+    // Set tokens immediately after successful auth to prevent race conditions
+    this.setTokens(result.data.accessToken, result.data.refreshToken);
+
     // Extract user info from token (telegramId is in dev mode initData)
     const telegramId = initData.startsWith('dev_mode_') ? initData.replace('dev_mode_', '') : 'unknown';
     return {
@@ -205,6 +218,10 @@ class ApiClient {
 
   // Email verification
   async checkEmail(email: string) {
+    console.log('[API] checkEmail called, hasToken:', this.hasToken(), 'token:', this.getTokenDebug());
+    if (!this.token) {
+      console.error('[API] checkEmail called without token!');
+    }
     const result = await this.request<{
       success: boolean;
       data: {
