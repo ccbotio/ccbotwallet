@@ -17,35 +17,19 @@ RUN pnpm install --frozen-lockfile
 RUN pnpm turbo build --filter=@repo/shared
 RUN cd apps/mini-app && pnpm build
 
-# Production stage
-FROM base AS runner
+# Production stage - serve static files with nginx
+FROM nginx:alpine AS runner
 
-# Install wget for health checks
-RUN apk add --no-cache wget
+# Copy custom nginx config
+COPY apps/mini-app/nginx.conf /etc/nginx/conf.d/default.conf
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+# Copy static export from builder
+COPY --from=builder /app/apps/mini-app/out /usr/share/nginx/html
 
-# Create non-root user
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nextjs -u 1001 -G nodejs
-
-WORKDIR /app
-
-# Copy standalone output
-COPY --from=builder /app/apps/mini-app/.next/standalone ./
-COPY --from=builder /app/apps/mini-app/.next/static ./apps/mini-app/.next/static
-COPY --from=builder /app/apps/mini-app/public ./apps/mini-app/public
-
-# Set correct permissions
-RUN chown -R nextjs:nodejs /app
-
-USER nextjs
+# Add health check
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/ || exit 1
 
 EXPOSE 3001
 
-ENV PORT=3001
-ENV HOSTNAME="0.0.0.0"
-
-# Start Next.js standalone server
-CMD ["node", "apps/mini-app/server.js"]
+CMD ["nginx", "-g", "daemon off;"]
