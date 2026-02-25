@@ -1132,16 +1132,16 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
           <span>Paste PIN</span>
         </button>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
             >
-              {key === "del" ? <span className="material-symbols-outlined text-xl">backspace</span> : key}
+              {key === "del" ? <span className="material-symbols-outlined text-2xl">backspace</span> : key}
             </motion.button>
           ))}
         </div>
@@ -1308,16 +1308,16 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
           </button>
         )}
 
-        <div className="grid grid-cols-3 gap-4 mt-2">
+        <div className="grid grid-cols-3 gap-3 mt-2">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
             >
-              {key === "del" ? <span className="material-symbols-outlined text-xl">backspace</span> : key}
+              {key === "del" ? <span className="material-symbols-outlined text-2xl">backspace</span> : key}
             </motion.button>
           ))}
         </div>
@@ -1668,7 +1668,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
 
         {/* PIN keypad */}
         <motion.div
-          className="grid grid-cols-3 gap-4 mt-4"
+          className="grid grid-cols-3 gap-3 mt-4"
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.35 }}
@@ -1676,7 +1676,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key, index) => (
             <motion.button
               key={key || "empty"}
-              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold transition-all
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-semibold transition-all
                 ${key === ""
                   ? "invisible"
                   : key === "del"
@@ -1694,7 +1694,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
             >
               {key === "del" ? (
-                <span className="material-symbols-outlined text-xl">backspace</span>
+                <span className="material-symbols-outlined text-2xl">backspace</span>
               ) : (
                 key
               )}
@@ -3289,16 +3289,16 @@ function ForgotPinNewScreen({ onContinue, onBack }: {
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
         {/* Keypad */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePinInput(key)}
             >
-              {key === "del" ? <span className="material-symbols-outlined text-xl">backspace</span> : key}
+              {key === "del" ? <span className="material-symbols-outlined text-2xl">backspace</span> : key}
             </motion.button>
           ))}
         </div>
@@ -3463,17 +3463,17 @@ function ForgotPinConfirmScreen({ originalPin, sessionId, recoveredShareHex, onC
         {isProcessing && <p className="text-green-400 text-sm mb-4">Resetting PIN...</p>}
 
         {/* Keypad */}
-        <div className="grid grid-cols-3 gap-4 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
+              className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePinInput(key)}
               disabled={isProcessing}
             >
-              {key === "del" ? <span className="material-symbols-outlined text-xl">backspace</span> : key}
+              {key === "del" ? <span className="material-symbols-outlined text-2xl">backspace</span> : key}
             </motion.button>
           ))}
         </div>
