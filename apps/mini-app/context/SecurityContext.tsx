@@ -269,6 +269,47 @@ export function SecurityProvider({
     checkPinStatus();
   }, [userId]);
 
+  // ========== Lock on App Reopen (Telegram Mini App) ==========
+  // When the user closes and reopens the mini app, we should require PIN again
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const HIDDEN_TIMESTAMP_KEY = 'cc_wallet_hidden_at';
+    const MIN_HIDDEN_TIME_MS = 3000; // 3 seconds - if hidden for longer, require PIN
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        // App is being hidden/closed - store timestamp
+        try {
+          sessionStorage.setItem(HIDDEN_TIMESTAMP_KEY, Date.now().toString());
+        } catch {
+          // Ignore storage errors
+        }
+      } else if (document.visibilityState === 'visible') {
+        // App is being shown - check if we should lock
+        try {
+          const hiddenAt = sessionStorage.getItem(HIDDEN_TIMESTAMP_KEY);
+          if (hiddenAt) {
+            const hiddenDuration = Date.now() - parseInt(hiddenAt, 10);
+            // If app was hidden for more than MIN_HIDDEN_TIME_MS, require PIN
+            if (hiddenDuration >= MIN_HIDDEN_TIME_MS && isPinSet && !isLocked) {
+              setIsLocked(true);
+              sessionStorage.setItem('cc_wallet_lock_state', 'locked');
+            }
+            sessionStorage.removeItem(HIDDEN_TIMESTAMP_KEY);
+          }
+        } catch {
+          // Ignore storage errors
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isPinSet, isLocked]);
+
   // ========== Lockout Timer ==========
   useEffect(() => {
     if (!lockoutEndsAt) return;
