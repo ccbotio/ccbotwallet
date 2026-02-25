@@ -8504,7 +8504,7 @@ function TelegramAppContent() {
                     animate={{ opacity: 1 }}
                   >
                     {renderScreen()}
-                    {isOnboarded && <TabBar activeTab={currentTab} onTabChange={handleTabChange} />}
+                    {isOnboarded && !navigation.screen.startsWith("forgot-pin") && <TabBar activeTab={currentTab} onTabChange={handleTabChange} />}
                   </motion.div>
                 )}
               </AnimatePresence>
