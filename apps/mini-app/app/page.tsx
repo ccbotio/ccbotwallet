@@ -7993,7 +7993,7 @@ function TelegramAppContent() {
       // Don't change onboarded state or navigate if we're in the middle of passkey/onboarding flow
       // The passkey setup component will handle navigation when complete
       const tabScreens = ["home", "discover", "ai-assistant", "rewards", "settings"];
-      const validSubScreens = ["send", "receive", "swap", "bridge", "wallet", "history", "transaction-detail", "staking", "nft", "dapps", "security", "profile", "pin", "backup", "notifications", "help", "cns", "tasks"];
+      const validSubScreens = ["send", "receive", "swap", "bridge", "wallet", "history", "transaction-detail", "staking", "nft", "dapps", "security", "profile", "pin", "backup", "notifications", "help", "cns", "tasks", "forgot-pin-email", "forgot-pin-code", "forgot-pin-passkey", "forgot-pin-new", "forgot-pin-confirm"];
       const isOnTabScreen = tabScreens.includes(navigation.screen);
       const isOnValidSubScreen = validSubScreens.includes(navigation.screen);
       const isInOnboardingFlow = ["passkey-setup", "passkey-mandatory", "pin-setup", "pin-confirm", "wallet-creating", "wallet-ready", "passkey-recovery", "recovery-code-input", "email-setup", "email-verify", "recovery-email", "recovery-code", "recovery-passkey"].includes(navigation.screen);
