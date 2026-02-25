@@ -7775,13 +7775,19 @@ function TelegramAppContent() {
       tg.setBackgroundColor("#030206");
       tg.enableClosingConfirmation();
 
-      // Request fullscreen to hide bot username footer
-      if ((tg as any).requestFullscreen) {
-        (tg as any).requestFullscreen();
-      }
-      // Disable vertical swipes to prevent accidental close
-      if ((tg as any).disableVerticalSwipes) {
-        (tg as any).disableVerticalSwipes();
+      // Only apply fullscreen and disable swipes on mobile (not web/desktop)
+      const platform = tg.platform;
+      const isMobile = platform === 'ios' || platform === 'android';
+
+      if (isMobile) {
+        // Request fullscreen to hide bot username footer (mobile only)
+        if ((tg as any).requestFullscreen) {
+          (tg as any).requestFullscreen();
+        }
+        // Disable vertical swipes to prevent accidental close (mobile only)
+        if ((tg as any).disableVerticalSwipes) {
+          (tg as any).disableVerticalSwipes();
+        }
       }
 
       // Set viewport height CSS variable for proper sizing
