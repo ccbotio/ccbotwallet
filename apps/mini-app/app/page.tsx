@@ -3054,6 +3054,9 @@ function SendScreen({ onBack }: { onBack: () => void }) {
                 setRecipientUsername("");
               }}
               onFocus={() => searchResults.length > 0 && setShowResults(true)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && recipient && amount) handleSend();
+              }}
             />
             {isSearching && <span className="material-symbols-outlined text-taupe animate-spin text-sm">progress_activity</span>}
             {recipientUsername && <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>}
@@ -3096,6 +3099,9 @@ function SendScreen({ onBack }: { onBack: () => void }) {
                 className="flex-1 bg-transparent text-white text-3xl font-bold outline-none"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && recipient && amount) handleSend();
+                }}
               />
               <button className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl">
                 <Image src="/ccbotlogo.png" alt="CC" width={20} height={20} />
