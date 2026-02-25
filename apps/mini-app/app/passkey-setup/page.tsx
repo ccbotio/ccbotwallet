@@ -44,6 +44,14 @@ function PasskeySetupContent() {
   const email = searchParams.get('email') || 'CC Bot User';
   const returnUrl = searchParams.get('returnUrl');
 
+  // Mark app as hydrated to prevent flash of unstyled content
+  useEffect(() => {
+    const appRoot = document.getElementById('app-root');
+    if (appRoot) {
+      requestAnimationFrame(() => appRoot.classList.add('hydrated'));
+    }
+  }, []);
+
   useEffect(() => {
     // Check WebAuthn support
     if (!isWebAuthnSupported()) {

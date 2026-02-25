@@ -21,6 +21,14 @@ function PasskeyRecoverContent() {
   const [error, setError] = useState<string | null>(null);
   const [credentials, setCredentials] = useState<{ credentialId: string }[]>([]);
 
+  // Mark app as hydrated to prevent flash of unstyled content
+  useEffect(() => {
+    const appRoot = document.getElementById('app-root');
+    if (appRoot) {
+      requestAnimationFrame(() => appRoot.classList.add('hydrated'));
+    }
+  }, []);
+
   useEffect(() => {
     async function checkSupport() {
       const webAuthn = isWebAuthnSupported();

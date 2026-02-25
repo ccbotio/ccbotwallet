@@ -23,6 +23,14 @@ function PasskeyRegisterContent() {
   const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(false);
 
+  // Mark app as hydrated to prevent flash of unstyled content
+  useEffect(() => {
+    const appRoot = document.getElementById('app-root');
+    if (appRoot) {
+      requestAnimationFrame(() => appRoot.classList.add('hydrated'));
+    }
+  }, []);
+
   useEffect(() => {
     async function checkSupport() {
       const webAuthn = isWebAuthnSupported();

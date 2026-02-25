@@ -39,6 +39,10 @@ export default function RootLayout({
       </head>
       <body suppressHydrationWarning>
         <div id="app-root">
+          {/* Loading overlay - hidden by CSS when .hydrated class is added */}
+          <div className="loading-overlay">
+            <div className="animate-spin w-8 h-8 border-2 border-[#875CFF] border-t-transparent rounded-full"></div>
+          </div>
           {children}
         </div>
       </body>

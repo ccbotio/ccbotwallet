@@ -8450,6 +8450,16 @@ function ComingSoonScreen() {
 export default function TelegramApp() {
   const [isAllowed, setIsAllowed] = useState<boolean | null>(null);
 
+  // Mark app as hydrated to hide loading overlay and show content
+  useEffect(() => {
+    const appRoot = document.getElementById('app-root');
+    if (appRoot) {
+      requestAnimationFrame(() => {
+        appRoot.classList.add('hydrated');
+      });
+    }
+  }, []);
+
   useEffect(() => {
     // Check if user is in whitelist
     const tg = (window as any).Telegram?.WebApp;

@@ -47,6 +47,14 @@ function PasskeyAuthContent() {
   // Get session ID from URL
   const sessionId = searchParams.get('session');
 
+  // Mark app as hydrated to prevent flash of unstyled content
+  useEffect(() => {
+    const appRoot = document.getElementById('app-root');
+    if (appRoot) {
+      requestAnimationFrame(() => appRoot.classList.add('hydrated'));
+    }
+  }, []);
+
   // Load session data from backend
   useEffect(() => {
     async function loadSession() {
