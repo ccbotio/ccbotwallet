@@ -16,6 +16,7 @@ import { passkeyRoutes } from './routes/passkey.js';
 import { passkeySessionRoutes } from './routes/passkey-session.js';
 import { sessionRoutes } from './routes/session.js';
 import { pinRoutes } from './routes/pin.js';
+import { recoveryRoutes } from './routes/recovery.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 export const server = Fastify({
@@ -47,6 +48,7 @@ export async function initServer() {
   await server.register(passkeySessionRoutes, { prefix: '/api/passkey-session' });
   await server.register(sessionRoutes, { prefix: '/api/session' });
   await server.register(pinRoutes, { prefix: '/api/pin' });
+  await server.register(recoveryRoutes, { prefix: '/api/recovery' });
 
   await server.listen({ port: env.PORT, host: env.HOST });
   logger.info({ port: env.PORT }, 'Server started');

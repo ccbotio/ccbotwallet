@@ -194,7 +194,15 @@ type Screen =
   | "transaction-detail"
   | "confirm-transaction"
   | "passkey-recovery"
-  | "recovery-code-input";
+  | "recovery-code-input"
+  | "recovery-email"
+  | "recovery-code"
+  | "recovery-passkey"
+  | "forgot-pin-email"
+  | "forgot-pin-code"
+  | "forgot-pin-passkey"
+  | "forgot-pin-new"
+  | "forgot-pin-confirm";
 
 // Passkey credential data stored during onboarding
 interface PasskeyCredentialData {
@@ -2067,6 +2075,1409 @@ function RecoveryCodeInputScreen({ onRecovered, onBack }: {
           <p className="text-taupe text-center">Please wait while we restore your wallet...</p>
         </div>
       )}
+    </motion.div>
+  );
+}
+
+// ==================== EMAIL-BASED WALLET RECOVERY ====================
+function WalletRecoveryEmailScreen({ onContinue, onBack, onFallback }: {
+  onContinue: (email: string, partyId: string) => void;
+  onBack: () => void;
+  onFallback: () => void; // Use recovery code instead
+}) {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [walletInfo, setWalletInfo] = useState<{ hasWallet: boolean; hasPasskey: boolean; partyId?: string } | null>(null);
+
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const handleCheckEmail = async () => {
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address");
+      hapticError();
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const { api } = await import("../lib/api");
+      const result = await api.recoveryCheckEmail(email);
+
+      if (!result.hasWallet) {
+        setError("No wallet found for this email address");
+        hapticError();
+        setIsLoading(false);
+        return;
+      }
+
+      if (!result.hasPasskey) {
+        setError("This wallet doesn't have passkey. Please use recovery code.");
+        hapticError();
+        setIsLoading(false);
+        return;
+      }
+
+      setWalletInfo(result);
+
+      // Send verification code
+      const sendResult = await api.recoverySendCode(email);
+      if (!sendResult.message.includes("sent")) {
+        setError(sendResult.message);
+        hapticError();
+        setIsLoading(false);
+        return;
+      }
+
+      hapticSuccess();
+      onContinue(email, result.partyId!);
+    } catch (err) {
+      console.error("Recovery check failed:", err);
+      setError("Failed to check email. Please try again.");
+      hapticError();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+    >
+      <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
+
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
+        <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
+          <span className="material-symbols-outlined text-3xl text-purple">account_circle</span>
+        </div>
+        <h2 className="text-white text-2xl font-bold mb-2">Recover Your Wallet</h2>
+        <p className="text-taupe text-center mb-8">Enter the email address associated with your wallet</p>
+
+        <div className="w-full max-w-sm mb-4">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && email && !isLoading) handleCheckEmail(); }}
+            placeholder="Enter your email"
+            className="w-full px-4 py-4 bg-white/10 rounded-2xl text-white placeholder-taupe outline-none focus:ring-2 focus:ring-purple"
+            disabled={isLoading}
+          />
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+        </div>
+
+        <motion.button
+          className="w-full max-w-sm py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-lg disabled:opacity-50 mb-4"
+          whileTap={{ scale: 0.98 }}
+          onClick={handleCheckEmail}
+          disabled={!email || isLoading}
+        >
+          {isLoading ? "Checking..." : "Continue"}
+        </motion.button>
+
+        <button
+          className="text-taupe text-sm mt-2"
+          onClick={onFallback}
+        >
+          Use recovery code instead
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
+  email: string;
+  partyId: string;
+  onContinue: (sessionId: string) => void;
+  onBack: () => void;
+}) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+
+  // Hidden input ref
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+
+  // Resend countdown
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(r => r - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setCanResend(true);
+    }
+  }, [resendTimer]);
+
+  // Keyboard support
+  useEffect(() => {
+    hiddenInputRef.current?.focus();
+    return setupKeyboardListeners({
+      onDigit: (digit) => {
+        setCode(prev => {
+          if (prev.length >= 6) return prev;
+          setError("");
+          return prev + digit;
+        });
+      },
+      onBackspace: () => {
+        setCode(prev => prev.slice(0, -1));
+        setError("");
+      },
+      onEnter: () => {
+        if (code.length === 6 && !isLoading) handleVerify();
+      }
+    });
+  }, [code, isLoading]);
+
+  const handleCodeInput = (digit: string) => {
+    if (code.length < 6) {
+      setCode(code + digit);
+      setError("");
+      hapticLight();
+    }
+  };
+
+  const handleDelete = () => {
+    setCode(code.slice(0, -1));
+    setError("");
+    hapticLight();
+  };
+
+  const handleVerify = async () => {
+    if (code.length !== 6) {
+      setError("Please enter the 6-digit code");
+      hapticError();
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const { api } = await import("../lib/api");
+      const result = await api.recoveryVerifyCode(email, code);
+
+      hapticSuccess();
+      onContinue(result.sessionId);
+    } catch (err) {
+      console.error("Code verification failed:", err);
+      setError("Invalid code. Please try again.");
+      setCode("");
+      hapticError();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!canResend) return;
+    setCanResend(false);
+    setResendTimer(60);
+
+    try {
+      const { api } = await import("../lib/api");
+      await api.recoverySendCode(email);
+      hapticSuccess();
+    } catch (err) {
+      console.error("Resend failed:", err);
+      hapticError();
+    }
+  };
+
+  const handlePaste = async () => {
+    const result = await readClipboard();
+    if (result.success && result.text) {
+      const digits = extractDigits(result.text, 6);
+      if (digits.length > 0) {
+        setCode(digits);
+        setError("");
+        hapticSuccess();
+      }
+    } else {
+      hapticError();
+    }
+  };
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+    >
+      <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
+
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="w-14 h-14 rounded-full bg-purple/20 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-purple">mark_email_read</span>
+        </div>
+        <h2 className="text-white text-xl font-bold mb-1">Enter Code</h2>
+        <p className="text-taupe text-center text-sm mb-1">We sent a 6-digit code to</p>
+        <p className="text-purple text-center text-sm mb-5">{email}</p>
+
+        {/* Code dots */}
+        <div className="flex gap-3 mb-4">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <motion.div
+              key={i}
+              className={`w-11 h-12 rounded-xl ${error ? "bg-red-500/20 border-red-500" : code[i] ? "bg-purple/20 border-purple" : "bg-white/5 border-white/20"} border flex items-center justify-center`}
+              animate={error ? { x: [-5, 5, -5, 5, 0] } : i < code.length ? { scale: [1, 1.1, 1] } : {}}
+              transition={{ duration: 0.2 }}
+            >
+              <span className="text-white">{code[i] || ""}</span>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Hidden input for keyboard/paste capture */}
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="one-time-code"
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData?.getData("text") || "";
+            const digits = extractDigits(text, 6);
+            if (digits.length > 0) {
+              setCode(digits);
+              setError("");
+              hapticSuccess();
+            }
+          }}
+        />
+
+        {/* Paste button */}
+        <button
+          className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
+          onClick={handlePaste}
+        >
+          <span className="material-symbols-outlined text-base">content_paste</span>
+          <span>Paste code</span>
+        </button>
+
+        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+
+        {/* Keypad */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
+            <motion.button
+              key={key}
+              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+                ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => key === "del" ? handleDelete() : key && handleCodeInput(key)}
+              disabled={isLoading}
+            >
+              {key === "del" ? "DEL" : key}
+            </motion.button>
+          ))}
+        </div>
+
+        <motion.button
+          className="w-full max-w-sm py-3 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold disabled:opacity-50 mb-3"
+          whileTap={{ scale: 0.98 }}
+          onClick={handleVerify}
+          disabled={code.length !== 6 || isLoading}
+        >
+          {isLoading ? "Verifying..." : "Verify"}
+        </motion.button>
+
+        <button
+          className={`text-sm ${canResend ? "text-purple" : "text-taupe"}`}
+          onClick={handleResend}
+          disabled={!canResend}
+        >
+          {canResend ? "Resend Code" : `Resend in ${resendTimer}s`}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+function WalletRecoveryPasskeyScreen({ email, partyId, sessionId, onRecovered, onBack, onFallback }: {
+  email: string;
+  partyId: string;
+  sessionId: string;
+  onRecovered: () => void;
+  onBack: () => void;
+  onFallback: () => void;
+}) {
+  const { refreshBalance } = useWalletContext();
+  const [step, setStep] = useState<"ready" | "authenticating" | "decrypting" | "success" | "error">("ready");
+  const [error, setError] = useState<string | null>(null);
+  const [credentialCount, setCredentialCount] = useState(0);
+
+  useEffect(() => {
+    checkPasskeys();
+  }, [partyId, sessionId]);
+
+  const checkPasskeys = async () => {
+    try {
+      const { api } = await import("../lib/api");
+      const challengeData = await api.recoveryChallenge(sessionId, partyId);
+      setCredentialCount(challengeData.allowCredentials?.length || 0);
+    } catch (err) {
+      console.error("Failed to check passkeys:", err);
+    }
+  };
+
+  const handleAuthenticate = async () => {
+    setStep("authenticating");
+    setError(null);
+
+    try {
+      const { api } = await import("../lib/api");
+
+      // Get challenge
+      const challengeData = await api.recoveryChallenge(sessionId, partyId);
+
+      // Convert challenge to ArrayBuffer
+      const challengeBuffer = Uint8Array.from(atob(challengeData.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+
+      // Prepare credential IDs
+      const allowCredentials = challengeData.allowCredentials.map(cred => ({
+        id: Uint8Array.from(atob(cred.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+        type: 'public-key' as const,
+      }));
+
+      // Request passkey authentication
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge: challengeBuffer,
+          allowCredentials,
+          userVerification: 'preferred',
+          timeout: 60000,
+        },
+      }) as PublicKeyCredential;
+
+      if (!credential) {
+        throw new Error("No credential selected");
+      }
+
+      setStep("decrypting");
+
+      const response = credential.response as AuthenticatorAssertionResponse;
+
+      // Convert to base64url
+      const toBase64Url = (buffer: ArrayBuffer) => {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      };
+
+      // Verify passkey with backend
+      const verifyResult = await api.recoveryVerifyPasskey({
+        sessionId,
+        partyId,
+        credentialId: toBase64Url(credential.rawId),
+        authenticatorData: toBase64Url(response.authenticatorData),
+        clientDataJSON: toBase64Url(response.clientDataJSON),
+        signature: toBase64Url(response.signature),
+      });
+
+      // Recovery successful - mark as complete on backend
+      await api.recoveryComplete(sessionId);
+
+      // Refresh wallet state from backend
+      // The backend has marked the recovery as complete
+      await refreshBalance();
+
+      setStep("success");
+      hapticSuccess();
+
+      setTimeout(() => {
+        onRecovered();
+      }, 1000);
+
+    } catch (err) {
+      console.error("Passkey authentication failed:", err);
+      setError(err instanceof Error ? err.message : "Authentication failed");
+      setStep("error");
+      hapticError();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-3xl p-6 max-w-sm w-full"
+      >
+        {step === "ready" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center space-y-6"
+          >
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-purple to-lilac rounded-2xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-white">fingerprint</span>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold text-white mb-2">Authenticate with Passkey</h2>
+              <p className="text-taupe text-sm">
+                Use Face ID, Touch ID, or your device PIN to access your wallet.
+              </p>
+            </div>
+
+            {credentialCount > 0 && (
+              <div className="bg-white/5 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-taupe text-sm">Registered passkeys</span>
+                  <span className="text-white font-medium">{credentialCount}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <button
+                onClick={handleAuthenticate}
+                className="w-full py-3.5 bg-gradient-to-r from-purple to-lilac text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined">lock_open</span>
+                Authenticate with Passkey
+              </button>
+              <button
+                onClick={onFallback}
+                className="w-full py-3 text-taupe text-sm"
+              >
+                Use recovery code instead
+              </button>
+              <button
+                onClick={onBack}
+                className="w-full py-2 text-taupe/60 text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === "authenticating" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-8"
+          >
+            <div className="w-16 h-16 mx-auto mb-4 relative">
+              <div className="absolute inset-0 bg-purple/20 rounded-full animate-ping" />
+              <div className="relative w-full h-full bg-gradient-to-br from-purple to-lilac rounded-full flex items-center justify-center">
+                <span className="material-symbols-outlined text-3xl text-white">fingerprint</span>
+              </div>
+            </div>
+            <p className="text-white font-medium mb-2">Complete on your device</p>
+            <p className="text-taupe text-sm">Use Face ID, Touch ID, or PIN when prompted</p>
+          </motion.div>
+        )}
+
+        {step === "decrypting" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-8"
+          >
+            <div className="w-12 h-12 border-2 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-white font-medium mb-2">Restoring wallet...</p>
+            <p className="text-taupe text-sm">Decrypting your wallet data</p>
+          </motion.div>
+        )}
+
+        {step === "success" && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-8"
+          >
+            <div className="w-16 h-16 mx-auto mb-4 bg-green-500/20 rounded-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl text-green-400">check_circle</span>
+            </div>
+            <p className="text-white font-medium mb-2">Recovery Successful!</p>
+            <p className="text-taupe text-sm">Opening your wallet...</p>
+          </motion.div>
+        )}
+
+        {step === "error" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-6 space-y-4"
+          >
+            <div className="w-16 h-16 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl text-red-400">error</span>
+            </div>
+            <div>
+              <p className="text-white font-medium mb-1">Authentication Failed</p>
+              <p className="text-taupe text-sm">{error}</p>
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => { setError(null); setStep("ready"); }}
+                className="w-full py-3 bg-white/10 text-white font-medium rounded-xl"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={onFallback}
+                className="w-full py-3 text-taupe text-sm"
+              >
+                Use recovery code instead
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+// ==================== FORGOT PIN FLOW ====================
+
+/**
+ * Forgot PIN - Email Input Screen
+ * Step 1: User enters email to start recovery
+ */
+function ForgotPinEmailScreen({ onContinue, onBack }: {
+  onContinue: (email: string, partyId: string) => void;
+  onBack: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  const validateEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+
+  const handleCheckEmail = async () => {
+    if (!validateEmail(email)) {
+      setError("Please enter a valid email address");
+      hapticError();
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const { api } = await import("../lib/api");
+      const result = await api.recoveryCheckEmail(email);
+
+      if (!result.hasWallet) {
+        setError("No wallet found for this email address");
+        hapticError();
+        setIsLoading(false);
+        return;
+      }
+
+      if (!result.hasPasskey) {
+        setError("No passkey registered. Cannot reset PIN without passkey.");
+        hapticError();
+        setIsLoading(false);
+        return;
+      }
+
+      // Send verification code
+      const sendResult = await api.recoverySendCode(email);
+      if (!sendResult.message.includes("sent")) {
+        setError(sendResult.message);
+        hapticError();
+        setIsLoading(false);
+        return;
+      }
+
+      hapticSuccess();
+      onContinue(email, result.partyId!);
+    } catch (err) {
+      console.error("Email check failed:", err);
+      setError("Failed to verify email. Please try again.");
+      hapticError();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+    >
+      <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
+
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
+        <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mb-6">
+          <span className="material-symbols-outlined text-3xl text-amber-400">lock_reset</span>
+        </div>
+        <h2 className="text-white text-2xl font-bold mb-2">Reset Your PIN</h2>
+        <p className="text-taupe text-center mb-8">Enter your email to verify your identity</p>
+
+        <div className="w-full max-w-sm mb-4">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && email && !isLoading) handleCheckEmail(); }}
+            placeholder="Enter your email"
+            className="w-full px-4 py-4 bg-white/10 rounded-2xl text-white placeholder-taupe outline-none focus:ring-2 focus:ring-amber-500"
+            disabled={isLoading}
+          />
+          {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
+        </div>
+
+        <motion.button
+          className="w-full max-w-sm py-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl text-white font-bold text-lg disabled:opacity-50"
+          whileTap={{ scale: 0.98 }}
+          onClick={handleCheckEmail}
+          disabled={!email || isLoading}
+        >
+          {isLoading ? "Verifying..." : "Continue"}
+        </motion.button>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Forgot PIN - Code Verification Screen
+ * Step 2: User enters 6-digit code sent to email
+ */
+function ForgotPinCodeScreen({ email, onContinue, onBack }: {
+  email: string;
+  onContinue: (sessionId: string, partyId: string, walletId: string) => void;
+  onBack: () => void;
+}) {
+  const [code, setCode] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(60);
+  const [canResend, setCanResend] = useState(false);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(r => r - 1), 1000);
+      return () => clearTimeout(timer);
+    } else {
+      setCanResend(true);
+    }
+  }, [resendTimer]);
+
+  useEffect(() => {
+    hiddenInputRef.current?.focus();
+    return setupKeyboardListeners({
+      onDigit: (digit) => {
+        setCode(prev => {
+          if (prev.length >= 6) return prev;
+          setError("");
+          return prev + digit;
+        });
+      },
+      onBackspace: () => {
+        setCode(prev => prev.slice(0, -1));
+        setError("");
+      },
+      onEnter: () => {
+        if (code.length === 6 && !isLoading) handleVerify();
+      }
+    });
+  }, [code, isLoading]);
+
+  const handleCodeInput = (digit: string) => {
+    if (code.length < 6) {
+      setCode(code + digit);
+      setError("");
+      hapticLight();
+    }
+  };
+
+  const handleDelete = () => {
+    setCode(code.slice(0, -1));
+    setError("");
+    hapticLight();
+  };
+
+  const handleVerify = async () => {
+    if (code.length !== 6) {
+      setError("Please enter the 6-digit code");
+      hapticError();
+      return;
+    }
+
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const { api } = await import("../lib/api");
+      const result = await api.recoveryVerifyCode(email, code);
+      hapticSuccess();
+      onContinue(result.sessionId, result.partyId, result.walletId);
+    } catch (err) {
+      console.error("Code verification failed:", err);
+      setError("Invalid code. Please try again.");
+      setCode("");
+      hapticError();
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleResend = async () => {
+    if (!canResend) return;
+    setCanResend(false);
+    setResendTimer(60);
+
+    try {
+      const { api } = await import("../lib/api");
+      await api.recoverySendCode(email);
+      hapticSuccess();
+    } catch (err) {
+      console.error("Resend failed:", err);
+      hapticError();
+    }
+  };
+
+  const handlePaste = async () => {
+    const result = await readClipboard();
+    if (result.success && result.text) {
+      const digits = extractDigits(result.text, 6);
+      if (digits.length > 0) {
+        setCode(digits);
+        setError("");
+        hapticSuccess();
+      }
+    } else {
+      hapticError();
+    }
+  };
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+    >
+      <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
+
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="w-14 h-14 rounded-full bg-amber-500/20 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-amber-400">mark_email_read</span>
+        </div>
+        <h2 className="text-white text-xl font-bold mb-1">Enter Verification Code</h2>
+        <p className="text-taupe text-center text-sm mb-1">We sent a 6-digit code to</p>
+        <p className="text-amber-400 text-center text-sm mb-5">{email}</p>
+
+        {/* Code dots */}
+        <div className="flex gap-3 mb-4">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <motion.div
+              key={i}
+              className={`w-11 h-12 rounded-xl ${error ? "bg-red-500/20 border-red-500" : code[i] ? "bg-amber-500/20 border-amber-500" : "bg-white/5 border-white/20"} border flex items-center justify-center`}
+              animate={error ? { x: [-5, 5, -5, 5, 0] } : i < code.length ? { scale: [1, 1.1, 1] } : {}}
+              transition={{ duration: 0.2 }}
+            >
+              <span className="text-white">{code[i] || ""}</span>
+            </motion.div>
+          ))}
+        </div>
+
+        <input
+          ref={hiddenInputRef}
+          type="text"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          autoComplete="one-time-code"
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+          onPaste={(e) => {
+            e.preventDefault();
+            const text = e.clipboardData?.getData("text") || "";
+            const digits = extractDigits(text, 6);
+            if (digits.length > 0) {
+              setCode(digits);
+              setError("");
+              hapticSuccess();
+            }
+          }}
+        />
+
+        <button
+          className="flex items-center gap-2 text-amber-400 text-sm mb-4 px-4 py-2 bg-amber-500/10 rounded-xl active:bg-amber-500/20 transition-colors"
+          onClick={handlePaste}
+        >
+          <span className="material-symbols-outlined text-base">content_paste</span>
+          <span>Paste code</span>
+        </button>
+
+        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
+
+        {/* Keypad */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
+            <motion.button
+              key={key}
+              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+                ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => key === "del" ? handleDelete() : key && handleCodeInput(key)}
+              disabled={isLoading}
+            >
+              {key === "del" ? "DEL" : key}
+            </motion.button>
+          ))}
+        </div>
+
+        <motion.button
+          className="w-full max-w-sm py-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl text-white font-bold disabled:opacity-50 mb-3"
+          whileTap={{ scale: 0.98 }}
+          onClick={handleVerify}
+          disabled={code.length !== 6 || isLoading}
+        >
+          {isLoading ? "Verifying..." : "Verify"}
+        </motion.button>
+
+        <button
+          className={`text-sm ${canResend ? "text-amber-400" : "text-taupe"}`}
+          onClick={handleResend}
+          disabled={!canResend}
+        >
+          {canResend ? "Resend Code" : `Resend in ${resendTimer}s`}
+        </button>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Forgot PIN - Passkey Verification Screen
+ * Step 3: User authenticates with existing passkey and recovers share
+ */
+function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
+  partyId: string;
+  sessionId: string;
+  onVerified: (recoveredShareHex: string) => void;
+  onBack: () => void;
+}) {
+  const [step, setStep] = useState<"ready" | "authenticating" | "decrypting" | "success" | "error">("ready");
+  const [error, setError] = useState<string | null>(null);
+  const [credentialCount, setCredentialCount] = useState(0);
+
+  useEffect(() => {
+    checkPasskeys();
+  }, [partyId, sessionId]);
+
+  const checkPasskeys = async () => {
+    try {
+      const { api } = await import("../lib/api");
+      const challengeData = await api.recoveryChallenge(sessionId, partyId);
+      setCredentialCount(challengeData.allowCredentials?.length || 0);
+    } catch (err) {
+      console.error("Failed to check passkeys:", err);
+    }
+  };
+
+  const handleAuthenticate = async () => {
+    setStep("authenticating");
+    setError(null);
+
+    try {
+      const { api } = await import("../lib/api");
+      const { recoverWithPasskey } = await import("../crypto/passkey");
+
+      // Get challenge and encrypted share from backend
+      const challengeData = await api.recoveryChallenge(sessionId, partyId);
+
+      // Convert to base64url format for passkey recovery
+      const toBase64Url = (buffer: ArrayBuffer) => {
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+      };
+
+      // First, do WebAuthn authentication to verify with backend
+      const challengeBuffer = Uint8Array.from(atob(challengeData.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+      const allowCredentials = challengeData.allowCredentials.map(cred => ({
+        id: Uint8Array.from(atob(cred.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
+        type: 'public-key' as const,
+      }));
+
+      const credential = await navigator.credentials.get({
+        publicKey: {
+          challenge: challengeBuffer,
+          allowCredentials,
+          userVerification: 'preferred',
+          timeout: 60000,
+        },
+      }) as PublicKeyCredential;
+
+      if (!credential) {
+        throw new Error("No credential selected");
+      }
+
+      const response = credential.response as AuthenticatorAssertionResponse;
+
+      // Verify passkey with backend and get encrypted share
+      const verifyResult = await api.recoveryVerifyPasskey({
+        sessionId,
+        partyId,
+        credentialId: toBase64Url(credential.rawId),
+        authenticatorData: toBase64Url(response.authenticatorData),
+        clientDataJSON: toBase64Url(response.clientDataJSON),
+        signature: toBase64Url(response.signature),
+      });
+
+      setStep("decrypting");
+
+      // Now use recoverWithPasskey to decrypt the share with PRF
+      const { recoveryShareHex } = await recoverWithPasskey(
+        challengeData.challenge,
+        challengeData.allowCredentials.map(c => ({ credentialId: c.id })),
+        {
+          ciphertext: verifyResult.encryptedShare,
+          nonce: verifyResult.nonce,
+        },
+        partyId
+      );
+
+      setStep("success");
+      hapticSuccess();
+
+      setTimeout(() => {
+        onVerified(recoveryShareHex);
+      }, 500);
+
+    } catch (err) {
+      console.error("Passkey authentication failed:", err);
+      setError(err instanceof Error ? err.message : "Authentication failed");
+      setStep("error");
+      hapticError();
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-gradient-to-br from-[#1a1a2e] to-[#16213e] rounded-3xl p-6 max-w-sm w-full"
+      >
+        {step === "ready" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center space-y-6"
+          >
+            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-white">fingerprint</span>
+            </div>
+
+            <div>
+              <h2 className="text-xl font-bold text-white mb-2">Verify Your Identity</h2>
+              <p className="text-taupe text-sm">
+                Authenticate with your passkey to reset your PIN.
+              </p>
+            </div>
+
+            {credentialCount > 0 && (
+              <div className="bg-white/5 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-taupe text-sm">Available passkeys</span>
+                  <span className="text-white font-medium">{credentialCount}</span>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              <button
+                onClick={handleAuthenticate}
+                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined">lock_open</span>
+                Authenticate
+              </button>
+              <button
+                onClick={onBack}
+                className="w-full py-3 text-taupe text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === "authenticating" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-8"
+          >
+            <div className="w-16 h-16 mx-auto mb-4 relative">
+              <div className="absolute inset-0 bg-amber-500/20 rounded-full animate-ping" />
+              <div className="relative w-full h-full bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
+                <span className="material-symbols-outlined text-3xl text-white">fingerprint</span>
+              </div>
+            </div>
+            <p className="text-white font-medium mb-2">Authenticating...</p>
+            <p className="text-taupe text-sm">Use Face ID, Touch ID, or PIN when prompted</p>
+          </motion.div>
+        )}
+
+        {step === "decrypting" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-8"
+          >
+            <div className="w-12 h-12 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-white font-medium mb-2">Recovering wallet...</p>
+            <p className="text-taupe text-sm">Decrypting your wallet data</p>
+          </motion.div>
+        )}
+
+        {step === "success" && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center py-8"
+          >
+            <div className="w-16 h-16 mx-auto mb-4 bg-green-500/20 rounded-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl text-green-400">check_circle</span>
+            </div>
+            <p className="text-white font-medium mb-2">Identity Verified!</p>
+            <p className="text-taupe text-sm">Creating new PIN...</p>
+          </motion.div>
+        )}
+
+        {step === "error" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-6 space-y-4"
+          >
+            <div className="w-16 h-16 mx-auto bg-red-500/20 rounded-full flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl text-red-400">error</span>
+            </div>
+            <div>
+              <p className="text-white font-medium mb-1">Verification Failed</p>
+              <p className="text-taupe text-sm">{error}</p>
+            </div>
+            <div className="space-y-2">
+              <button
+                onClick={() => { setError(null); setStep("ready"); }}
+                className="w-full py-3 bg-white/10 text-white font-medium rounded-xl"
+              >
+                Try Again
+              </button>
+              <button
+                onClick={onBack}
+                className="w-full py-3 text-taupe text-sm"
+              >
+                Cancel
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </motion.div>
+    </div>
+  );
+}
+
+/**
+ * Forgot PIN - New PIN Screen
+ * Step 4: User creates new 6-digit PIN
+ */
+function ForgotPinNewScreen({ onContinue, onBack }: {
+  onContinue: (pin: string) => void;
+  onBack: () => void;
+}) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    hiddenInputRef.current?.focus();
+    return setupKeyboardListeners({
+      onDigit: (digit) => {
+        setPin(prev => {
+          if (prev.length >= 6) return prev;
+          setError("");
+          const newPin = prev + digit;
+          if (newPin.length === 6) {
+            setTimeout(() => onContinue(newPin), 200);
+          }
+          return newPin;
+        });
+      },
+      onBackspace: () => {
+        setPin(prev => prev.slice(0, -1));
+        setError("");
+      },
+    });
+  }, [onContinue]);
+
+  const handlePinInput = (digit: string) => {
+    if (pin.length < 6) {
+      const newPin = pin + digit;
+      setPin(newPin);
+      setError("");
+      hapticLight();
+      if (newPin.length === 6) {
+        setTimeout(() => onContinue(newPin), 200);
+      }
+    }
+  };
+
+  const handleDelete = () => {
+    setPin(pin.slice(0, -1));
+    setError("");
+    hapticLight();
+  };
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+    >
+      <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
+
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-green-400">lock</span>
+        </div>
+        <h2 className="text-white text-xl font-bold mb-1">Create New PIN</h2>
+        <p className="text-taupe text-center text-sm mb-6">Enter a 6-digit PIN to secure your wallet</p>
+
+        {/* PIN dots */}
+        <div className="flex gap-4 mb-6">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <motion.div
+              key={i}
+              className={`w-4 h-4 rounded-full ${error ? "bg-red-500" : i < pin.length ? "bg-green-400" : "bg-white/20"}`}
+              animate={error ? { x: [-5, 5, -5, 5, 0] } : i < pin.length ? { scale: [1, 1.3, 1] } : {}}
+              transition={{ duration: 0.2 }}
+            />
+          ))}
+        </div>
+
+        <input
+          ref={hiddenInputRef}
+          type="password"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+
+        {/* Keypad */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
+            <motion.button
+              key={key}
+              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+                ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => key === "del" ? handleDelete() : key && handlePinInput(key)}
+            >
+              {key === "del" ? "DEL" : key}
+            </motion.button>
+          ))}
+        </div>
+
+        <p className="text-taupe/60 text-xs text-center">
+          Choose a PIN you'll remember.<br />
+          Don't use simple patterns like 123456.
+        </p>
+      </div>
+    </motion.div>
+  );
+}
+
+/**
+ * Forgot PIN - Confirm PIN Screen
+ * Step 5: User confirms new PIN and saves encrypted share
+ */
+function ForgotPinConfirmScreen({ originalPin, sessionId, recoveredShareHex, onComplete, onBack }: {
+  originalPin: string;
+  sessionId: string;
+  recoveredShareHex: string;
+  onComplete: () => void;
+  onBack: () => void;
+}) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const hiddenInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    hiddenInputRef.current?.focus();
+    return setupKeyboardListeners({
+      onDigit: (digit) => {
+        if (isProcessing) return;
+        setPin(prev => {
+          if (prev.length >= 6) return prev;
+          setError("");
+          const newPin = prev + digit;
+          if (newPin.length === 6) {
+            handlePinComplete(newPin);
+          }
+          return newPin;
+        });
+      },
+      onBackspace: () => {
+        if (isProcessing) return;
+        setPin(prev => prev.slice(0, -1));
+        setError("");
+      },
+    });
+  }, [isProcessing, originalPin]);
+
+  const handlePinComplete = async (confirmPin: string) => {
+    if (confirmPin !== originalPin) {
+      setError("PINs don't match. Try again.");
+      setPin("");
+      hapticError();
+      return;
+    }
+
+    setIsProcessing(true);
+
+    try {
+      const { api } = await import("../lib/api");
+      const { encryptWithPin } = await import("../crypto/pin");
+      const { storeEncryptedShare, storePinCheck, PIN_CHECK_VALUE } = await import("../crypto/keystore");
+
+      // Get user ID for storage
+      const userId = window.Telegram?.WebApp?.initDataUnsafe?.user?.id?.toString() || 'dev-user';
+
+      // Encrypt recovered share with new PIN
+      const encrypted = await encryptWithPin(recoveredShareHex, confirmPin);
+      await storeEncryptedShare(
+        userId,
+        encrypted.ciphertext,
+        encrypted.iv,
+        encrypted.salt
+      );
+
+      // Store PIN check value
+      const pinCheckEncrypted = await encryptWithPin(PIN_CHECK_VALUE, confirmPin);
+      await storePinCheck(
+        userId,
+        pinCheckEncrypted.ciphertext,
+        pinCheckEncrypted.iv,
+        pinCheckEncrypted.salt
+      );
+
+      // Notify backend about PIN reset (for audit)
+      await api.pinReset(sessionId);
+
+      hapticSuccess();
+      onComplete();
+    } catch (err) {
+      console.error("PIN reset failed:", err);
+      setError("Failed to reset PIN. Please try again.");
+      setPin("");
+      hapticError();
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handlePinInput = (digit: string) => {
+    if (pin.length < 6 && !isProcessing) {
+      const newPin = pin + digit;
+      setPin(newPin);
+      setError("");
+      hapticLight();
+      if (newPin.length === 6) {
+        handlePinComplete(newPin);
+      }
+    }
+  };
+
+  const handleDelete = () => {
+    if (!isProcessing) {
+      setPin(pin.slice(0, -1));
+      setError("");
+      hapticLight();
+    }
+  };
+
+  return (
+    <motion.div
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+    >
+      <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0" disabled={isProcessing}>← Back</button>
+
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="w-14 h-14 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-green-400">check_circle</span>
+        </div>
+        <h2 className="text-white text-xl font-bold mb-1">Confirm New PIN</h2>
+        <p className="text-taupe text-center text-sm mb-6">Re-enter your new PIN to confirm</p>
+
+        {/* PIN dots */}
+        <div className="flex gap-4 mb-6">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <motion.div
+              key={i}
+              className={`w-4 h-4 rounded-full ${error ? "bg-red-500" : i < pin.length ? "bg-green-400" : "bg-white/20"}`}
+              animate={error ? { x: [-5, 5, -5, 5, 0] } : i < pin.length ? { scale: [1, 1.3, 1] } : {}}
+              transition={{ duration: 0.2 }}
+            />
+          ))}
+        </div>
+
+        <input
+          ref={hiddenInputRef}
+          type="password"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          className="sr-only"
+          aria-hidden="true"
+          tabIndex={-1}
+        />
+
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {isProcessing && <p className="text-green-400 text-sm mb-4">Resetting PIN...</p>}
+
+        {/* Keypad */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
+            <motion.button
+              key={key}
+              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+                ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => key === "del" ? handleDelete() : key && handlePinInput(key)}
+              disabled={isProcessing}
+            >
+              {key === "del" ? "DEL" : key}
+            </motion.button>
+          ))}
+        </div>
+      </div>
     </motion.div>
   );
 }
@@ -6495,6 +7906,15 @@ function TelegramAppContent() {
   const [showPasskeySetup, setShowPasskeySetup] = useState(false);
   const [isInPasskeyFlow, setIsInPasskeyFlow] = useState(false);
   const [recoveryPartyId, setRecoveryPartyId] = useState<string | null>(null);
+  const [recoveryEmail, setRecoveryEmail] = useState<string>("");
+  const [recoverySessionId, setRecoverySessionId] = useState<string | null>(null);
+  // Forgot PIN flow state
+  const [forgotPinEmail, setForgotPinEmail] = useState<string>("");
+  const [forgotPinPartyId, setForgotPinPartyId] = useState<string | null>(null);
+  const [forgotPinSessionId, setForgotPinSessionId] = useState<string | null>(null);
+  const [forgotPinWalletId, setForgotPinWalletId] = useState<string | null>(null);
+  const [forgotPinNewPin, setForgotPinNewPin] = useState<string>("");
+  const [forgotPinRecoveredShare, setForgotPinRecoveredShare] = useState<string | null>(null);
   // NEW: State to store passkey credential data (created BEFORE wallet)
   const [passkeyCredential, setPasskeyCredential] = useState<PasskeyCredentialData | null>(null);
 
@@ -6512,9 +7932,14 @@ function TelegramAppContent() {
 
   // Handle "Forgot PIN?" - navigate to recovery
   const handleForgotPin = useCallback(() => {
-    // Navigate to passkey recovery if available
-    // Note: We don't unlock here - the recovery flow will handle it
-    setNavigation({ screen: "passkey-recovery" });
+    // Navigate to forgot PIN flow (email → code → passkey → new PIN)
+    // Reset forgot pin state
+    setForgotPinEmail("");
+    setForgotPinPartyId(null);
+    setForgotPinSessionId(null);
+    setForgotPinWalletId(null);
+    setForgotPinNewPin("");
+    setNavigation({ screen: "forgot-pin-email" });
   }, []);
 
   // Track viewport height for proper rendering
@@ -6571,7 +7996,7 @@ function TelegramAppContent() {
       const validSubScreens = ["send", "receive", "swap", "bridge", "wallet", "history", "transaction-detail", "staking", "nft", "dapps", "security", "profile", "pin", "backup", "notifications", "help", "cns", "tasks"];
       const isOnTabScreen = tabScreens.includes(navigation.screen);
       const isOnValidSubScreen = validSubScreens.includes(navigation.screen);
-      const isInOnboardingFlow = ["passkey-setup", "passkey-mandatory", "pin-setup", "pin-confirm", "wallet-creating", "wallet-ready", "passkey-recovery", "recovery-code-input", "email-setup", "email-verify"].includes(navigation.screen);
+      const isInOnboardingFlow = ["passkey-setup", "passkey-mandatory", "pin-setup", "pin-confirm", "wallet-creating", "wallet-ready", "passkey-recovery", "recovery-code-input", "email-setup", "email-verify", "recovery-email", "recovery-code", "recovery-passkey"].includes(navigation.screen);
 
       if (!isInPasskeyFlow && !isInOnboardingFlow) {
         setIsOnboarded(true);
@@ -6727,7 +8152,7 @@ function TelegramAppContent() {
     if (!isOnboarded) {
       switch (navigation.screen) {
         case "onboarding":
-          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={() => navigate("recovery-code-input")} />;
+          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={() => navigate("recovery-email")} />;
         case "email-setup":
           return (
             <EmailSetupScreen
@@ -6769,6 +8194,44 @@ function TelegramAppContent() {
                 setNavigation({ screen: "wallet-ready" });
               }}
               onBack={goBack}
+            />
+          );
+        case "recovery-email":
+          return (
+            <WalletRecoveryEmailScreen
+              onContinue={(email, partyId) => {
+                setRecoveryEmail(email);
+                setRecoveryPartyId(partyId);
+                navigate("recovery-code");
+              }}
+              onBack={goBack}
+              onFallback={() => navigate("recovery-code-input")}
+            />
+          );
+        case "recovery-code":
+          return (
+            <WalletRecoveryCodeScreen
+              email={recoveryEmail}
+              partyId={recoveryPartyId || ""}
+              onContinue={(sessionId) => {
+                setRecoverySessionId(sessionId);
+                navigate("recovery-passkey");
+              }}
+              onBack={goBack}
+            />
+          );
+        case "recovery-passkey":
+          return (
+            <WalletRecoveryPasskeyScreen
+              email={recoveryEmail}
+              partyId={recoveryPartyId || ""}
+              sessionId={recoverySessionId || ""}
+              onRecovered={() => {
+                setIsOnboarded(true);
+                setNavigation({ screen: "home" });
+              }}
+              onBack={goBack}
+              onFallback={() => navigate("recovery-code-input")}
             />
           );
         case "passkey-mandatory":
@@ -6839,7 +8302,7 @@ function TelegramAppContent() {
         case "wallet-ready":
           return <WalletReadyScreen onComplete={completeOnboarding} recoveryCode={recoveryCode} onClearRecovery={clearRecoveryCode} partyId={wallet?.partyId} />;
         default:
-          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={() => navigate("recovery-code-input")} />;
+          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={() => navigate("recovery-email")} />;
       }
     }
 
@@ -6867,6 +8330,77 @@ function TelegramAppContent() {
       case "cns": return <CNSScreen onBack={goBack} />;
       case "tasks": return <TasksScreen onBack={goBack} />;
       case "discover": return <DiscoverScreen onNavigate={navigate} />;
+      // Forgot PIN flow (when user is locked out and forgot PIN)
+      case "forgot-pin-email":
+        return (
+          <ForgotPinEmailScreen
+            onContinue={(email, partyId) => {
+              setForgotPinEmail(email);
+              setForgotPinPartyId(partyId);
+              navigate("forgot-pin-code");
+            }}
+            onBack={() => {
+              // Go back to lock screen
+              setNavigation({ screen: "home" });
+            }}
+          />
+        );
+      case "forgot-pin-code":
+        return (
+          <ForgotPinCodeScreen
+            email={forgotPinEmail}
+            onContinue={(sessionId, partyId, walletId) => {
+              setForgotPinSessionId(sessionId);
+              setForgotPinPartyId(partyId);
+              setForgotPinWalletId(walletId);
+              navigate("forgot-pin-passkey");
+            }}
+            onBack={goBack}
+          />
+        );
+      case "forgot-pin-passkey":
+        return (
+          <ForgotPinPasskeyScreen
+            partyId={forgotPinPartyId || ""}
+            sessionId={forgotPinSessionId || ""}
+            onVerified={(recoveredShare) => {
+              // Passkey verified, save recovered share and create new PIN
+              setForgotPinRecoveredShare(recoveredShare);
+              navigate("forgot-pin-new");
+            }}
+            onBack={goBack}
+          />
+        );
+      case "forgot-pin-new":
+        return (
+          <ForgotPinNewScreen
+            onContinue={(pin) => {
+              setForgotPinNewPin(pin);
+              navigate("forgot-pin-confirm");
+            }}
+            onBack={goBack}
+          />
+        );
+      case "forgot-pin-confirm":
+        return (
+          <ForgotPinConfirmScreen
+            originalPin={forgotPinNewPin}
+            sessionId={forgotPinSessionId || ""}
+            recoveredShareHex={forgotPinRecoveredShare || ""}
+            onComplete={() => {
+              // PIN reset successful - clear forgot pin state and unlock
+              setForgotPinRecoveredShare(null);
+              setForgotPinNewPin("");
+              clearLockState();
+              security.resetActivityTimer();
+              setNavigation({ screen: "home" });
+            }}
+            onBack={() => {
+              setForgotPinNewPin("");
+              navigate("forgot-pin-new");
+            }}
+          />
+        );
       default: return <Dashboard onNavigate={navigate} />;
     }
   };
@@ -6947,7 +8481,7 @@ function TelegramAppContent() {
               <AnimatePresence mode="wait">
                 {showSplash ? (
                   <SplashScreen key="splash" onComplete={() => setShowSplash(false)} />
-                ) : isLocked && isPinSet && hasWallet ? (
+                ) : isLocked && hasWallet && !navigation.screen.startsWith("forgot-pin") ? (
                   <motion.div
                     key="locked"
                     className="h-full w-full relative"

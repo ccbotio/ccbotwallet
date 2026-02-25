@@ -70,6 +70,7 @@ export interface SecurityActions {
   // PIN
   verifyPin(pin: string): Promise<boolean>;
   changePin(currentPin: string, newPin: string): Promise<boolean>;
+  resetPin(newPin: string): Promise<boolean>; // Reset PIN after recovery verification
 
   // Session
   sendHeartbeat(): Promise<void>;
@@ -256,16 +257,13 @@ export function SecurityProvider({
         const hasPin = await hasPinSet(userId);
         if (isMountedRef.current) {
           setIsPinSet(hasPin);
-          // If no PIN is set, we shouldn't lock
-          if (!hasPin) {
-            setIsLocked(false);
-          }
+          // NOTE: We do NOT unlock if PIN is not set locally
+          // User may have a wallet from another device
+          // They should use "Forgot PIN" to recover
         }
       } catch (error) {
         console.error('[SecurityContext] Failed to check PIN status:', error);
-        if (isMountedRef.current) {
-          setIsLocked(false);
-        }
+        // On error, keep locked for security
       }
     }
     checkPinStatus();
@@ -657,6 +655,39 @@ export function SecurityProvider({
     [userId, verifyPin]
   );
 
+  /**
+   * Reset PIN after recovery verification.
+   * This is called when user has recovered their share via passkey
+   * and needs to set a new PIN.
+   * Note: The actual share encryption is done in ForgotPinConfirmScreen
+   * This function just clears the lockout state.
+   */
+  const resetPin = useCallback(
+    async (_newPin: string): Promise<boolean> => {
+      try {
+        // Clear lockout state
+        setPinAttempts(0);
+        setLockoutEndsAt(null);
+        try {
+          sessionStorage.removeItem(LOCKOUT_KEY);
+          sessionStorage.removeItem(PIN_ATTEMPTS_KEY);
+        } catch {
+          // Ignore storage errors
+        }
+
+        // Clear lock state
+        clearLockState();
+        resetTimer();
+
+        return true;
+      } catch (error) {
+        console.error('[SecurityContext] PIN reset failed:', error);
+        return false;
+      }
+    },
+    []
+  );
+
   // ========== Session Actions ==========
 
   const sendHeartbeat = useCallback(async () => {
@@ -695,6 +726,7 @@ export function SecurityProvider({
     confirmTransaction,
     verifyPin,
     changePin,
+    resetPin,
     sendHeartbeat,
   };
 

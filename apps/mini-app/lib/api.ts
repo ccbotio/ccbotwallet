@@ -684,6 +684,127 @@ class ApiClient {
     });
     return result.data;
   }
+
+  // ==================== RECOVERY (PUBLIC - No Auth Required) ====================
+
+  /**
+   * Check if email has a wallet with passkey
+   * PUBLIC endpoint - no auth required
+   */
+  async recoveryCheckEmail(email: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        exists: boolean;
+        hasWallet: boolean;
+        hasPasskey: boolean;
+        partyId?: string;
+      };
+    }>('/api/recovery/check-email', { method: 'POST', body: { email } });
+    return result.data;
+  }
+
+  /**
+   * Send verification code for wallet recovery
+   * PUBLIC endpoint - no auth required
+   */
+  async recoverySendCode(email: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        message: string;
+        expiresAt?: string;
+      };
+    }>('/api/recovery/send-code', { method: 'POST', body: { email } });
+    return result.data;
+  }
+
+  /**
+   * Verify code and create recovery session
+   * PUBLIC endpoint - no auth required
+   */
+  async recoveryVerifyCode(email: string, code: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        sessionId: string;
+        partyId: string;
+        walletId: string;
+        message: string;
+      };
+    }>('/api/recovery/verify-code', { method: 'POST', body: { email, code } });
+    return result.data;
+  }
+
+  /**
+   * Get WebAuthn challenge for passkey verification during recovery
+   * Requires valid recovery session
+   */
+  async recoveryChallenge(sessionId: string, partyId: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        challenge: string;
+        allowCredentials: Array<{ id: string; type: string }>;
+        timeout: number;
+        userVerification: string;
+      };
+    }>('/api/recovery/challenge', { method: 'POST', body: { sessionId, partyId } });
+    return result.data;
+  }
+
+  /**
+   * Verify passkey and get encrypted share during recovery
+   */
+  async recoveryVerifyPasskey(data: {
+    sessionId: string;
+    partyId: string;
+    credentialId: string;
+    authenticatorData: string;
+    clientDataJSON: string;
+    signature: string;
+  }) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        encryptedShare: string;
+        nonce: string;
+        walletId: string;
+        userId: string;
+        message: string;
+      };
+    }>('/api/recovery/verify-passkey', { method: 'POST', body: data });
+    return result.data;
+  }
+
+  /**
+   * Mark recovery as complete
+   */
+  async recoveryComplete(sessionId: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: { message: string };
+    }>('/api/recovery/complete', { method: 'POST', body: { sessionId } });
+    return result.data;
+  }
+
+  // ==================== PIN RESET ====================
+
+  /**
+   * Reset PIN after recovery session verification
+   * Validates recovery session and logs PIN reset event
+   */
+  async pinReset(sessionId: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        message: string;
+        userId: string;
+        walletId: string;
+      };
+    }>('/api/pin/reset', { method: 'POST', body: { sessionId } });
+    return result.data;
+  }
 }
 
 export const api = new ApiClient();
