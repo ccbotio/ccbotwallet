@@ -7954,6 +7954,15 @@ function TelegramAppContent() {
       tg.setBackgroundColor("#030206");
       tg.enableClosingConfirmation();
 
+      // Request fullscreen to hide bot username footer
+      if ((tg as any).requestFullscreen) {
+        (tg as any).requestFullscreen();
+      }
+      // Disable vertical swipes to prevent accidental close
+      if ((tg as any).disableVerticalSwipes) {
+        (tg as any).disableVerticalSwipes();
+      }
+
       // Set viewport height CSS variable for proper sizing
       const setViewportHeight = () => {
         const vh = tg.viewportHeight || window.innerHeight;
