@@ -228,10 +228,11 @@ export function useActivityTracker({
 
 /**
  * Clear the persisted lock state (call this after successful unlock)
+ * Sets state to 'unlocked' to distinguish from new sessions
  */
 export function clearLockState(): void {
   try {
-    sessionStorage.removeItem(LOCK_STATE_KEY);
+    sessionStorage.setItem(LOCK_STATE_KEY, 'unlocked');
     sessionStorage.setItem(LAST_ACTIVITY_KEY, Date.now().toString());
   } catch {
     // Ignore storage errors
@@ -240,6 +241,8 @@ export function clearLockState(): void {
 
 /**
  * Check if the app should be locked based on persisted state
+ * IMPORTANT: Returns TRUE by default for new sessions (no stored activity)
+ * This ensures users must enter PIN when first opening the app
  */
 export function shouldBeLocked(lockTimeoutMs: number = DEFAULT_LOCK_TIMEOUT): boolean {
   try {
@@ -248,15 +251,26 @@ export function shouldBeLocked(lockTimeoutMs: number = DEFAULT_LOCK_TIMEOUT): bo
       return true;
     }
 
-    const lastActivity = sessionStorage.getItem(LAST_ACTIVITY_KEY);
-    if (lastActivity) {
-      const timeSinceActivity = Date.now() - parseInt(lastActivity, 10);
-      return timeSinceActivity >= lockTimeoutMs;
+    // Check for explicit "unlocked" state (set after successful PIN entry)
+    if (lockState === 'unlocked') {
+      const lastActivity = sessionStorage.getItem(LAST_ACTIVITY_KEY);
+      if (lastActivity) {
+        const timeSinceActivity = Date.now() - parseInt(lastActivity, 10);
+        // Still within timeout window - stay unlocked
+        if (timeSinceActivity < lockTimeoutMs) {
+          return false;
+        }
+      }
+      // Timeout exceeded or no activity record - lock again
+      return true;
     }
 
-    return false;
+    // No lock state stored = new session = should be locked
+    // This ensures PIN is required when first opening the app
+    return true;
   } catch {
-    return false;
+    // On error, default to locked for security
+    return true;
   }
 }
 
