@@ -6546,7 +6546,7 @@ function TelegramAppContent() {
     if (!isOnboarded) {
       switch (navigation.screen) {
         case "onboarding":
-          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={completeOnboarding} />;
+          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={() => navigate("recovery-code-input")} />;
         case "email-setup":
           return (
             <EmailSetupScreen
@@ -6658,7 +6658,7 @@ function TelegramAppContent() {
         case "wallet-ready":
           return <WalletReadyScreen onComplete={completeOnboarding} recoveryCode={recoveryCode} onClearRecovery={clearRecoveryCode} partyId={wallet?.partyId} />;
         default:
-          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={completeOnboarding} />;
+          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={() => navigate("recovery-code-input")} />;
       }
     }
 
