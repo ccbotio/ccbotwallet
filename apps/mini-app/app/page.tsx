@@ -1132,16 +1132,16 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
           <span>Paste PIN</span>
         </button>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[72px] h-[56px] rounded-xl flex items-center justify-center text-xl font-bold
+              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
             >
-              {key === "del" ? "DEL" : key}
+              {key === "del" ? <span className="material-symbols-outlined text-xl">backspace</span> : key}
             </motion.button>
           ))}
         </div>
@@ -1308,16 +1308,16 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
           </button>
         )}
 
-        <div className="grid grid-cols-3 gap-2 mt-2">
+        <div className="grid grid-cols-3 gap-4 mt-2">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[72px] h-[56px] rounded-xl flex items-center justify-center text-xl font-bold
+              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
             >
-              {key === "del" ? "DEL" : key}
+              {key === "del" ? <span className="material-symbols-outlined text-xl">backspace</span> : key}
             </motion.button>
           ))}
         </div>
@@ -3289,16 +3289,16 @@ function ForgotPinNewScreen({ onContinue, onBack }: {
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
         {/* Keypad */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-4 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePinInput(key)}
             >
-              {key === "del" ? "DEL" : key}
+              {key === "del" ? <span className="material-symbols-outlined text-xl">backspace</span> : key}
             </motion.button>
           ))}
         </div>
@@ -3463,17 +3463,17 @@ function ForgotPinConfirmScreen({ originalPin, sessionId, recoveredShareHex, onC
         {isProcessing && <p className="text-green-400 text-sm mb-4">Resetting PIN...</p>}
 
         {/* Keypad */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-4 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePinInput(key)}
               disabled={isProcessing}
             >
-              {key === "del" ? "DEL" : key}
+              {key === "del" ? <span className="material-symbols-outlined text-xl">backspace</span> : key}
             </motion.button>
           ))}
         </div>
