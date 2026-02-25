@@ -35,10 +35,11 @@ export default function PasskeySetupMandatory({ email, onComplete, onBack }: Pas
 
   const isSupported = typeof window !== 'undefined' && isWebAuthnSupported();
 
-  // Detect Telegram WebView - passkeys don't work there
+  // Detect Telegram WebView - passkeys don't work in iframe (both mobile and web)
+  // Telegram Web also runs in iframe where WebAuthn is blocked by permissions policy
   const isTelegramWebView = typeof window !== 'undefined' &&
     window.Telegram?.WebApp !== undefined &&
-    window.Telegram.WebApp.platform !== 'web';
+    (window.self !== window.top || window.Telegram.WebApp.platform !== 'tdesktop');
 
   // Poll for session completion with PKCE verification (for browser flow)
   useEffect(() => {

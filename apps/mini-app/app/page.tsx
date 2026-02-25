@@ -949,11 +949,11 @@ function EmailVerifyScreen({
 
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handleCodeInput(key)}
@@ -2233,11 +2233,11 @@ function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
         {/* Keypad */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handleCodeInput(key)}
@@ -2768,11 +2768,11 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
         {/* Keypad */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
+              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handleCodeInput(key)}
