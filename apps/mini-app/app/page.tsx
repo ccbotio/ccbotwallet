@@ -903,7 +903,7 @@ function EmailVerifyScreen({
         <p className="text-taupe text-center mb-2">We sent a 6-digit code to</p>
         <p className="text-purple text-center mb-8">{email}</p>
 
-        <div className="flex gap-3 mb-4">
+        <div className="flex gap-3 mb-2">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <motion.div
               key={i}
@@ -917,6 +917,43 @@ function EmailVerifyScreen({
             </motion.div>
           ))}
         </div>
+
+        {/* Paste button for Telegram */}
+        <button
+          className="flex items-center gap-2 text-purple text-sm mb-4"
+          onClick={async () => {
+            try {
+              // Try Telegram's clipboard API first
+              const tgWebApp = window.Telegram?.WebApp as { readTextFromClipboard?: (callback: (text: string) => void) => void } | undefined;
+              if (tgWebApp?.readTextFromClipboard) {
+                tgWebApp.readTextFromClipboard((text: string) => {
+                  if (text) {
+                    const digits = text.replace(/\D/g, "").slice(0, 6);
+                    if (digits.length > 0) {
+                      setCode(digits);
+                      setError("");
+                      try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+                    }
+                  }
+                });
+              } else {
+                // Fallback to standard clipboard API
+                const text = await navigator.clipboard.readText();
+                const digits = text.replace(/\D/g, "").slice(0, 6);
+                if (digits.length > 0) {
+                  setCode(digits);
+                  setError("");
+                  try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+                }
+              }
+            } catch {
+              // Clipboard access denied
+            }
+          }}
+        >
+          <span className="material-symbols-outlined text-sm">content_paste</span>
+          <span>Paste code</span>
+        </button>
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
@@ -1473,6 +1510,42 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
             </motion.div>
           ))}
         </motion.div>
+
+        {/* Paste button for Telegram */}
+        {!showSuccess && !isLockedOut && (
+          <motion.button
+            className="flex items-center gap-2 text-purple text-sm mb-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.32 }}
+            onClick={async () => {
+              try {
+                const tgWebApp = window.Telegram?.WebApp as { readTextFromClipboard?: (callback: (text: string) => void) => void } | undefined;
+                if (tgWebApp?.readTextFromClipboard) {
+                  tgWebApp.readTextFromClipboard((text: string) => {
+                    if (text) {
+                      const digits = text.replace(/\D/g, "").slice(0, 6);
+                      for (const digit of digits) {
+                        handlePressRef.current(digit);
+                      }
+                    }
+                  });
+                } else {
+                  const text = await navigator.clipboard.readText();
+                  const digits = text.replace(/\D/g, "").slice(0, 6);
+                  for (const digit of digits) {
+                    handlePressRef.current(digit);
+                  }
+                }
+              } catch {
+                // Clipboard access denied
+              }
+            }}
+          >
+            <span className="material-symbols-outlined text-sm">content_paste</span>
+            <span>Paste PIN</span>
+          </motion.button>
+        )}
 
         {/* Error message */}
         <AnimatePresence>
