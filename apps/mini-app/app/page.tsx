@@ -721,7 +721,7 @@ function EmailSetupScreen({
         <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-start pt-8 overflow-y-auto min-h-0">
         <span className="material-symbols-outlined text-5xl text-purple mb-6">mail</span>
         <h2 className="text-white text-2xl font-bold mb-2">Verify Your Email</h2>
         <p className="text-taupe text-center mb-8">We'll send a verification code to your email for account recovery</p>
@@ -2039,7 +2039,7 @@ function WalletRecoveryEmailScreen({ onContinue, onBack }: {
     >
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
-      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-start pt-8 overflow-y-auto min-h-0">
         <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
           <span className="material-symbols-outlined text-3xl text-purple">account_circle</span>
         </div>
@@ -2573,7 +2573,7 @@ function ForgotPinEmailScreen({ onContinue, onBack }: {
     >
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
-      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-start pt-8 overflow-y-auto min-h-0">
         <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mb-6">
           <span className="material-symbols-outlined text-3xl text-amber-400">lock_reset</span>
         </div>
