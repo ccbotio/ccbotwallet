@@ -233,7 +233,7 @@ export default function PasskeySetupMandatory({ email, onComplete, onBack }: Pas
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-20">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-6">
         <AnimatePresence mode="wait">
           {phase === 'intro' && (
             <motion.div

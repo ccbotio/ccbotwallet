@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
  */
 export default function SecurityAccessDenied() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#030206] text-[#FFFFFC]">
+    <div className="h-full flex flex-col bg-[#030206] text-[#FFFFFC] overflow-hidden">
       {/* Background gradient */}
       <div
         className="absolute inset-0 opacity-30"

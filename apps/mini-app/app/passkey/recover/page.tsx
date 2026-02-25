@@ -109,7 +109,7 @@ function PasskeyRecoverContent() {
   };
 
   return (
-    <div className="min-h-screen bg-[#030206] text-[#FFFFFC] flex flex-col items-center justify-center p-6">
+    <div className="h-full bg-[#030206] text-[#FFFFFC] flex flex-col items-center justify-center p-4 overflow-hidden">
       {phase === 'checking' && (
         <motion.div
           initial={{ opacity: 0 }}
@@ -249,7 +249,7 @@ function PasskeyRecoverContent() {
 export default function PasskeyRecoverPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #030206 0%, #0d0b14 100%)' }}>
+      <div className="h-full flex items-center justify-center" style={{ background: 'linear-gradient(180deg, #030206 0%, #0d0b14 100%)' }}>
         <div className="animate-spin w-8 h-8 border-2 border-[#875CFF] border-t-transparent rounded-full" />
       </div>
     }>

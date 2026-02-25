@@ -15,7 +15,6 @@ interface PasskeyRecoveryProps {
   partyId: string;
   onRecovered: (recoveryShareHex: string) => void;
   onCancel: () => void;
-  onFallback: () => void; // Switch to recovery code input
 }
 
 type RecoveryStep = 'loading' | 'ready' | 'authenticating' | 'decrypting' | 'success' | 'error' | 'unsupported' | 'no-passkey';
@@ -28,7 +27,6 @@ export default function PasskeyRecovery({
   partyId,
   onRecovered,
   onCancel,
-  onFallback,
 }: PasskeyRecoveryProps) {
   const [step, setStep] = useState<RecoveryStep>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -195,14 +193,8 @@ export default function PasskeyRecovery({
                   Authenticate with Passkey
                 </button>
                 <button
-                  onClick={onFallback}
-                  className="w-full py-3 text-gray-400 text-sm hover:text-white transition-colors"
-                >
-                  Use recovery code instead
-                </button>
-                <button
                   onClick={onCancel}
-                  className="w-full py-2 text-gray-500 text-xs hover:text-gray-400 transition-colors"
+                  className="w-full py-3 text-gray-400 text-sm hover:text-white transition-colors"
                 >
                   Cancel
                 </button>
@@ -287,10 +279,10 @@ export default function PasskeyRecovery({
                   Try Again
                 </button>
                 <button
-                  onClick={onFallback}
+                  onClick={onCancel}
                   className="w-full py-3 text-gray-400 text-sm hover:text-white transition-colors"
                 >
-                  Use recovery code instead
+                  Cancel
                 </button>
               </div>
             </motion.div>
@@ -323,10 +315,10 @@ export default function PasskeyRecovery({
                   Open in Browser
                 </button>
                 <button
-                  onClick={onFallback}
+                  onClick={onCancel}
                   className="w-full py-3 text-gray-400 text-sm hover:text-white transition-colors"
                 >
-                  Use recovery code instead
+                  Cancel
                 </button>
               </div>
             </motion.div>
@@ -348,21 +340,15 @@ export default function PasskeyRecovery({
               <div>
                 <p className="text-white font-medium mb-1">No Passkeys Found</p>
                 <p className="text-gray-400 text-sm">
-                  This wallet doesn't have any passkeys registered. Use your recovery code to restore access.
+                  This wallet doesn't have any passkeys registered.
                 </p>
               </div>
               <div className="space-y-2">
                 <button
-                  onClick={onFallback}
+                  onClick={onCancel}
                   className="w-full py-3 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-medium rounded-xl hover:opacity-90 transition-opacity"
                 >
-                  Enter Recovery Code
-                </button>
-                <button
-                  onClick={onCancel}
-                  className="w-full py-3 text-gray-400 text-sm hover:text-white transition-colors"
-                >
-                  Cancel
+                  Go Back
                 </button>
               </div>
             </motion.div>

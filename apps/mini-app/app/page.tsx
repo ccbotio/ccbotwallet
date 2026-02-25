@@ -1970,10 +1970,9 @@ function RecoveryCodeInputScreen({ onRecovered, onBack }: {
 }
 
 // ==================== EMAIL-BASED WALLET RECOVERY ====================
-function WalletRecoveryEmailScreen({ onContinue, onBack, onFallback }: {
+function WalletRecoveryEmailScreen({ onContinue, onBack }: {
   onContinue: (email: string, partyId: string) => void;
   onBack: () => void;
-  onFallback: () => void; // Use recovery code instead
 }) {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
@@ -2061,20 +2060,13 @@ function WalletRecoveryEmailScreen({ onContinue, onBack, onFallback }: {
         </div>
 
         <motion.button
-          className="w-full max-w-sm py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-lg disabled:opacity-50 mb-4"
+          className="w-full max-w-sm py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-lg disabled:opacity-50"
           whileTap={{ scale: 0.98 }}
           onClick={handleCheckEmail}
           disabled={!email || isLoading}
         >
           {isLoading ? "Checking..." : "Continue"}
         </motion.button>
-
-        <button
-          className="text-taupe text-sm mt-2"
-          onClick={onFallback}
-        >
-          Use recovery code instead
-        </button>
       </div>
     </motion.div>
   );
@@ -2269,13 +2261,12 @@ function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
   );
 }
 
-function WalletRecoveryPasskeyScreen({ email, partyId, sessionId, onRecovered, onBack, onFallback }: {
+function WalletRecoveryPasskeyScreen({ email, partyId, sessionId, onRecovered, onBack }: {
   email: string;
   partyId: string;
   sessionId: string;
   onRecovered: () => void;
   onBack: () => void;
-  onFallback: () => void;
 }) {
   const { refreshBalance } = useWalletContext();
   const [step, setStep] = useState<"ready" | "authenticating" | "decrypting" | "success" | "error">("ready");
@@ -2417,14 +2408,8 @@ function WalletRecoveryPasskeyScreen({ email, partyId, sessionId, onRecovered, o
                 Authenticate with Passkey
               </button>
               <button
-                onClick={onFallback}
-                className="w-full py-3 text-taupe text-sm"
-              >
-                Use recovery code instead
-              </button>
-              <button
                 onClick={onBack}
-                className="w-full py-2 text-taupe/60 text-xs"
+                className="w-full py-3 text-taupe text-sm"
               >
                 Cancel
               </button>
@@ -2496,10 +2481,10 @@ function WalletRecoveryPasskeyScreen({ email, partyId, sessionId, onRecovered, o
                 Try Again
               </button>
               <button
-                onClick={onFallback}
+                onClick={onBack}
                 className="w-full py-3 text-taupe text-sm"
               >
-                Use recovery code instead
+                Cancel
               </button>
             </div>
           </motion.div>
@@ -8014,10 +7999,6 @@ function TelegramAppContent() {
                 setNavigation({ screen: "home" });
               }}
               onCancel={goBack}
-              onFallback={() => {
-                // Navigate to recovery code input screen
-                navigate("recovery-code-input");
-              }}
             />
           );
         case "recovery-code-input":
@@ -8041,7 +8022,6 @@ function TelegramAppContent() {
                 navigate("recovery-code");
               }}
               onBack={goBack}
-              onFallback={() => navigate("recovery-code-input")}
             />
           );
         case "recovery-code":
@@ -8067,7 +8047,6 @@ function TelegramAppContent() {
                 setNavigation({ screen: "home" });
               }}
               onBack={goBack}
-              onFallback={() => navigate("recovery-code-input")}
             />
           );
         case "passkey-mandatory":

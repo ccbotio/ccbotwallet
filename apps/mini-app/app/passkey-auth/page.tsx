@@ -24,7 +24,7 @@ function getDeviceName(): string {
 // Loading component for Suspense
 function LoadingState() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#030206] text-[#FFFFFC] items-center justify-center">
+    <div className="h-full flex flex-col bg-[#030206] text-[#FFFFFC] overflow-hidden items-center justify-center">
       <div className="w-16 h-16 mx-auto mb-4 rounded-full border-2 border-[#875CFF]/30 border-t-[#875CFF] animate-spin" />
       <p className="text-[#FFFFFC]/60">Loading secure session...</p>
     </div>
@@ -134,7 +134,7 @@ function PasskeyAuthContent() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#030206] text-[#FFFFFC]">
+    <div className="h-full flex flex-col bg-[#030206] text-[#FFFFFC] overflow-hidden">
       {/* Header */}
       <div className="p-4 pt-6 text-center border-b border-[#FFFFFC]/10">
         <h1 className="text-xl font-bold">CC Bot Wallet</h1>
@@ -142,7 +142,7 @@ function PasskeyAuthContent() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-20">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 pb-6">
         {phase === 'loading' && (
           <motion.div
             initial={{ opacity: 0 }}
