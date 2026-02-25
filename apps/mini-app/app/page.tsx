@@ -907,19 +907,19 @@ function EmailVerifyScreen({
     >
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
-      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
-        <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
-          <span className="material-symbols-outlined text-3xl text-purple">mark_email_read</span>
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="w-14 h-14 rounded-full bg-purple/20 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-purple">mark_email_read</span>
         </div>
-        <h2 className="text-white text-2xl font-bold mb-2">Enter Code</h2>
-        <p className="text-taupe text-center mb-2">We sent a 6-digit code to</p>
-        <p className="text-purple text-center mb-8">{email}</p>
+        <h2 className="text-white text-xl font-bold mb-1">Enter Code</h2>
+        <p className="text-taupe text-center text-sm mb-1">We sent a 6-digit code to</p>
+        <p className="text-purple text-center text-sm mb-5">{email}</p>
 
-        <div className="flex gap-3 mb-2">
+        <div className="flex gap-2 mb-2">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <motion.div
               key={i}
-              className={`w-12 h-14 rounded-xl flex items-center justify-center text-2xl font-bold ${
+              className={`w-11 h-12 rounded-lg flex items-center justify-center text-xl font-bold ${
                 error ? "bg-red-500/20 border-red-500" : i < code.length ? "bg-purple/20 border-purple" : "bg-white/10 border-white/20"
               } border-2`}
               animate={error ? { x: [-5, 5, -5, 5, 0] } : i < code.length ? { scale: [1, 1.1, 1] } : {}}
@@ -967,13 +967,13 @@ function EmailVerifyScreen({
           <span>Paste code</span>
         </button>
 
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-        <div className="grid grid-cols-3 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-2 mb-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-20 h-16 rounded-2xl flex items-center justify-center text-2xl font-bold
+              className={`w-[72px] h-[52px] rounded-xl flex items-center justify-center text-xl font-bold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handleCodeInput(key)}
@@ -985,7 +985,7 @@ function EmailVerifyScreen({
         </div>
 
         <motion.button
-          className="w-full max-w-sm py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-lg disabled:opacity-50 mb-4"
+          className="w-full max-w-sm py-3 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold disabled:opacity-50 mb-3"
           whileTap={{ scale: 0.98 }}
           onClick={handleVerify}
           disabled={code.length !== 6 || isLoading}
@@ -1074,29 +1074,29 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
         <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
-        <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
-          <span className="material-symbols-outlined text-3xl text-purple">lock</span>
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="w-14 h-14 rounded-full bg-purple/20 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-purple">lock</span>
         </div>
-        <h2 className="text-white text-2xl font-bold mb-2">Create PIN</h2>
-        <p className="text-taupe text-center mb-8">Enter a 6-digit PIN to secure your wallet</p>
+        <h2 className="text-white text-xl font-bold mb-1">Create PIN</h2>
+        <p className="text-taupe text-center text-sm mb-6">Enter a 6-digit PIN to secure your wallet</p>
 
-        <div className="flex gap-4 mb-8">
+        <div className="flex gap-3 mb-6">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <motion.div
               key={i}
-              className={`w-4 h-4 rounded-full ${i < pin.length ? "bg-yellow" : "bg-white/20"}`}
+              className={`w-3 h-3 rounded-full ${i < pin.length ? "bg-yellow" : "bg-white/20"}`}
               animate={i < pin.length ? { scale: [1, 1.3, 1] } : {}}
               transition={{ duration: 0.2 }}
             />
           ))}
         </div>
 
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-bold
+              className={`w-[72px] h-[56px] rounded-xl flex items-center justify-center text-xl font-bold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
@@ -1209,31 +1209,31 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
     >
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
-      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
-        <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
-          <span className="material-symbols-outlined text-3xl text-purple">{isLoading ? "hourglass_top" : "shield_lock"}</span>
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
+        <div className="w-14 h-14 rounded-full bg-purple/20 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-purple">{isLoading ? "hourglass_top" : "shield_lock"}</span>
         </div>
-        <h2 className="text-white text-2xl font-bold mb-2">{isLoading ? "Creating Wallet..." : "Confirm PIN"}</h2>
-        <p className="text-taupe text-center mb-8">{isLoading ? "Setting up your Canton wallet" : "Re-enter your PIN to confirm"}</p>
+        <h2 className="text-white text-xl font-bold mb-1">{isLoading ? "Creating Wallet..." : "Confirm PIN"}</h2>
+        <p className="text-taupe text-center text-sm mb-6">{isLoading ? "Setting up your Canton wallet" : "Re-enter your PIN to confirm"}</p>
 
-        <div className="flex gap-4 mb-4">
+        <div className="flex gap-3 mb-3">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <motion.div
               key={i}
-              className={`w-4 h-4 rounded-full ${error ? "bg-red-500" : i < pin.length ? "bg-yellow" : "bg-white/20"}`}
+              className={`w-3 h-3 rounded-full ${error ? "bg-red-500" : i < pin.length ? "bg-yellow" : "bg-white/20"}`}
               animate={error ? { x: [-5, 5, -5, 5, 0] } : i < pin.length ? { scale: [1, 1.3, 1] } : {}}
               transition={{ duration: 0.3 }}
             />
           ))}
         </div>
 
-        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
+        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-        <div className="grid grid-cols-3 gap-4 mt-4">
+        <div className="grid grid-cols-3 gap-2 mt-2">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
-              className={`w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-bold
+              className={`w-[72px] h-[56px] rounded-xl flex items-center justify-center text-xl font-bold
                 ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
               whileTap={{ scale: 0.95 }}
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
@@ -1419,7 +1419,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
           {userPhotoUrl ? (
             <div className="relative">
               <motion.div
-                className="absolute -inset-2 rounded-full"
+                className="absolute -inset-1 rounded-full"
                 style={{
                   background: "linear-gradient(135deg, #875CFF 0%, #D5A5E3 50%, #F3FF97 100%)",
                 }}
@@ -1429,15 +1429,17 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
               <Image
                 src={userPhotoUrl}
                 alt="User"
-                width={80}
-                height={80}
+                width={64}
+                height={64}
                 className="relative rounded-full border-2 border-transparent"
               />
             </div>
           ) : (
             <motion.div
-              className="w-24 h-24 rounded-full flex items-center justify-center relative overflow-hidden"
+              className="w-18 h-18 rounded-full flex items-center justify-center relative overflow-hidden"
               style={{
+                width: 72,
+                height: 72,
                 background: "linear-gradient(135deg, rgba(135, 92, 255, 0.3) 0%, rgba(213, 165, 227, 0.2) 100%)",
                 border: "2px solid rgba(135, 92, 255, 0.5)",
               }}
@@ -1445,7 +1447,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
               transition={showSuccess ? { duration: 0.3 } : { duration: 3, repeat: Infinity }}
             >
               <motion.span
-                className="material-symbols-outlined text-5xl"
+                className="material-symbols-outlined text-4xl"
                 style={{ color: showSuccess ? "#F3FF97" : "#875CFF" }}
                 animate={showSuccess ? { rotate: [0, -10, 10, 0] } : {}}
                 transition={{ duration: 0.3 }}
@@ -1458,7 +1460,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
 
         {/* Welcome text */}
         <motion.h2
-          className="text-white text-2xl font-bold mb-1 text-center"
+          className="text-white text-xl font-bold mb-1 text-center"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.2 }}
@@ -1466,7 +1468,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
           {showSuccess ? "Welcome!" : `Welcome Back${userName ? `, ${userName}` : ""}`}
         </motion.h2>
         <motion.p
-          className="text-taupe text-center mb-8"
+          className="text-taupe text-center text-sm mb-5"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.25 }}
@@ -1476,7 +1478,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
 
         {/* PIN dots */}
         <motion.div
-          className="flex gap-4 mb-4"
+          className="flex gap-3 mb-3"
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
@@ -1501,7 +1503,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
               }
             >
               <div
-                className={`w-4 h-4 rounded-full transition-colors duration-200 ${
+                className={`w-3 h-3 rounded-full transition-colors duration-200 ${
                   showSuccess
                     ? "bg-green-400"
                     : error
@@ -1594,7 +1596,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key, index) => (
             <motion.button
               key={key || "empty"}
-              className={`w-[72px] h-[72px] rounded-2xl flex items-center justify-center text-2xl font-bold transition-all
+              className={`w-[68px] h-[56px] rounded-xl flex items-center justify-center text-xl font-bold transition-all
                 ${key === ""
                   ? "invisible"
                   : key === "del"
@@ -1612,7 +1614,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
             >
               {key === "del" ? (
-                <span className="material-symbols-outlined text-xl">backspace</span>
+                <span className="material-symbols-outlined text-lg">backspace</span>
               ) : (
                 key
               )}
@@ -1623,7 +1625,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
         {/* Forgot PIN link */}
         {onForgotPin && !showSuccess && (
           <motion.button
-            className="mt-8 text-taupe hover:text-purple transition-colors text-sm"
+            className="mt-4 text-taupe hover:text-purple transition-colors text-sm"
             onClick={onForgotPin}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
