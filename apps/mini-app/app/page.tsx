@@ -868,13 +868,8 @@ function EmailVerifyScreen({
   const isLoadingRef = useRef(isLoading);
   isLoadingRef.current = isLoading;
 
-  // Hidden input ref for better focus management
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
-
+  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
   useEffect(() => {
-    // Focus hidden input to capture keyboard events
-    hiddenInputRef.current?.focus();
-
     return setupKeyboardListeners({
       onDigit: (digit) => {
         setCode(prev => {
@@ -943,29 +938,7 @@ function EmailVerifyScreen({
           ))}
         </div>
 
-        {/* Hidden input for keyboard capture */}
-        <input
-          ref={hiddenInputRef}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="one-time-code"
-          className="sr-only"
-          aria-hidden="true"
-          tabIndex={-1}
-          onPaste={(e) => {
-            e.preventDefault();
-            const text = e.clipboardData?.getData("text") || "";
-            const digits = extractDigits(text, 6);
-            if (digits.length > 0) {
-              setCode(digits);
-              setError("");
-              hapticSuccess();
-            }
-          }}
-        />
-
-        {/* Paste button */}
+        {/* Paste button - uses Telegram clipboard API */}
         <button
           className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
           onClick={handlePaste}
@@ -1038,13 +1011,8 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // Hidden input for keyboard capture
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
-
-  // Keyboard support
+  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
   useEffect(() => {
-    hiddenInputRef.current?.focus();
-
     return setupKeyboardListeners({
       onDigit: (digit) => {
         setPin(prev => {
@@ -1101,29 +1069,7 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
           ))}
         </div>
 
-        {/* Hidden input for keyboard/paste capture */}
-        <input
-          ref={hiddenInputRef}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="off"
-          className="sr-only"
-          aria-hidden="true"
-          tabIndex={-1}
-          onPaste={(e) => {
-            e.preventDefault();
-            const text = e.clipboardData?.getData("text") || "";
-            const digits = extractDigits(text, 6);
-            if (digits.length > 0) {
-              setPin(digits);
-              hapticSuccess();
-              if (digits.length === 6) setTimeout(() => onCompleteRef.current(digits), 300);
-            }
-          }}
-        />
-
-        {/* Paste button */}
+        {/* Paste button - uses Telegram clipboard API */}
         <button
           className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
           onClick={handlePinPaste}
@@ -1190,9 +1136,6 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // Hidden input for keyboard capture
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
-
   // PIN verification logic
   const verifyPin = (digits: string) => {
     if (digits.length === 6) {
@@ -1207,10 +1150,8 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
     }
   };
 
-  // Keyboard support
+  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
   useEffect(() => {
-    hiddenInputRef.current?.focus();
-
     return setupKeyboardListeners({
       onDigit: (digit) => {
         if (isLoadingRef.current) return;
@@ -1274,30 +1215,7 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
 
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-        {/* Hidden input for keyboard/paste capture */}
-        <input
-          ref={hiddenInputRef}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="off"
-          className="sr-only"
-          aria-hidden="true"
-          tabIndex={-1}
-          onPaste={(e) => {
-            e.preventDefault();
-            if (isLoading) return;
-            const text = e.clipboardData?.getData("text") || "";
-            const digits = extractDigits(text, 6);
-            if (digits.length > 0) {
-              setPin(digits);
-              setError("");
-              verifyPin(digits);
-            }
-          }}
-        />
-
-        {/* Paste button */}
+        {/* Paste button - uses Telegram clipboard API */}
         {!isLoading && (
           <button
             className="flex items-center gap-2 text-purple text-sm mb-3 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
@@ -1421,18 +1339,11 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
     try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
   };
 
-  // Keyboard and paste support for PC/desktop - use ref to avoid stale closure on async handler
-  // Keyboard support with refs to avoid stale closures
+  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
   const handlePressRef = useRef(handlePress);
   handlePressRef.current = handlePress;
 
-  // Hidden input ref for keyboard/paste capture
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
-
   useEffect(() => {
-    // Focus hidden input
-    hiddenInputRef.current?.focus();
-
     return setupKeyboardListeners({
       onDigit: (digit) => handlePressRef.current(digit),
       onBackspace: () => {
@@ -1606,28 +1517,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
           ))}
         </motion.div>
 
-        {/* Hidden input for keyboard/paste capture */}
-        <input
-          ref={hiddenInputRef}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="off"
-          className="sr-only"
-          aria-hidden="true"
-          tabIndex={-1}
-          onPaste={(e) => {
-            e.preventDefault();
-            const text = e.clipboardData?.getData("text") || "";
-            const digits = extractDigits(text, 6);
-            for (const digit of digits) {
-              handlePressRef.current(digit);
-            }
-            if (digits.length > 0) hapticSuccess();
-          }}
-        />
-
-        {/* Paste button */}
+        {/* Paste button - uses Telegram clipboard API */}
         {!showSuccess && !isLockedOut && (
           <motion.button
             className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
@@ -2202,9 +2092,6 @@ function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
 
-  // Hidden input ref
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
-
   // Resend countdown
   useEffect(() => {
     if (resendTimer > 0) {
@@ -2215,9 +2102,8 @@ function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
     }
   }, [resendTimer]);
 
-  // Keyboard support
+  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
   useEffect(() => {
-    hiddenInputRef.current?.focus();
     return setupKeyboardListeners({
       onDigit: (digit) => {
         setCode(prev => {
@@ -2335,29 +2221,7 @@ function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
           ))}
         </div>
 
-        {/* Hidden input for keyboard/paste capture */}
-        <input
-          ref={hiddenInputRef}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="one-time-code"
-          className="sr-only"
-          aria-hidden="true"
-          tabIndex={-1}
-          onPaste={(e) => {
-            e.preventDefault();
-            const text = e.clipboardData?.getData("text") || "";
-            const digits = extractDigits(text, 6);
-            if (digits.length > 0) {
-              setCode(digits);
-              setError("");
-              hapticSuccess();
-            }
-          }}
-        />
-
-        {/* Paste button */}
+        {/* Paste button - uses Telegram clipboard API */}
         <button
           className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
           onClick={handlePaste}
@@ -2764,7 +2628,6 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
   const [isLoading, setIsLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (resendTimer > 0) {
@@ -2775,8 +2638,8 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
     }
   }, [resendTimer]);
 
+  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
   useEffect(() => {
-    hiddenInputRef.current?.focus();
     return setupKeyboardListeners({
       onDigit: (digit) => {
         setCode(prev => {
@@ -2893,27 +2756,7 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
           ))}
         </div>
 
-        <input
-          ref={hiddenInputRef}
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          autoComplete="one-time-code"
-          className="sr-only"
-          aria-hidden="true"
-          tabIndex={-1}
-          onPaste={(e) => {
-            e.preventDefault();
-            const text = e.clipboardData?.getData("text") || "";
-            const digits = extractDigits(text, 6);
-            if (digits.length > 0) {
-              setCode(digits);
-              setError("");
-              hapticSuccess();
-            }
-          }}
-        />
-
+        {/* Paste button - uses Telegram clipboard API */}
         <button
           className="flex items-center gap-2 text-amber-400 text-sm mb-4 px-4 py-2 bg-amber-500/10 rounded-xl active:bg-amber-500/20 transition-colors"
           onClick={handlePaste}
@@ -3208,10 +3051,9 @@ function ForgotPinNewScreen({ onContinue, onBack }: {
 }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
+  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
   useEffect(() => {
-    hiddenInputRef.current?.focus();
     return setupKeyboardListeners({
       onDigit: (digit) => {
         setPin(prev => {
@@ -3276,16 +3118,6 @@ function ForgotPinNewScreen({ onContinue, onBack }: {
           ))}
         </div>
 
-        <input
-          ref={hiddenInputRef}
-          type="password"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          className="sr-only"
-          aria-hidden="true"
-          tabIndex={-1}
-        />
-
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
         {/* Keypad */}
@@ -3326,10 +3158,9 @@ function ForgotPinConfirmScreen({ originalPin, sessionId, recoveredShareHex, onC
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
-  const hiddenInputRef = useRef<HTMLInputElement>(null);
 
+  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
   useEffect(() => {
-    hiddenInputRef.current?.focus();
     return setupKeyboardListeners({
       onDigit: (digit) => {
         if (isProcessing) return;
@@ -3448,16 +3279,6 @@ function ForgotPinConfirmScreen({ originalPin, sessionId, recoveredShareHex, onC
             />
           ))}
         </div>
-
-        <input
-          ref={hiddenInputRef}
-          type="password"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          className="sr-only"
-          aria-hidden="true"
-          tabIndex={-1}
-        />
 
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
         {isProcessing && <p className="text-green-400 text-sm mb-4">Resetting PIN...</p>}
