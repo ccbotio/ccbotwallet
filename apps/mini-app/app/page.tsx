@@ -559,7 +559,7 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
 function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; onExisting: () => void }) {
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      className="absolute inset-0 flex flex-col px-6 pt-8 pb-6 overflow-hidden"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0, x: -100 }}
@@ -567,68 +567,68 @@ function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; 
       {/* Content area - scrollable if needed */}
       <div className="flex-1 flex flex-col items-center overflow-y-auto min-h-0">
         <motion.div
-          className="flex items-center justify-center mb-4"
+          className="flex items-center justify-center mb-6"
           animate={{ y: [0, -8, 0] }}
           transition={{ duration: 4, repeat: Infinity }}
         >
-          <Image src="/ccbotlogo.png" alt="CC Bot" width={112} height={112} priority />
+          <Image src="/ccbotlogo.png" alt="CC Bot" width={140} height={140} priority />
         </motion.div>
 
-        <h1 className="text-white text-2xl font-bold mb-2 text-center">
+        <h1 className="text-white text-3xl font-bold mb-3 text-center">
           Welcome to<br /><span className="text-yellow">CC Bot Wallet</span>
         </h1>
 
-        <p className="text-taupe text-center mb-5 px-4 text-sm leading-relaxed">
+        <p className="text-taupe text-center mb-8 px-4 text-base leading-relaxed">
           The first seedless wallet on Canton Network.<br />No seed phrases — just your PIN.
         </p>
 
         <div className="w-full rounded-2xl border border-white/10 overflow-hidden">
           <div className="flex items-center gap-4 px-5 py-4">
-            <svg className="w-5 h-5 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
               <path fillRule="evenodd" d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08zm3.094 8.016a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd"/>
             </svg>
             <div>
-              <p className="text-white font-medium text-sm">Seedless Security</p>
-              <p className="text-white/40 text-xs mt-0.5">PIN protection</p>
+              <p className="text-white font-medium">Seedless Security</p>
+              <p className="text-white/40 text-sm mt-0.5">PIN protection</p>
             </div>
           </div>
 
           <div className="h-px bg-white/8 mx-5" />
 
           <div className="flex items-center gap-4 px-5 py-4">
-            <svg className="w-5 h-5 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
               <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd"/>
             </svg>
             <div>
-              <p className="text-white font-medium text-sm">Encrypted Backup</p>
-              <p className="text-white/40 text-xs mt-0.5">Secured via Telegram</p>
+              <p className="text-white font-medium">Encrypted Backup</p>
+              <p className="text-white/40 text-sm mt-0.5">Secured via Telegram</p>
             </div>
           </div>
 
           <div className="h-px bg-white/8 mx-5" />
 
           <div className="flex items-center gap-4 px-5 py-4">
-            <svg className="w-5 h-5 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
               <path d="M21 6.375c0 2.692-4.03 4.875-9 4.875S3 9.067 3 6.375 7.03 1.5 12 1.5s9 2.183 9 4.875z"/>
               <path d="M12 12.75c2.685 0 5.19-.586 7.078-1.609a8.282 8.282 0 001.897-1.384c.016.121.025.244.025.368C21 12.817 16.97 15 12 15s-9-2.183-9-4.875c0-.124.009-.247.025-.368a8.285 8.285 0 001.897 1.384C6.809 12.164 9.315 12.75 12 12.75z"/>
               <path d="M12 16.5c2.685 0 5.19-.586 7.078-1.609a8.282 8.282 0 001.897-1.384c.016.121.025.244.025.368 0 2.692-4.03 4.875-9 4.875s-9-2.183-9-4.875c0-.124.009-.247.025-.368a8.284 8.284 0 001.897 1.384C6.809 15.914 9.315 16.5 12 16.5z"/>
               <path d="M12 20.25c2.685 0 5.19-.586 7.078-1.609a8.282 8.282 0 001.897-1.384c.016.121.025.244.025.368 0 2.692-4.03 4.875-9 4.875s-9-2.183-9-4.875c0-.124.009-.247.025-.368a8.284 8.284 0 001.897 1.384C6.809 19.664 9.315 20.25 12 20.25z"/>
             </svg>
             <div>
-              <p className="text-white font-medium text-sm">Canton Network</p>
-              <p className="text-white/40 text-xs mt-0.5">Privacy-first blockchain</p>
+              <p className="text-white font-medium">Canton Network</p>
+              <p className="text-white/40 text-sm mt-0.5">Privacy-first blockchain</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Small spacer */}
-      <div className="h-4 flex-shrink-0" />
+      {/* Spacer */}
+      <div className="h-6 flex-shrink-0" />
 
       {/* Bottom buttons — always visible */}
       <div className="flex-shrink-0">
         <motion.button
-          className="w-full py-3.5 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-base mb-3"
+          className="w-full py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-lg mb-3"
           whileTap={{ scale: 0.98 }}
           onClick={onContinue}
         >
@@ -636,14 +636,14 @@ function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; 
         </motion.button>
 
         <motion.button
-          className="w-full py-3.5 bg-white/10 rounded-2xl text-white font-medium text-base"
+          className="w-full py-4 bg-white/10 rounded-2xl text-white font-medium text-lg"
           whileTap={{ scale: 0.98 }}
           onClick={onExisting}
         >
           I Have a Wallet
         </motion.button>
 
-        <p className="text-center text-taupe text-xs mt-3">
+        <p className="text-center text-taupe text-sm mt-4">
           By continuing, you agree to our Terms of Service
         </p>
       </div>
@@ -1668,7 +1668,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
 
         {/* PIN keypad */}
         <motion.div
-          className="grid grid-cols-3 gap-3 mt-2"
+          className="grid grid-cols-3 gap-4 mt-4"
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.35 }}
@@ -1676,12 +1676,12 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key, index) => (
             <motion.button
               key={key || "empty"}
-              className={`w-[68px] h-[56px] rounded-xl flex items-center justify-center text-xl font-bold transition-all
+              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold transition-all
                 ${key === ""
                   ? "invisible"
                   : key === "del"
                     ? "text-taupe hover:text-white active:scale-95"
-                    : "bg-white/8 text-white hover:bg-white/15 active:bg-white/20 active:scale-95"
+                    : "bg-white/10 text-white hover:bg-white/15 active:bg-white/20 active:scale-95"
                 }
                 ${(isLockedOut || showSuccess) && key !== "" ? "opacity-50 pointer-events-none" : ""}
               `}
@@ -1694,7 +1694,7 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
               onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
             >
               {key === "del" ? (
-                <span className="material-symbols-outlined text-lg">backspace</span>
+                <span className="material-symbols-outlined text-xl">backspace</span>
               ) : (
                 key
               )}
