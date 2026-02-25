@@ -48,7 +48,7 @@ services:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${TELEGRAM_WEBHOOK_URL:-https://localhost}/api
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -98,8 +98,8 @@ services:
     image: nginx:alpine
     container_name: ccbot-nginx
     ports:
-      - "80:80"
-      - "443:443"
+      - "8081:80"
+      - "8443:443"
     volumes:
       - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
