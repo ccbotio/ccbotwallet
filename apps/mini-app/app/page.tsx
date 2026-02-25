@@ -2158,13 +2158,20 @@ function WalletRecoveryCodeScreen({ email, partyId, onContinue, onBack }: {
     if (!canResend) return;
     setCanResend(false);
     setResendTimer(60);
+    setError("");
 
     try {
       const { api } = await import("../lib/api");
-      await api.recoverySendCode(email);
-      hapticSuccess();
+      const result = await api.recoverySendCode(email);
+      if (result.message?.includes("sent")) {
+        hapticSuccess();
+      } else {
+        setError(result.message || "Failed to resend code");
+        hapticError();
+      }
     } catch (err) {
       console.error("Resend failed:", err);
+      setError("Failed to resend code. Please try again later.");
       hapticError();
     }
   };
@@ -2686,13 +2693,20 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
     if (!canResend) return;
     setCanResend(false);
     setResendTimer(60);
+    setError("");
 
     try {
       const { api } = await import("../lib/api");
-      await api.recoverySendCode(email);
-      hapticSuccess();
+      const result = await api.recoverySendCode(email);
+      if (result.message?.includes("sent")) {
+        hapticSuccess();
+      } else {
+        setError(result.message || "Failed to resend code");
+        hapticError();
+      }
     } catch (err) {
       console.error("Resend failed:", err);
+      setError("Failed to resend code. Please try again later.");
       hapticError();
     }
   };

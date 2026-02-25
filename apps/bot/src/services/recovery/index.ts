@@ -32,7 +32,7 @@ const EMAIL_CHECK_RATE_PREFIX = 'recovery:check:ip:';
 const EMAIL_CHECK_RATE_LIMIT = 10; // per hour
 const SEND_CODE_RATE_PREFIX = 'recovery:send:';
 const SEND_CODE_IP_LIMIT = 10; // per IP per hour
-const SEND_CODE_EMAIL_LIMIT = 3; // per email per hour
+const SEND_CODE_EMAIL_LIMIT = 5; // per email per hour (initial + 4 resends)
 
 interface RecoverySession {
   id: string;
