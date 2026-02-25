@@ -721,6 +721,7 @@ function EmailSetupScreen({
             type="email"
             value={email}
             onChange={(e) => { setEmail(e.target.value); setError(""); setExistingWalletInfo(null); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && email && !isLoading && !existingWalletInfo) handleContinue(); }}
             placeholder="Enter your email"
             className="w-full px-4 py-4 bg-white/10 rounded-2xl text-white placeholder-taupe outline-none focus:ring-2 focus:ring-purple"
             disabled={isLoading || !!existingWalletInfo}
@@ -850,8 +851,19 @@ function EmailVerifyScreen({
   };
 
   // Keyboard and paste support for PC/desktop
+  const handleVerifyRef = useRef(handleVerify);
+  handleVerifyRef.current = handleVerify;
+  const codeRef = useRef(code);
+  codeRef.current = code;
+  const isLoadingRef = useRef(isLoading);
+  isLoadingRef.current = isLoading;
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && codeRef.current.length === 6 && !isLoadingRef.current) {
+        handleVerifyRef.current();
+        return;
+      }
       if (e.key >= "0" && e.key <= "9") {
         setCode(prev => {
           if (prev.length >= 6) return prev;
@@ -1856,6 +1868,7 @@ function RecoveryCodeInputScreen({ onRecovered, onBack }: {
               placeholder="Enter your recovery code..."
               value={recoveryCodeInput}
               onChange={(e) => setRecoveryCodeInput(e.target.value.trim())}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && recoveryCodeInput.length >= 10) { e.preventDefault(); handleCodeSubmit(); } }}
             />
             {error && (
               <p className="text-red-400 text-sm mt-2 text-center">{error}</p>
