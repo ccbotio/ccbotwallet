@@ -195,9 +195,15 @@ export default function PasskeySetupWithWallet({ email, onComplete, onBack }: Pa
         window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium');
       } catch {}
 
-      // Use openLink to open in external browser
+      // Use openLink with try_browser option to open in DEFAULT system browser
+      // (not Telegram's in-app browser)
       if (window.Telegram?.WebApp?.openLink) {
-        window.Telegram.WebApp.openLink(passkeyUrl);
+        // try_browser: true forces opening in the system's default browser
+        // Type assertion needed because TS types don't include the options parameter
+        (window.Telegram.WebApp.openLink as (url: string, options?: { try_browser?: boolean }) => void)(
+          passkeyUrl,
+          { try_browser: true }
+        );
       } else {
         // Fallback: open in new tab
         window.open(passkeyUrl, '_blank');

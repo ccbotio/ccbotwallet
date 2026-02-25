@@ -432,8 +432,13 @@ export function openPasskeyInBrowser(
 
   // Try Telegram WebApp API first
   if (typeof window !== 'undefined' && window.Telegram?.WebApp) {
-    // Open in Telegram's internal browser (has better WebAuthn support than WebView)
-    window.Telegram.WebApp.openLink(passkeyUrl);
+    // Open in system's default browser using try_browser: true
+    // This is required because passkeys (WebAuthn) don't work in Telegram's WebView
+    // Type assertion needed because TS types don't include the options parameter
+    (window.Telegram.WebApp.openLink as (url: string, options?: { try_browser?: boolean }) => void)(
+      passkeyUrl,
+      { try_browser: true }
+    );
   } else {
     // Fallback to regular navigation
     window.open(passkeyUrl, '_blank');

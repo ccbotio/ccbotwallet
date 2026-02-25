@@ -9,7 +9,7 @@ import {
 } from '../../crypto/passkey';
 import api from '../../lib/api';
 
-type SetupPhase = 'loading' | 'ready' | 'registering' | 'success' | 'error' | 'unsupported' | 'expired';
+type SetupPhase = 'loading' | 'ready' | 'registering' | 'success' | 'closing' | 'error' | 'unsupported' | 'expired';
 
 function getDeviceName(): string {
   const ua = navigator.userAgent;
@@ -111,10 +111,24 @@ function PasskeyCreateContent() {
 
       setPhase('success');
 
-      // Auto-close the page after 2 seconds
+      // Try to auto-close the page after a brief delay
+      // Some browsers may block window.close() if page wasn't opened by script
       setTimeout(() => {
-        window.close();
-      }, 2000);
+        setPhase('closing');
+
+        // Attempt to close the window
+        try {
+          window.close();
+        } catch (e) {
+          console.log('window.close() blocked by browser');
+        }
+
+        // If we're still here after 500ms, the close failed
+        // Show manual close instructions
+        setTimeout(() => {
+          setPhase('success');
+        }, 500);
+      }, 1500);
 
     } catch (err) {
       console.error('Passkey setup failed:', err);
@@ -282,6 +296,32 @@ function PasskeyCreateContent() {
           </motion.div>
         )}
 
+        {phase === 'closing' && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="text-center"
+          >
+            <motion.div
+              className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center"
+              style={{ background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(134, 239, 172, 0.2))' }}
+            >
+              <motion.span
+                className="material-symbols-outlined text-5xl text-green-400"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              >
+                refresh
+              </motion.span>
+            </motion.div>
+
+            <h2 className="text-xl font-bold mb-2 text-green-400">Closing...</h2>
+            <p className="text-[#FFFFFC]/60 text-sm">
+              Returning you to Telegram...
+            </p>
+          </motion.div>
+        )}
+
         {phase === 'success' && (
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
@@ -312,7 +352,7 @@ function PasskeyCreateContent() {
 
             <div className="p-4 rounded-xl bg-[#FFFFFC]/5 border border-[#FFFFFC]/10 mb-6">
               <p className="text-sm text-[#FFFFFC]/80">
-                You can now close this window and return to Telegram to set up your PIN and create your wallet.
+                Please close this window and return to Telegram to set up your PIN and create your wallet.
               </p>
               <p className="text-xs text-[#FFFFFC]/50 mt-2">
                 The app will detect your passkey automatically.
