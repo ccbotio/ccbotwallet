@@ -124,10 +124,10 @@ function PasskeyCreateContent() {
       setTimeout(() => {
         setPhase('closing');
 
-        // Build Telegram Mini App deep link
-        // Format: https://t.me/botUsername/app (opens the mini app directly)
+        // Build Telegram bot deep link
+        // Format: https://t.me/botUsername (opens the bot)
         const botUsername = config.botUsername;
-        const telegramAppUrl = `https://t.me/${botUsername}/app`;
+        const telegramAppUrl = `https://t.me/${botUsername}`;
 
         // Redirect to Telegram - this will open the mini app
         window.location.href = telegramAppUrl;
@@ -370,7 +370,7 @@ function PasskeyCreateContent() {
             <motion.button
               onClick={() => {
                 const botUsername = config.botUsername;
-                window.location.href = `https://t.me/${botUsername}/app`;
+                window.location.href = `https://t.me/${botUsername}`;
               }}
               className="w-full py-4 rounded-2xl font-semibold text-lg"
               style={{ background: 'linear-gradient(135deg, #875CFF, #D5A5E3)' }}
