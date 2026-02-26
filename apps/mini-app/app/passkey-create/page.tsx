@@ -10,7 +10,23 @@ import {
 import api from '../../lib/api';
 import { config } from '../../lib/config';
 
-type SetupPhase = 'loading' | 'ready' | 'registering' | 'success' | 'closing' | 'error' | 'unsupported' | 'expired';
+type SetupPhase = 'loading' | 'ready' | 'registering' | 'success' | 'closing' | 'error' | 'unsupported' | 'expired' | 'webview-blocked';
+
+// Check if running in Telegram WebView (iOS WKWebView blocks WebAuthn)
+function isInTelegramWebView(): boolean {
+  if (typeof window === 'undefined') return false;
+  const ua = navigator.userAgent.toLowerCase();
+  // Check for Telegram WebView indicators
+  return (
+    ua.includes('telegram') ||
+    // Telegram iOS uses custom user agent
+    (ua.includes('iphone') && (window as any).TelegramWebviewProxy !== undefined) ||
+    // Check if we're in an iframe
+    window.self !== window.top ||
+    // Check for Telegram WebApp object with specific platform
+    (window.Telegram?.WebApp !== undefined && window.Telegram.WebApp.platform !== 'tdesktop')
+  );
+}
 
 function getDeviceName(): string {
   const ua = navigator.userAgent;
@@ -41,9 +57,13 @@ function PasskeyCreateContent() {
     displayName: string;
     challenge: string;
   } | null>(null);
+  const [copied, setCopied] = useState(false);
 
   // Get session ID from URL
   const sessionId = searchParams.get('session');
+
+  // Get the current page URL for copy functionality
+  const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
 
   // Mark app as hydrated to prevent flash of unstyled content
   useEffect(() => {
@@ -59,6 +79,13 @@ function PasskeyCreateContent() {
       if (!sessionId) {
         setError('Missing session ID');
         setPhase('error');
+        return;
+      }
+
+      // Check if we're in Telegram WebView - WebAuthn won't work
+      if (isInTelegramWebView()) {
+        console.log('[Passkey] Detected Telegram WebView - showing manual instructions');
+        setPhase('webview-blocked');
         return;
       }
 
@@ -204,6 +231,76 @@ function PasskeyCreateContent() {
               <p className="text-sm text-[#FFFFFC]/80">
                 You can close this window and return to Telegram.
               </p>
+            </div>
+          </motion.div>
+        )}
+
+        {phase === 'webview-blocked' && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center"
+          >
+            <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center bg-blue-500/20">
+              <span className="material-symbols-outlined text-5xl text-blue-400">open_in_browser</span>
+            </div>
+            <h2 className="text-xl font-bold mb-2 text-blue-400">Open in Safari</h2>
+            <p className="text-[#FFFFFC]/60 mb-6 text-sm max-w-xs mx-auto">
+              Passkeys require Safari on iOS. Copy the link below and paste it in Safari to continue.
+            </p>
+
+            {/* URL Display */}
+            <div className="mb-4 p-3 rounded-lg bg-[#FFFFFC]/5 border border-[#FFFFFC]/10">
+              <p className="text-xs text-[#FFFFFC]/60 mb-2 break-all font-mono">
+                {currentUrl.length > 60 ? currentUrl.substring(0, 60) + '...' : currentUrl}
+              </p>
+            </div>
+
+            {/* Copy Button */}
+            <motion.button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(currentUrl);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 3000);
+                } catch (err) {
+                  console.error('Failed to copy:', err);
+                }
+              }}
+              className="w-full py-4 rounded-2xl font-semibold text-lg mb-4"
+              style={{ background: copied ? '#22c55e' : 'linear-gradient(135deg, #875CFF, #D5A5E3)' }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {copied ? 'Copied! Now paste in Safari' : 'Copy Link'}
+            </motion.button>
+
+            {/* Instructions */}
+            <div className="space-y-3 text-left max-w-xs mx-auto">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs text-blue-400 font-bold">1</span>
+                </div>
+                <span className="text-sm text-[#FFFFFC]/70">Tap "Copy Link" above</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs text-blue-400 font-bold">2</span>
+                </div>
+                <span className="text-sm text-[#FFFFFC]/70">Open Safari browser</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs text-blue-400 font-bold">3</span>
+                </div>
+                <span className="text-sm text-[#FFFFFC]/70">Paste link in address bar and go</span>
+              </div>
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <span className="text-xs text-blue-400 font-bold">4</span>
+                </div>
+                <span className="text-sm text-[#FFFFFC]/70">Create your passkey in Safari</span>
+              </div>
             </div>
           </motion.div>
         )}
