@@ -7683,7 +7683,7 @@ function TelegramAppContent() {
   }, []);
 
   // Track viewport height for proper rendering
-  const [viewportKey, setViewportKey] = useState(0);
+  // Removed viewportKey - no longer force re-renders on viewport change
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.Telegram?.WebApp) {
@@ -7709,33 +7709,42 @@ function TelegramAppContent() {
         }
       }
 
-      // Set viewport height CSS variable for proper sizing
-      const setViewportHeight = () => {
-        const vh = tg.viewportHeight || window.innerHeight;
+      // Set viewport height CSS variable - use stable height to prevent flash on keyboard
+      const setViewportHeight = (useStable = true) => {
+        // Use stable height (doesn't change with keyboard) for container
+        // Use regular height only for initial setup
+        const stableHeight = (tg as any).viewportStableHeight || tg.viewportHeight || window.innerHeight;
+        const currentHeight = tg.viewportHeight || window.innerHeight;
+        const vh = useStable ? stableHeight : currentHeight;
         document.documentElement.style.setProperty('--tg-viewport-height', `${vh}px`);
-        // Force re-render by updating key
-        setViewportKey(prev => prev + 1);
+        document.documentElement.style.setProperty('--tg-viewport-stable-height', `${stableHeight}px`);
       };
 
-      setViewportHeight();
+      // Initial setup with current height
+      setViewportHeight(false);
 
-      // Handle viewport stable event (when expansion animation completes)
-      const handleViewportStable = () => {
-        setViewportHeight();
+      // On viewport change, only update if it's NOT a keyboard event (check if stable height changed)
+      let lastStableHeight = (tg as any).viewportStableHeight || tg.viewportHeight || window.innerHeight;
+      const handleViewportChange = () => {
+        const newStableHeight = (tg as any).viewportStableHeight || tg.viewportHeight || window.innerHeight;
+        // Only update if stable height actually changed (orientation, app resize - not keyboard)
+        if (Math.abs(newStableHeight - lastStableHeight) > 50) {
+          lastStableHeight = newStableHeight;
+          setViewportHeight(true);
+        }
       };
 
-      // Update on viewport change
-      tg.onEvent('viewportChanged', setViewportHeight);
-      window.addEventListener('resize', setViewportHeight);
+      tg.onEvent('viewportChanged', handleViewportChange);
 
-      // Also handle orientation change
-      window.addEventListener('orientationchange', () => {
-        setTimeout(setViewportHeight, 100);
-      });
+      // Handle orientation change
+      const handleOrientation = () => {
+        setTimeout(() => setViewportHeight(true), 100);
+      };
+      window.addEventListener('orientationchange', handleOrientation);
 
       return () => {
-        tg.offEvent('viewportChanged', setViewportHeight);
-        window.removeEventListener('resize', setViewportHeight);
+        tg.offEvent('viewportChanged', handleViewportChange);
+        window.removeEventListener('orientationchange', handleOrientation);
       };
     }
   }, []);
