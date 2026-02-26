@@ -17,6 +17,7 @@ services:
       APP_SECRET: ${APP_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
       CANTON_NETWORK: ${CANTON_NETWORK}
+      CANTON_SIMULATION_MODE: ${CANTON_SIMULATION_MODE:-false}
       CANTON_LEDGER_API_URL: ${CANTON_LEDGER_API_URL}
       CANTON_VALIDATOR_API_URL: ${CANTON_VALIDATOR_API_URL}
       CANTON_PARTICIPANT_ID: ${CANTON_PARTICIPANT_ID}
@@ -36,6 +37,9 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+      - "json-ledger-api.localhost:host-gateway"
+      - "wallet.localhost:host-gateway"
     networks:
       - ccbot-network
     restart: unless-stopped

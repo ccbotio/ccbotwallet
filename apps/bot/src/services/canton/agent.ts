@@ -106,7 +106,7 @@ export class CantonAgentService {
       validatorUrl: env.CANTON_VALIDATOR_API_URL ?? env.CANTON_LEDGER_API_URL ?? '',
       ledgerApiUser: env.CANTON_LEDGER_API_USER ?? 'ledger-api-user',
       validatorAudience: env.CANTON_VALIDATOR_AUDIENCE ?? 'https://validator.example.com',
-      useUnsafeAuth: env.NODE_ENV !== 'production',
+      useUnsafeAuth: env.CANTON_NETWORK === 'devnet' || env.NODE_ENV !== 'production',
       unsafeSecret: env.APP_SECRET,
       ...(env.CANTON_DSO_PARTY_ID && { dsoPartyId: env.CANTON_DSO_PARTY_ID }),
       ...(env.CANTON_PROVIDER_PARTY_ID && { providerPartyId: env.CANTON_PROVIDER_PARTY_ID }),
