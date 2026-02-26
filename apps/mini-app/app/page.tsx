@@ -7935,7 +7935,7 @@ function TelegramAppContent() {
     setNavigation({ screen: "pin-setup" });
   }, []);
 
-  // Handle PIN setup completion (NEW FLOW: creates wallet with passkey credential)
+  // Handle PIN setup completion (creates wallet - with or without passkey)
   const handlePinSetupComplete = useCallback(async (pin: string) => {
     try {
       const { storePinCheck, PIN_CHECK_VALUE } = await import("../crypto/keystore");
@@ -7963,6 +7963,22 @@ function TelegramAppContent() {
         }
 
         console.log("[Onboarding] Wallet created successfully");
+      } else {
+        // DEV BYPASS: Create wallet without passkey
+        console.log("[Onboarding] Creating wallet WITHOUT passkey (dev bypass)...");
+        setIsCreatingWallet(true);
+        setNavigation({ screen: "wallet-creating" });
+
+        const success = await createWallet(pin);
+        setIsCreatingWallet(false);
+
+        if (!success) {
+          console.error("[Onboarding] Wallet creation failed");
+          setNavigation({ screen: "onboarding" });
+          return;
+        }
+
+        console.log("[Onboarding] Wallet created successfully (without passkey)");
       }
 
       // Encrypt check value with PIN
@@ -7981,7 +7997,7 @@ function TelegramAppContent() {
       console.error("Failed to complete wallet setup:", error);
       setIsCreatingWallet(false);
     }
-  }, [passkeyCredential, createWalletWithPasskeyCredential]);
+  }, [passkeyCredential, createWalletWithPasskeyCredential, createWallet]);
 
   const navigate = useCallback((screen: Screen, params?: any) => {
     setNavHistory((prev) => [...prev, navigation]);
@@ -8041,8 +8057,9 @@ function TelegramAppContent() {
             />
           );
         case "email-verify":
-          // NEW FLOW: After email verification, go to mandatory passkey creation
-          return <EmailVerifyScreen email={userEmail} onComplete={() => { setIsEmailVerified(true); setIsInPasskeyFlow(true); navigate("passkey-mandatory"); }} onBack={goBack} onResend={handleResendCode} />;
+          // DEV BYPASS: Skip passkey for now, go directly to PIN setup
+          // TODO: Re-enable passkey when Safari redirect is fixed
+          return <EmailVerifyScreen email={userEmail} onComplete={() => { setIsEmailVerified(true); navigate("pin-setup"); }} onBack={goBack} onResend={handleResendCode} />;
         case "passkey-recovery":
           return (
             <PasskeyRecovery
