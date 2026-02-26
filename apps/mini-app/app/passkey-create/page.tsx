@@ -8,6 +8,7 @@ import {
   registerPasskey,
 } from '../../crypto/passkey';
 import api from '../../lib/api';
+import { config } from '../../lib/config';
 
 type SetupPhase = 'loading' | 'ready' | 'registering' | 'success' | 'closing' | 'error' | 'unsupported' | 'expired';
 
@@ -119,23 +120,22 @@ function PasskeyCreateContent() {
 
       setPhase('success');
 
-      // Try to auto-close the page after a brief delay
-      // Some browsers may block window.close() if page wasn't opened by script
+      // Redirect back to Telegram Mini App after a brief delay
       setTimeout(() => {
         setPhase('closing');
 
-        // Attempt to close the window
-        try {
-          window.close();
-        } catch (e) {
-          console.log('window.close() blocked by browser');
-        }
+        // Build Telegram Mini App deep link
+        // Format: https://t.me/botUsername/app (opens the mini app directly)
+        const botUsername = config.botUsername;
+        const telegramAppUrl = `https://t.me/${botUsername}/app`;
 
-        // If we're still here after 500ms, the close failed
-        // Show manual close instructions
+        // Redirect to Telegram - this will open the mini app
+        window.location.href = telegramAppUrl;
+
+        // Fallback: if redirect doesn't work after 2s, show manual instructions
         setTimeout(() => {
           setPhase('success');
-        }, 500);
+        }, 2000);
       }, 1500);
 
     } catch (err) {
@@ -323,9 +323,9 @@ function PasskeyCreateContent() {
               </motion.span>
             </motion.div>
 
-            <h2 className="text-xl font-bold mb-2 text-green-400">Closing...</h2>
+            <h2 className="text-xl font-bold mb-2 text-green-400">Redirecting...</h2>
             <p className="text-[#FFFFFC]/60 text-sm">
-              Returning you to Telegram...
+              Opening Telegram...
             </p>
           </motion.div>
         )}
@@ -360,7 +360,7 @@ function PasskeyCreateContent() {
 
             <div className="p-4 rounded-xl bg-[#FFFFFC]/5 border border-[#FFFFFC]/10 mb-6">
               <p className="text-sm text-[#FFFFFC]/80">
-                Please close this window and return to Telegram to set up your PIN and create your wallet.
+                Tap below to return to Telegram and complete your wallet setup.
               </p>
               <p className="text-xs text-[#FFFFFC]/50 mt-2">
                 The app will detect your passkey automatically.
@@ -368,12 +368,16 @@ function PasskeyCreateContent() {
             </div>
 
             <motion.button
-              onClick={() => window.close()}
-              className="w-full py-4 rounded-2xl font-semibold text-lg bg-[#FFFFFC]/10 text-[#FFFFFC]/80"
+              onClick={() => {
+                const botUsername = config.botUsername;
+                window.location.href = `https://t.me/${botUsername}/app`;
+              }}
+              className="w-full py-4 rounded-2xl font-semibold text-lg"
+              style={{ background: 'linear-gradient(135deg, #875CFF, #D5A5E3)' }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              Close This Window
+              Return to Telegram
             </motion.button>
           </motion.div>
         )}
