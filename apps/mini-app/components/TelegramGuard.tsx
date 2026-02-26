@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, ReactNode } from 'react';
+import Image from 'next/image';
 
 interface TelegramGuardProps {
   children: ReactNode;
@@ -8,15 +9,19 @@ interface TelegramGuardProps {
 
 const BOT_URL = 'https://t.me/ccbotwallet_bot';
 
+// Blocked platforms - web versions of Telegram
+const BLOCKED_PLATFORMS = ['weba', 'webk', 'web'];
+
 /**
- * TelegramGuard - Ensures the app is only accessible within Telegram WebApp
+ * TelegramGuard - Ensures the app is only accessible within Telegram native apps
  *
- * On app.ccbot.io:
- * - If running inside Telegram: shows children
- * - If running in regular browser: redirects to Telegram bot
+ * Allowed: ios, android, tdesktop (desktop app)
+ * Blocked: weba, webk, web (browser versions)
  */
 export default function TelegramGuard({ children }: TelegramGuardProps) {
-  const [isInTelegram, setIsInTelegram] = useState<boolean | null>(null);
+  const [status, setStatus] = useState<'loading' | 'allowed' | 'blocked' | 'redirect'>(
+    'loading'
+  );
 
   useEffect(() => {
     let attempts = 0;
@@ -36,20 +41,26 @@ export default function TelegramGuard({ children }: TelegramGuardProps) {
       // Check for valid Telegram environment
       const hasValidInitData = telegram?.WebApp?.initData && telegram.WebApp.initData.length > 0;
       const hasUserData = telegram?.WebApp?.initDataUnsafe?.user !== undefined;
-      const hasPlatform = telegram?.WebApp?.platform !== undefined;
+      const platform = telegram?.WebApp?.platform;
 
-      if (hasValidInitData || hasUserData || hasPlatform) {
-        setIsInTelegram(true);
+      if (hasValidInitData || hasUserData || platform) {
+        // Check if platform is blocked (web versions)
+        if (platform && BLOCKED_PLATFORMS.includes(platform)) {
+          setStatus('blocked');
+          return;
+        }
+        setStatus('allowed');
         return;
       }
 
       attempts++;
 
-      // Keep trying for a bit (Telegram Web might be slow)
+      // Keep trying for a bit (Telegram might be slow to initialize)
       if (attempts < maxAttempts) {
         setTimeout(checkTelegram, 100);
       } else {
         // Not in Telegram after all attempts - redirect to bot
+        setStatus('redirect');
         window.location.href = BOT_URL;
       }
     };
@@ -60,7 +71,7 @@ export default function TelegramGuard({ children }: TelegramGuardProps) {
   }, []);
 
   // Loading state
-  if (isInTelegram === null) {
+  if (status === 'loading' || status === 'redirect') {
     return (
       <div className="absolute inset-0 flex items-center justify-center bg-[#030206]">
         <div className="w-12 h-12 rounded-full border-2 border-[#875CFF]/30 border-t-[#875CFF] animate-spin" />
@@ -68,6 +79,38 @@ export default function TelegramGuard({ children }: TelegramGuardProps) {
     );
   }
 
-  // In Telegram - render children
+  // Blocked - web version of Telegram
+  if (status === 'blocked') {
+    return (
+      <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#030206] p-6 text-center">
+        <Image src="/ccbotlogo.png" alt="CC Bot" width={64} height={64} className="mb-6" />
+
+        <h1 className="text-[#FFFFFC] text-xl font-bold mb-3">
+          Telegram App Required
+        </h1>
+
+        <p className="text-[#A89F91] text-sm mb-6 max-w-xs">
+          For security reasons, CC Bot Wallet only works in the Telegram app.
+          Please open this bot in Telegram on your phone or desktop app.
+        </p>
+
+        <div className="space-y-3 w-full max-w-xs">
+          <a
+            href={BOT_URL}
+            className="block w-full py-3 px-6 rounded-xl font-semibold text-center"
+            style={{ background: 'linear-gradient(135deg, #875CFF, #D5A5E3)' }}
+          >
+            Open in Telegram App
+          </a>
+
+          <p className="text-[#A89F91]/60 text-xs">
+            Telegram Web is not supported
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Allowed - render children
   return <>{children}</>;
 }
