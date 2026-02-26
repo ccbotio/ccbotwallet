@@ -8257,17 +8257,18 @@ function TelegramAppContent() {
           </div>
 
           <div className="absolute inset-0 z-10 flex justify-center safe-top">
-            <div className="relative w-full h-full" style={{ maxWidth: '430px' }}>
-              <AnimatePresence mode="wait">
+            <div className="relative w-full h-full bg-[#030206]" style={{ maxWidth: '430px' }}>
+              <AnimatePresence mode="popLayout">
                 {showSplash ? (
                   <SplashScreen key="splash" onComplete={() => setShowSplash(false)} />
                 ) : isLocked && hasWallet && !navigation.screen.startsWith("forgot-pin") ? (
                   <motion.div
                     key="locked"
-                    className="h-full w-full relative"
-                    initial={{ opacity: 0 }}
+                    className="absolute inset-0"
+                    initial={{ opacity: 1 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
+                    transition={{ duration: 0.15 }}
                   >
                     <LockScreen
                       userName={user?.firstName}
@@ -8280,7 +8281,7 @@ function TelegramAppContent() {
                   <motion.div
                     key="app"
                     className="h-full w-full"
-                    initial={{ opacity: 0 }}
+                    initial={{ opacity: 1 }}
                     animate={{ opacity: 1 }}
                   >
                     {renderScreen()}
@@ -8426,13 +8427,10 @@ export default function TelegramApp() {
     }
   }, []);
 
-  // Loading state
+  // Loading state - keep background solid to prevent flash
   if (isAllowed === null) {
     return (
-      <div
-        className="absolute inset-0 flex items-center justify-center"
-        style={{ background: 'linear-gradient(180deg, #030206 0%, #0d0b14 100%)' }}
-      >
+      <div className="absolute inset-0 flex items-center justify-center bg-[#030206]">
         <div className="animate-spin w-8 h-8 border-2 border-[#875CFF] border-t-transparent rounded-full" />
       </div>
     );

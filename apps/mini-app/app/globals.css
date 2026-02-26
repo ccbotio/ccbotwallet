@@ -9,18 +9,23 @@
    HYDRATION FLASH PREVENTION
    Hide content until React hydrates
    ========================================== */
+#app-root {
+  background: #030206;
+}
+
 #app-root > *:not(.loading-overlay) {
   opacity: 0;
-  transition: opacity 0.15s ease-in;
 }
 
 #app-root.hydrated > *:not(.loading-overlay) {
   opacity: 1;
+  transition: opacity 0.1s ease-out;
 }
 
 #app-root.hydrated > .loading-overlay {
   opacity: 0;
   pointer-events: none;
+  transition: opacity 0.15s ease-out;
 }
 
 .loading-overlay {
@@ -30,8 +35,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #030206 0%, #0d0b14 100%);
-  transition: opacity 0.2s ease-out;
+  background: #030206;
 }
 
 /* ==========================================
