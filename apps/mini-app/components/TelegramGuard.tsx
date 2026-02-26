@@ -43,12 +43,19 @@ export default function TelegramGuard({ children }: TelegramGuardProps) {
       const hasUserData = telegram?.WebApp?.initDataUnsafe?.user !== undefined;
       const platform = telegram?.WebApp?.platform;
 
+      // Debug log
+      console.log('[TelegramGuard] Platform:', platform, 'InitData:', !!hasValidInitData, 'User:', !!hasUserData);
+
+      // First check if we're in Telegram at all
       if (hasValidInitData || hasUserData || platform) {
-        // Check if platform is blocked (web versions)
+        // ALWAYS check platform - block web versions
         if (platform && BLOCKED_PLATFORMS.includes(platform)) {
+          console.log('[TelegramGuard] BLOCKED - Web platform:', platform);
           setStatus('blocked');
           return;
         }
+
+        console.log('[TelegramGuard] ALLOWED - Platform:', platform || 'unknown');
         setStatus('allowed');
         return;
       }

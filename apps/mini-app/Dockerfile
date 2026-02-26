@@ -10,12 +10,12 @@ COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json ./
 COPY packages packages
 COPY apps/mini-app apps/mini-app
 
-# Install dependencies
+# Install dependencies (with dev dependencies for build)
 RUN pnpm install --frozen-lockfile
 
-# Build shared packages first, then mini-app
+# Build shared packages first, then mini-app with production env
 RUN pnpm turbo build --filter=@repo/shared
-RUN cd apps/mini-app && pnpm build
+RUN cd apps/mini-app && NODE_ENV=production pnpm build
 
 # Production stage - serve static files with nginx
 FROM nginx:alpine AS runner
