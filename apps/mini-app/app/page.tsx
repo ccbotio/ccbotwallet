@@ -685,7 +685,7 @@ function EmailSetupScreen({
 
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-y-auto"
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
     >
@@ -693,7 +693,7 @@ function EmailSetupScreen({
         <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
       )}
 
-      <div className="flex-1 flex flex-col items-center justify-start pt-8 overflow-y-auto min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
         <span className="material-symbols-outlined text-5xl text-purple mb-6">mail</span>
         <h2 className="text-white text-2xl font-bold mb-2">Verify Your Email</h2>
         <p className="text-taupe text-center mb-8">We'll send a verification code to your email for account recovery</p>
@@ -704,6 +704,7 @@ function EmailSetupScreen({
             value={email}
             onChange={(e) => { setEmail(e.target.value); setError(""); setExistingWalletInfo(null); }}
             onKeyDown={(e) => { if (e.key === "Enter" && email && !isLoading && !existingWalletInfo) handleContinue(); }}
+            onFocus={(e) => { setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); }}
             placeholder="Enter your email"
             className="w-full px-4 py-4 bg-white/10 rounded-2xl text-white placeholder-taupe outline-none focus:ring-2 focus:ring-purple"
             disabled={isLoading || !!existingWalletInfo}
@@ -2003,13 +2004,13 @@ function WalletRecoveryEmailScreen({ onContinue, onBack }: {
 
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
+      className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-y-auto"
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
     >
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
-      <div className="flex-1 flex flex-col items-center justify-start pt-8 overflow-y-auto min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center min-h-0">
         <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mb-6">
           <span className="material-symbols-outlined text-3xl text-purple">account_circle</span>
         </div>
@@ -2022,6 +2023,7 @@ function WalletRecoveryEmailScreen({ onContinue, onBack }: {
             value={email}
             onChange={(e) => { setEmail(e.target.value); setError(""); }}
             onKeyDown={(e) => { if (e.key === "Enter" && email && !isLoading) handleCheckEmail(); }}
+            onFocus={(e) => { setTimeout(() => e.target.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300); }}
             placeholder="Enter your email"
             className="w-full px-4 py-4 bg-white/10 rounded-2xl text-white placeholder-taupe outline-none focus:ring-2 focus:ring-purple"
             disabled={isLoading}
