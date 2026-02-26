@@ -2505,8 +2505,8 @@ function ForgotPinEmailScreen({ onContinue, onBack }: {
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
       <div className="flex-1 flex flex-col items-center justify-start pt-8 overflow-y-auto min-h-0">
-        <div className="w-16 h-16 rounded-full bg-amber-500/20 flex items-center justify-center mb-6">
-          <span className="material-symbols-outlined text-3xl text-amber-400">lock_reset</span>
+        <div className="w-16 h-16 rounded-full bg-[#F3FF97]/20 flex items-center justify-center mb-6">
+          <span className="material-symbols-outlined text-3xl text-[#F3FF97]">lock_reset</span>
         </div>
         <h2 className="text-white text-2xl font-bold mb-2">Reset Your PIN</h2>
         <p className="text-taupe text-center mb-8">Enter your email to verify your identity</p>
@@ -2518,14 +2518,14 @@ function ForgotPinEmailScreen({ onContinue, onBack }: {
             onChange={(e) => { setEmail(e.target.value); setError(""); }}
             onKeyDown={(e) => { if (e.key === "Enter" && email && !isLoading) handleCheckEmail(); }}
             placeholder="Enter your email"
-            className="w-full px-4 py-4 bg-white/10 rounded-2xl text-white placeholder-taupe outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full px-4 py-4 bg-white/10 rounded-2xl text-white placeholder-taupe outline-none focus:ring-2 focus:ring-[#F3FF97]"
             disabled={isLoading}
           />
           {error && <p className="text-red-500 text-sm mt-2">{error}</p>}
         </div>
 
         <motion.button
-          className="w-full max-w-sm py-4 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl text-white font-bold text-lg disabled:opacity-50"
+          className="w-full max-w-sm py-4 bg-[#F3FF97] rounded-2xl text-[#030206] font-bold text-lg disabled:opacity-50"
           whileTap={{ scale: 0.98 }}
           onClick={handleCheckEmail}
           disabled={!email || isLoading}
@@ -2663,19 +2663,19 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
       <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-        <div className="w-14 h-14 rounded-full bg-amber-500/20 flex items-center justify-center mb-4">
-          <span className="material-symbols-outlined text-2xl text-amber-400">mark_email_read</span>
+        <div className="w-14 h-14 rounded-full bg-[#F3FF97]/20 flex items-center justify-center mb-4">
+          <span className="material-symbols-outlined text-2xl text-[#F3FF97]">mark_email_read</span>
         </div>
         <h2 className="text-white text-xl font-bold mb-1">Enter Verification Code</h2>
         <p className="text-taupe text-center text-sm mb-1">We sent a 6-digit code to</p>
-        <p className="text-amber-400 text-center text-sm mb-5">{email}</p>
+        <p className="text-[#F3FF97] text-center text-sm mb-5">{email}</p>
 
         {/* Code dots */}
         <div className="flex gap-3 mb-4">
           {[0, 1, 2, 3, 4, 5].map((i) => (
             <motion.div
               key={i}
-              className={`w-11 h-12 rounded-xl ${error ? "bg-red-500/20 border-red-500" : code[i] ? "bg-amber-500/20 border-amber-500" : "bg-white/5 border-white/20"} border flex items-center justify-center`}
+              className={`w-11 h-12 rounded-xl ${error ? "bg-red-500/20 border-red-500" : code[i] ? "bg-[#F3FF97]/20 border-[#F3FF97]" : "bg-white/5 border-white/20"} border flex items-center justify-center`}
               animate={error ? { x: [-5, 5, -5, 5, 0] } : i < code.length ? { scale: [1, 1.1, 1] } : {}}
               transition={{ duration: 0.2 }}
             >
@@ -2686,7 +2686,7 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
 
         {/* Paste button - uses Telegram clipboard API */}
         <button
-          className="flex items-center gap-2 text-amber-400 text-sm mb-4 px-4 py-2 bg-amber-500/10 rounded-xl active:bg-amber-500/20 transition-colors"
+          className="flex items-center gap-2 text-[#F3FF97] text-sm mb-4 px-4 py-2 bg-[#F3FF97]/10 rounded-xl active:bg-[#F3FF97]/20 transition-colors"
           onClick={handlePaste}
         >
           <span className="material-symbols-outlined text-base">content_paste</span>
@@ -2712,7 +2712,7 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
         </div>
 
         <motion.button
-          className="w-full max-w-sm py-3 bg-gradient-to-r from-amber-500 to-orange-500 rounded-2xl text-white font-bold disabled:opacity-50 mb-3"
+          className="w-full max-w-sm py-3 bg-[#F3FF97] rounded-2xl text-[#030206] font-bold disabled:opacity-50 mb-3"
           whileTap={{ scale: 0.98 }}
           onClick={handleVerify}
           disabled={code.length !== 6 || isLoading}
@@ -2721,7 +2721,7 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
         </motion.button>
 
         <button
-          className={`text-sm ${canResend ? "text-amber-400" : "text-taupe"}`}
+          className={`text-sm ${canResend ? "text-[#F3FF97]" : "text-taupe"}`}
           onClick={handleResend}
           disabled={!canResend}
         >
@@ -2852,8 +2852,8 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
             animate={{ opacity: 1 }}
             className="text-center space-y-6"
           >
-            <div className="w-20 h-20 mx-auto bg-gradient-to-br from-amber-500 to-orange-500 rounded-2xl flex items-center justify-center">
-              <span className="material-symbols-outlined text-4xl text-white">fingerprint</span>
+            <div className="w-20 h-20 mx-auto bg-[#F3FF97] rounded-2xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-[#030206]">fingerprint</span>
             </div>
 
             <div>
@@ -2875,7 +2875,7 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
             <div className="space-y-3">
               <button
                 onClick={handleAuthenticate}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2"
+                className="w-full py-3.5 bg-[#F3FF97] text-[#030206] font-semibold rounded-xl flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined">lock_open</span>
                 Authenticate
@@ -2897,9 +2897,9 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
             className="text-center py-8"
           >
             <div className="w-16 h-16 mx-auto mb-4 relative">
-              <div className="absolute inset-0 bg-amber-500/20 rounded-full animate-ping" />
-              <div className="relative w-full h-full bg-gradient-to-br from-amber-500 to-orange-500 rounded-full flex items-center justify-center">
-                <span className="material-symbols-outlined text-3xl text-white">fingerprint</span>
+              <div className="absolute inset-0 bg-[#F3FF97]/20 rounded-full animate-ping" />
+              <div className="relative w-full h-full bg-[#F3FF97] rounded-full flex items-center justify-center">
+                <span className="material-symbols-outlined text-3xl text-[#030206]">fingerprint</span>
               </div>
             </div>
             <p className="text-white font-medium mb-2">Authenticating...</p>
@@ -2913,7 +2913,7 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
             animate={{ opacity: 1 }}
             className="text-center py-8"
           >
-            <div className="w-12 h-12 border-2 border-amber-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <div className="w-12 h-12 border-2 border-[#F3FF97] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-white font-medium mb-2">Recovering wallet...</p>
             <p className="text-taupe text-sm">Decrypting your wallet data</p>
           </motion.div>
