@@ -114,11 +114,30 @@ body {
 }
 
 /* ==========================================
-   SAFE AREAS
+   SAFE AREAS - TELEGRAM MINI APP OPTIMIZED
+   Telegram has its own header (~56px on mobile)
+   We need consistent top spacing that works everywhere
    ========================================== */
+:root {
+  /* Minimum safe padding for Telegram Mini Apps */
+  --safe-area-top: 12px;
+  --safe-area-bottom: 0px;
+}
+
+/* Use native safe area if available, with minimum fallback */
 @supports (padding: env(safe-area-inset-top)) {
-  .safe-top { padding-top: env(safe-area-inset-top); }
-  .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+  :root {
+    --safe-area-top: max(12px, env(safe-area-inset-top));
+    --safe-area-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+.safe-top {
+  padding-top: var(--safe-area-top);
+}
+
+.safe-bottom {
+  padding-bottom: var(--safe-area-bottom);
 }
 
 /* ==========================================

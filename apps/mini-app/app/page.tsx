@@ -3492,7 +3492,7 @@ function TabBar({ activeTab, onTabChange }: { activeTab: string; onTabChange: (t
 // ==================== HEADER ====================
 function Header({ title, onBack, rightAction }: { title: string; onBack?: () => void; rightAction?: React.ReactNode }) {
   return (
-    <div className="flex items-center justify-between p-4 pt-2">
+    <div className="flex items-center justify-between p-4 pt-4">
       {onBack ? (
         <motion.button
           className="w-10 h-10 rounded-full flex items-center justify-center press-glow-purple"
@@ -3553,8 +3553,8 @@ function Dashboard({ onNavigate }: { onNavigate: (screen: Screen, params?: any) 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      {/* Header */}
-      <div className="p-4 pt-6">
+      {/* Header - extra top padding for Telegram status bar */}
+      <div className="p-4 pt-10">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <motion.div
@@ -3774,7 +3774,7 @@ function WalletScreen({ onNavigate }: { onNavigate: (screen: Screen, params?: an
 
   return (
     <motion.div
-      className="h-full flex flex-col overflow-y-auto pb-32 pt-2"
+      className="h-full flex flex-col overflow-y-auto pb-32 pt-6"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
