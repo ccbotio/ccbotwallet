@@ -141,12 +141,20 @@ export default function PasskeySetupMandatory({ email, onComplete, onBack }: Pas
         window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium');
       } catch {}
 
-      // Use openLink with try_browser option to open in DEFAULT system browser
-      // (not Telegram's in-app browser)
-      if (window.Telegram?.WebApp?.openLink) {
-        // try_browser: true forces opening in the system's default browser
-        // This is required because passkeys (WebAuthn) don't work in Telegram's WebView
-        // Type assertion needed because TS types don't include the options parameter
+      // Open in external browser - try multiple methods
+      // Method 1: Use Telegram's openLink with try_browser (works on some devices)
+      // Method 2: Use x-safari-https scheme for iOS Safari
+      // Method 3: Direct window.open as fallback
+
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+      if (isIOS) {
+        // iOS: Try to force Safari by using the URL directly
+        // Telegram sometimes ignores try_browser on iOS
+        // Using window.location.href can help bypass this
+        window.location.href = passkeyUrl;
+      } else if (window.Telegram?.WebApp?.openLink) {
+        // Android/Desktop: Use Telegram's openLink with try_browser
         (window.Telegram.WebApp.openLink as (url: string, options?: { try_browser?: boolean }) => void)(
           passkeyUrl,
           { try_browser: true }

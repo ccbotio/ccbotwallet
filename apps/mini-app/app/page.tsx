@@ -2827,8 +2827,14 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
       window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium');
     } catch {}
 
-    // Open in external browser
-    if (window.Telegram?.WebApp?.openLink) {
+    // Open in external browser - try multiple methods
+    const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+    if (isIOS) {
+      // iOS: Use window.location.href to force Safari
+      window.location.href = verifyUrl;
+    } else if (window.Telegram?.WebApp?.openLink) {
+      // Android/Desktop: Use Telegram's openLink with try_browser
       (window.Telegram.WebApp.openLink as (url: string, options?: { try_browser?: boolean }) => void)(
         verifyUrl,
         { try_browser: true }
