@@ -580,51 +580,9 @@ function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; 
         </h1>
 
         <p className="text-taupe text-center mb-8 px-4 text-base leading-relaxed">
-          The first seedless wallet on Canton Network.<br />No seed phrases — just your PIN.
+          No seed phrases — just your PIN.
         </p>
-
-        <div className="w-full rounded-2xl border border-white/10 overflow-hidden">
-          <div className="flex items-center gap-4 px-5 py-4">
-            <svg className="w-6 h-6 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
-              <path fillRule="evenodd" d="M12.516 2.17a.75.75 0 00-1.032 0 11.209 11.209 0 01-7.877 3.08.75.75 0 00-.722.515A12.74 12.74 0 002.25 9.75c0 5.942 4.064 10.933 9.563 12.348a.749.749 0 00.374 0c5.499-1.415 9.563-6.406 9.563-12.348 0-1.39-.223-2.73-.635-3.985a.75.75 0 00-.722-.516l-.143.001c-2.996 0-5.717-1.17-7.734-3.08zm3.094 8.016a.75.75 0 10-1.22-.872l-3.236 4.53L9.53 12.22a.75.75 0 00-1.06 1.06l2.25 2.25a.75.75 0 001.14-.094l3.75-5.25z" clipRule="evenodd"/>
-            </svg>
-            <div>
-              <p className="text-white font-medium">Seedless Security</p>
-              <p className="text-white/40 text-sm mt-0.5">PIN protection</p>
-            </div>
-          </div>
-
-          <div className="h-px bg-white/8 mx-5" />
-
-          <div className="flex items-center gap-4 px-5 py-4">
-            <svg className="w-6 h-6 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
-              <path fillRule="evenodd" d="M12 1.5a5.25 5.25 0 00-5.25 5.25v3a3 3 0 00-3 3v6.75a3 3 0 003 3h10.5a3 3 0 003-3v-6.75a3 3 0 00-3-3v-3c0-2.9-2.35-5.25-5.25-5.25zm3.75 8.25v-3a3.75 3.75 0 10-7.5 0v3h7.5z" clipRule="evenodd"/>
-            </svg>
-            <div>
-              <p className="text-white font-medium">Encrypted Backup</p>
-              <p className="text-white/40 text-sm mt-0.5">Secured via Telegram</p>
-            </div>
-          </div>
-
-          <div className="h-px bg-white/8 mx-5" />
-
-          <div className="flex items-center gap-4 px-5 py-4">
-            <svg className="w-6 h-6 flex-shrink-0" fill="#875CFF" viewBox="0 0 24 24">
-              <path d="M21 6.375c0 2.692-4.03 4.875-9 4.875S3 9.067 3 6.375 7.03 1.5 12 1.5s9 2.183 9 4.875z"/>
-              <path d="M12 12.75c2.685 0 5.19-.586 7.078-1.609a8.282 8.282 0 001.897-1.384c.016.121.025.244.025.368C21 12.817 16.97 15 12 15s-9-2.183-9-4.875c0-.124.009-.247.025-.368a8.285 8.285 0 001.897 1.384C6.809 12.164 9.315 12.75 12 12.75z"/>
-              <path d="M12 16.5c2.685 0 5.19-.586 7.078-1.609a8.282 8.282 0 001.897-1.384c.016.121.025.244.025.368 0 2.692-4.03 4.875-9 4.875s-9-2.183-9-4.875c0-.124.009-.247.025-.368a8.284 8.284 0 001.897 1.384C6.809 15.914 9.315 16.5 12 16.5z"/>
-              <path d="M12 20.25c2.685 0 5.19-.586 7.078-1.609a8.282 8.282 0 001.897-1.384c.016.121.025.244.025.368 0 2.692-4.03 4.875-9 4.875s-9-2.183-9-4.875c0-.124.009-.247.025-.368a8.284 8.284 0 001.897 1.384C6.809 19.664 9.315 20.25 12 20.25z"/>
-            </svg>
-            <div>
-              <p className="text-white font-medium">Canton Network</p>
-              <p className="text-white/40 text-sm mt-0.5">Privacy-first blockchain</p>
-            </div>
-          </div>
-        </div>
       </div>
-
-      {/* Spacer */}
-      <div className="h-6 flex-shrink-0" />
 
       {/* Bottom buttons — always visible */}
       <div className="flex-shrink-0">
