@@ -169,7 +169,7 @@ async function sendTransferEmail(
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
   <div style="max-width: 400px; margin: 0 auto; padding: 20px;">
     <div style="text-align: center; margin-bottom: 24px;">
-      <img src="https://ccbot.app/logo.png" alt="CC Bot" width="64" height="64" style="border-radius: 12px;" />
+      <img src="https://ccbot.io/logo.png" alt="CC Bot" width="64" height="64" style="border-radius: 12px;" />
     </div>
     <h2 style="color: #1a1a2e; text-align: center; margin: 0 0 24px 0; font-size: 20px;">
       ${direction === 'incoming' ? 'Transfer Received' : 'Transfer Sent'}

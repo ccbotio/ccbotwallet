@@ -543,7 +543,7 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
           </motion.h1>
 
           <motion.p
-            className="text-taupe text-sm"
+            className="text-taupe text-sm text-center"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.8 }}
@@ -566,7 +566,7 @@ function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; 
       exit={{ opacity: 0, x: -100 }}
     >
       {/* Content area - scrollable if needed */}
-      <div className="flex-1 flex flex-col items-center overflow-y-auto min-h-0">
+      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
         <motion.div
           className="flex items-center justify-center mb-6"
           animate={{ y: [0, -8, 0] }}

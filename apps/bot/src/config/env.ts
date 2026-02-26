@@ -37,7 +37,7 @@ const envSchema = z.object({
   // Email (Resend) - optional in development
   // EMAIL_FROM can be "email@domain.com" or "Name <email@domain.com>"
   RESEND_API_KEY: z.string().min(1).optional(),
-  EMAIL_FROM: z.string().min(1).default('CC Bot Wallet <noreply@ccbot.app>'),
+  EMAIL_FROM: z.string().min(1).default('CC Bot Wallet <noreply@ccbot.io>'),
 
   PORT: z.coerce.number().default(3000),
   HOST: z.string().default('0.0.0.0'),

@@ -23,6 +23,8 @@ services:
       CANTON_LEDGER_API_USER: ${CANTON_LEDGER_API_USER:-ledger-api-user}
       CANTON_VALIDATOR_AUDIENCE: ${CANTON_VALIDATOR_AUDIENCE}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      EMAIL_FROM: ${EMAIL_FROM:-CC Bot Wallet <noreply@ccbot.io>}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
       interval: 30s
