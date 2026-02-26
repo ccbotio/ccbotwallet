@@ -3,6 +3,9 @@ import { redis } from '../../lib/redis.js';
 import { RATE_LIMITS } from '../../config/constants.js';
 import { getAuthTelegramId } from './jwt-auth.js';
 
+// DEV MODE: All rate limits disabled
+const DEV_MODE = true;
+
 /**
  * Get the client identifier for rate limiting.
  * Uses telegramId for authenticated users, IP address for unauthenticated users.
@@ -34,10 +37,11 @@ function getRateLimitIdentifier(request: FastifyRequest): string {
 
 /**
  * Rate limit middleware for API routes.
- * Uses Redis sliding window counter.
- * Uses user ID for authenticated requests, IP address for unauthenticated requests.
+ * DEV MODE: DISABLED
  */
 export async function apiRateLimitMiddleware(request: FastifyRequest, reply: FastifyReply) {
+  if (DEV_MODE) return; // BYPASS
+
   const identifier = getRateLimitIdentifier(request);
   const key = `rate:api:${identifier}`;
   const current = await redis.incr(key);
@@ -59,9 +63,11 @@ export async function apiRateLimitMiddleware(request: FastifyRequest, reply: Fas
 
 /**
  * Rate limit for transaction endpoints.
- * Uses user ID for authenticated requests, IP address for unauthenticated requests.
+ * DEV MODE: DISABLED
  */
 export async function transactionRateLimitMiddleware(request: FastifyRequest, reply: FastifyReply) {
+  if (DEV_MODE) return; // BYPASS
+
   const identifier = getRateLimitIdentifier(request);
   const key = `rate:tx:${identifier}`;
   const current = await redis.incr(key);
@@ -83,9 +89,11 @@ export async function transactionRateLimitMiddleware(request: FastifyRequest, re
 
 /**
  * Rate limit for authentication endpoints (stricter limits).
- * Always uses IP address since these are unauthenticated endpoints.
+ * DEV MODE: DISABLED
  */
 export async function authRateLimitMiddleware(request: FastifyRequest, reply: FastifyReply) {
+  if (DEV_MODE) return; // BYPASS
+
   // For auth endpoints, always use IP since users are not yet authenticated
   const forwardedFor = request.headers['x-forwarded-for'];
   const realIp = request.headers['x-real-ip'];
@@ -122,13 +130,17 @@ export async function authRateLimitMiddleware(request: FastifyRequest, reply: Fa
 
 /**
  * PIN attempt rate limiting.
- * 5 failed attempts → 15 minute lockout.
+ * DEV MODE: DISABLED - always allows
  */
 export async function checkPinRateLimit(telegramId: string): Promise<{
   allowed: boolean;
   remainingAttempts: number;
   lockedUntil?: number;
 }> {
+  if (DEV_MODE) {
+    return { allowed: true, remainingAttempts: 999 }; // BYPASS
+  }
+
   const key = `rate:pin:${telegramId}`;
   const lockKey = `lock:pin:${telegramId}`;
 

@@ -2,7 +2,15 @@ import type { Context, NextFunction } from 'grammy';
 import { redis } from '../../lib/redis.js';
 import { RATE_LIMITS } from '../../config/constants.js';
 
+// DEV MODE: Disable rate limits
+const DEV_MODE = true;
+
 export async function rateLimitMiddleware(ctx: Context, next: NextFunction) {
+  if (DEV_MODE) {
+    await next();
+    return;
+  }
+
   const userId = ctx.from?.id;
 
   if (!userId) {

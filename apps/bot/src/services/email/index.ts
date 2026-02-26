@@ -9,6 +9,9 @@ import { env } from '../../config/env.js';
 // Resend client - only initialized if API key is provided
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
+// DEV MODE: Disable all rate limits
+const DEV_MODE = true;
+
 const EMAIL_CODE_EXPIRY_MINUTES = 24 * 60; // 24 hours (dev mode)
 const MAX_ATTEMPTS = 5;
 const RATE_LIMIT_MINUTES = 1;
@@ -114,8 +117,13 @@ export class EmailService {
 
   /**
    * SECURITY: Check IP-based rate limit
+   * DEV MODE: DISABLED
    */
   async checkIpRateLimit(ipAddress: string): Promise<{ allowed: boolean; remaining: number }> {
+    if (DEV_MODE) {
+      return { allowed: true, remaining: 999 }; // BYPASS
+    }
+
     if (!ipAddress) {
       return { allowed: true, remaining: IP_RATE_LIMIT_MAX };
     }
@@ -140,8 +148,13 @@ export class EmailService {
 
   /**
    * SECURITY: Check global email rate limit (per email address)
+   * DEV MODE: DISABLED
    */
   async checkGlobalEmailRateLimit(email: string): Promise<{ allowed: boolean; remaining: number }> {
+    if (DEV_MODE) {
+      return { allowed: true, remaining: 999 }; // BYPASS
+    }
+
     const key = `${GLOBAL_EMAIL_RATE_KEY}${email.toLowerCase()}`;
     const count = await redis.incr(key);
 
@@ -390,11 +403,13 @@ export class EmailService {
       return { success: false, message: 'Too many verification attempts for this email. Please try again tomorrow.' };
     }
 
-    // Check user-specific rate limit (1 code per minute)
-    const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${userId}`;
-    const isRateLimited = await redis.get(rateLimitKey);
-    if (isRateLimited) {
-      return { success: false, message: 'Please wait before requesting another code' };
+    // Check user-specific rate limit (1 code per minute) - DEV MODE: DISABLED
+    if (!DEV_MODE) {
+      const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${userId}`;
+      const isRateLimited = await redis.get(rateLimitKey);
+      if (isRateLimited) {
+        return { success: false, message: 'Please wait before requesting another code' };
+      }
     }
 
     // Generate code and expiry
@@ -412,8 +427,11 @@ export class EmailService {
       expiresAt,
     });
 
-    // Set rate limit
-    await redis.set(rateLimitKey, '1', 'EX', RATE_LIMIT_MINUTES * 60);
+    // Set rate limit - DEV MODE: SKIP
+    if (!DEV_MODE) {
+      const rateLimitKey = `${RATE_LIMIT_KEY_PREFIX}${userId}`;
+      await redis.set(rateLimitKey, '1', 'EX', RATE_LIMIT_MINUTES * 60);
+    }
 
     // Send verification email
     const emailSent = await this.sendVerificationEmail(emailLower, code);
