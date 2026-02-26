@@ -579,9 +579,6 @@ function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; 
           Welcome to<br /><span className="text-yellow">CC Bot Wallet</span>
         </h1>
 
-        <p className="text-taupe text-center mb-8 px-4 text-base leading-relaxed">
-          No seed phrases — just your PIN.
-        </p>
       </div>
 
       {/* Bottom buttons — always visible */}
