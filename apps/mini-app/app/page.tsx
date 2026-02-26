@@ -3587,7 +3587,7 @@ function Dashboard({ onNavigate }: { onNavigate: (screen: Screen, params?: any) 
       animate={{ opacity: 1 }}
     >
       {/* Header */}
-      <div className="p-4">
+      <div className="p-4 pt-6">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
             <motion.div
@@ -3807,7 +3807,7 @@ function WalletScreen({ onNavigate }: { onNavigate: (screen: Screen, params?: an
 
   return (
     <motion.div
-      className="h-full flex flex-col overflow-y-auto pb-32"
+      className="h-full flex flex-col overflow-y-auto pb-32 pt-2"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
