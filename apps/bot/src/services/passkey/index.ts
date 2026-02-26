@@ -11,9 +11,9 @@ import { hexToBytes } from '@noble/hashes/utils';
 import { decrypt } from '@repo/crypto/encryption';
 
 /**
- * Challenge validity period (5 minutes)
+ * Challenge validity period (dev mode - 24 hours)
  */
-const CHALLENGE_TTL_MS = 5 * 60 * 1000;
+const CHALLENGE_TTL_MS = 24 * 60 * 60 * 1000;
 
 /**
  * PasskeyService handles passkey registration, verification, and recovery.

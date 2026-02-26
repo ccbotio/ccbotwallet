@@ -9,7 +9,7 @@ import { env } from '../../config/env.js';
 // Resend client - only initialized if API key is provided
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
-const EMAIL_CODE_EXPIRY_MINUTES = 5;
+const EMAIL_CODE_EXPIRY_MINUTES = 24 * 60; // 24 hours (dev mode)
 const MAX_ATTEMPTS = 5;
 const RATE_LIMIT_MINUTES = 1;
 const RATE_LIMIT_KEY_PREFIX = 'email:rate:';

@@ -2735,16 +2735,26 @@ function ForgotPinCodeScreen({ email, onContinue, onBack }: {
 /**
  * Forgot PIN - Passkey Verification Screen
  * Step 3: User authenticates with existing passkey and recovers share
+ * Uses external browser in Telegram WebView since WebAuthn doesn't work in iframe
  */
+const PASSKEY_POLL_INTERVAL = 2000;
+const PASSKEY_POLL_TIMEOUT = 24 * 60 * 60 * 1000; // 24 hours (dev mode - no timeout)
+
 function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
   partyId: string;
   sessionId: string;
   onVerified: (recoveredShareHex: string) => void;
   onBack: () => void;
 }) {
-  const [step, setStep] = useState<"ready" | "authenticating" | "decrypting" | "success" | "error">("ready");
+  const [step, setStep] = useState<"ready" | "waiting-browser" | "authenticating" | "decrypting" | "success" | "error">("ready");
   const [error, setError] = useState<string | null>(null);
   const [credentialCount, setCredentialCount] = useState(0);
+  const pollStartRef = useRef<number | null>(null);
+
+  // Detect Telegram WebView
+  const isTelegramWebView = typeof window !== 'undefined' &&
+    window.Telegram?.WebApp !== undefined &&
+    (window.self !== window.top || window.Telegram.WebApp.platform !== 'tdesktop');
 
   useEffect(() => {
     checkPasskeys();
@@ -2752,24 +2762,91 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
 
   const checkPasskeys = async () => {
     try {
-            const challengeData = await api.recoveryChallenge(sessionId, partyId);
+      const challengeData = await api.recoveryChallenge(sessionId, partyId);
       setCredentialCount(challengeData.allowCredentials?.length || 0);
     } catch (err) {
       console.error("Failed to check passkeys:", err);
     }
   };
 
-  const handleAuthenticate = async () => {
+  // Poll for verification completion (when using external browser)
+  useEffect(() => {
+    if (step !== "waiting-browser") return;
+
+    let isActive = true;
+    pollStartRef.current = Date.now();
+
+    const checkVerification = async () => {
+      if (!isActive) return;
+
+      // Check timeout
+      if (pollStartRef.current && Date.now() - pollStartRef.current > PASSKEY_POLL_TIMEOUT) {
+        setError("Verification timed out. Please try again.");
+        setStep("error");
+        return;
+      }
+
+      try {
+        // Check if passkey verification is complete
+        const result = await api.checkRecoveryVerification(sessionId, partyId);
+
+        if (result.verified && result.recoveryShareHex) {
+          const shareHex = result.recoveryShareHex;
+          setStep("success");
+          hapticSuccess();
+          setTimeout(() => {
+            onVerified(shareHex);
+          }, 500);
+          return;
+        }
+      } catch (err) {
+        console.log("Polling verification status...");
+      }
+
+      // Continue polling
+      if (isActive) {
+        setTimeout(checkVerification, PASSKEY_POLL_INTERVAL);
+      }
+    };
+
+    checkVerification();
+
+    return () => {
+      isActive = false;
+    };
+  }, [step, sessionId, partyId, onVerified]);
+
+  const handleOpenBrowser = () => {
+    setStep("waiting-browser");
+
+    // Build URL for external passkey verification
+    const baseUrl = window.location.origin;
+    const verifyUrl = `${baseUrl}/passkey-verify?session=${sessionId}&party=${encodeURIComponent(partyId)}`;
+
+    try {
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred('medium');
+    } catch {}
+
+    // Open in external browser
+    if (window.Telegram?.WebApp?.openLink) {
+      (window.Telegram.WebApp.openLink as (url: string, options?: { try_browser?: boolean }) => void)(
+        verifyUrl,
+        { try_browser: true }
+      );
+    } else {
+      window.open(verifyUrl, '_blank');
+    }
+  };
+
+  const handleDirectAuthenticate = async () => {
     setStep("authenticating");
     setError(null);
 
     try {
-            const { recoverWithPasskey } = await import("../crypto/passkey");
+      const { recoverWithPasskey } = await import("../crypto/passkey");
 
-      // Get challenge and encrypted share from backend
       const challengeData = await api.recoveryChallenge(sessionId, partyId);
 
-      // Convert to base64url format for passkey recovery
       const toBase64Url = (buffer: ArrayBuffer) => {
         const bytes = new Uint8Array(buffer);
         let binary = '';
@@ -2779,7 +2856,6 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
         return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
       };
 
-      // First, do WebAuthn authentication to verify with backend
       const challengeBuffer = Uint8Array.from(atob(challengeData.challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
       const allowCredentials = challengeData.allowCredentials.map(cred => ({
         id: Uint8Array.from(atob(cred.id.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0)),
@@ -2801,7 +2877,6 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
 
       const response = credential.response as AuthenticatorAssertionResponse;
 
-      // Verify passkey with backend and get encrypted share
       const verifyResult = await api.recoveryVerifyPasskey({
         sessionId,
         partyId,
@@ -2813,7 +2888,6 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
 
       setStep("decrypting");
 
-      // Now use recoverWithPasskey to decrypt the share with PRF
       const { recoveryShareHex } = await recoverWithPasskey(
         challengeData.challenge,
         challengeData.allowCredentials.map(c => ({ credentialId: c.id })),
@@ -2872,13 +2946,21 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
               </div>
             )}
 
+            {isTelegramWebView && (
+              <div className="bg-[#F3FF97]/10 border border-[#F3FF97]/20 rounded-xl p-3">
+                <p className="text-[#F3FF97] text-xs">
+                  Passkey verification will open in your browser for security.
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
               <button
-                onClick={handleAuthenticate}
+                onClick={isTelegramWebView ? handleOpenBrowser : handleDirectAuthenticate}
                 className="w-full py-3.5 bg-[#F3FF97] text-[#030206] font-semibold rounded-xl flex items-center justify-center gap-2"
               >
                 <span className="material-symbols-outlined">lock_open</span>
-                Authenticate
+                {isTelegramWebView ? "Verify in Browser" : "Authenticate"}
               </button>
               <button
                 onClick={onBack}
@@ -2887,6 +2969,31 @@ function ForgotPinPasskeyScreen({ partyId, sessionId, onVerified, onBack }: {
                 Cancel
               </button>
             </div>
+          </motion.div>
+        )}
+
+        {step === "waiting-browser" && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="text-center py-8 space-y-4"
+          >
+            <div className="w-20 h-20 mx-auto bg-[#F3FF97]/20 rounded-2xl flex items-center justify-center">
+              <span className="material-symbols-outlined text-4xl text-[#F3FF97]">open_in_browser</span>
+            </div>
+            <div>
+              <p className="text-white font-medium mb-2">Complete in Browser</p>
+              <p className="text-taupe text-sm">Verify your passkey in the browser, then return here.</p>
+            </div>
+            <div className="bg-[#F3FF97]/10 border border-[#F3FF97]/20 rounded-xl p-3">
+              <p className="text-[#F3FF97] text-xs">Waiting for verification...</p>
+            </div>
+            <button
+              onClick={onBack}
+              className="w-full py-3 text-taupe text-sm"
+            >
+              Cancel
+            </button>
           </motion.div>
         )}
 

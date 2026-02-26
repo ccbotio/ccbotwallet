@@ -23,9 +23,11 @@ import { logger } from '../../lib/logger.js';
 import { redis } from '../../lib/redis.js';
 import crypto from 'crypto';
 
-// Recovery session stored in Redis (15 min TTL)
-const RECOVERY_SESSION_TTL = 15 * 60; // 15 minutes
+// Recovery session stored in Redis
+const RECOVERY_SESSION_TTL = 24 * 60 * 60; // 24 hours (dev mode - no timeout)
 const RECOVERY_SESSION_PREFIX = 'recovery:session:';
+const DECRYPTED_SHARE_PREFIX = 'recovery:decrypted:';
+const DECRYPTED_SHARE_TTL = 24 * 60 * 60; // 24 hours (dev mode - no timeout)
 
 // Rate limit keys
 const EMAIL_CHECK_RATE_PREFIX = 'recovery:check:ip:';
@@ -446,6 +448,112 @@ class RecoveryService {
     } catch (error) {
       logger.error({ error, sessionId }, 'Failed to complete recovery');
       return { success: false, message: 'Failed to complete recovery.' };
+    }
+  }
+
+  /**
+   * Store decrypted share temporarily (from external browser)
+   * SECURITY: This is only called after successful passkey verification
+   * Share is stored with 60s TTL and deleted on first read
+   */
+  async storeDecryptedShare(
+    sessionId: string,
+    decryptedShareHex: string
+  ): Promise<{ success: boolean; message: string }> {
+    try {
+      const session = await this.getSession(sessionId);
+      if (!session) {
+        return { success: false, message: 'Session not found or expired.' };
+      }
+
+      // Must be in passkey_verified state
+      if (session.status !== 'passkey_verified') {
+        return { success: false, message: 'Invalid session state. Passkey must be verified first.' };
+      }
+
+      // Validate share format (should be hex with index prefix)
+      const shareParts = decryptedShareHex.split(':');
+      if (shareParts.length !== 2 || !/^[0-9a-fA-F]+$/.test(shareParts[0] || '') || !/^[0-9a-fA-F]+$/.test(shareParts[1] || '')) {
+        return { success: false, message: 'Invalid share format.' };
+      }
+
+      // Store decrypted share with short TTL
+      const decryptedKey = `${DECRYPTED_SHARE_PREFIX}${sessionId}`;
+      await redis.setex(decryptedKey, DECRYPTED_SHARE_TTL, decryptedShareHex);
+
+      // Log security event
+      await this.logSecurityEvent(session.userId, 'recovery_share_stored', 'info', {
+        sessionId,
+        shareIndex: shareParts[0],
+      });
+
+      logger.info({ sessionId }, 'Decrypted share stored temporarily for recovery polling');
+
+      return { success: true, message: 'Share stored for recovery.' };
+    } catch (error) {
+      logger.error({ error, sessionId }, 'Failed to store decrypted share');
+      return { success: false, message: 'Failed to store share.' };
+    }
+  }
+
+  /**
+   * Poll for verification status (from Telegram Mini App)
+   * Returns decrypted share if available and deletes it immediately
+   */
+  async pollVerificationStatus(
+    sessionId: string,
+    partyId: string
+  ): Promise<{
+    verified: boolean;
+    status: string;
+    recoveryShareHex?: string;
+  }> {
+    try {
+      const session = await this.getSession(sessionId);
+      if (!session) {
+        return { verified: false, status: 'expired' };
+      }
+
+      // Validate partyId matches
+      if (session.partyId !== partyId) {
+        return { verified: false, status: 'invalid' };
+      }
+
+      // Check if passkey is verified
+      if (session.status !== 'passkey_verified' && session.status !== 'complete') {
+        return { verified: false, status: session.status };
+      }
+
+      // Try to get decrypted share
+      const decryptedKey = `${DECRYPTED_SHARE_PREFIX}${sessionId}`;
+      const decryptedShare = await redis.get(decryptedKey);
+
+      if (decryptedShare) {
+        // Delete immediately after reading (one-time use)
+        await redis.del(decryptedKey);
+
+        // Log security event
+        await this.logSecurityEvent(session.userId, 'recovery_share_retrieved', 'info', {
+          sessionId,
+        });
+
+        logger.info({ sessionId }, 'Decrypted share retrieved and deleted');
+
+        return {
+          verified: true,
+          status: 'passkey_verified',
+          recoveryShareHex: decryptedShare,
+        };
+      }
+
+      // Passkey verified but share not yet stored (browser still processing)
+      return {
+        verified: true,
+        status: session.status,
+      };
+    } catch (error) {
+      logger.error({ error, sessionId }, 'Failed to poll verification status');
+      return { verified: false, status: 'error' };
     }
   }
 

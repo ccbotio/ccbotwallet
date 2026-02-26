@@ -47,6 +47,16 @@ const completeSchema = z.object({
   sessionId: z.string().uuid('Invalid session ID'),
 });
 
+const storeDecryptedSchema = z.object({
+  sessionId: z.string().uuid('Invalid session ID'),
+  decryptedShareHex: z.string().min(1, 'Decrypted share required'),
+});
+
+const pollSchema = z.object({
+  sessionId: z.string().uuid('Invalid session ID'),
+  partyId: z.string().min(1, 'Party ID required'),
+});
+
 /**
  * Get client IP address from request
  */
@@ -297,6 +307,79 @@ export function recoveryRoutes(fastify: FastifyInstance): void {
         });
       }
       logger.error({ error }, 'Recovery verify-passkey failed');
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'An error occurred' },
+      });
+    }
+  });
+
+  /**
+   * POST /api/recovery/store-decrypted
+   * Store decrypted share temporarily (from external browser after passkey verification)
+   * This is called by the external browser after successful passkey authentication
+   */
+  fastify.post('/store-decrypted', async (request, reply) => {
+    try {
+      const body = storeDecryptedSchema.parse(request.body);
+
+      const result = await recoveryService.storeDecryptedShare(
+        body.sessionId,
+        body.decryptedShareHex
+      );
+
+      if (!result.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'STORE_FAILED', message: result.message },
+        });
+      }
+
+      return reply.send({
+        success: true,
+        data: { message: result.message },
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: error.errors[0]?.message || 'Invalid input' },
+        });
+      }
+      logger.error({ error }, 'Recovery store-decrypted failed');
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'INTERNAL_ERROR', message: 'An error occurred' },
+      });
+    }
+  });
+
+  /**
+   * POST /api/recovery/poll
+   * Poll for recovery verification status (from Telegram Mini App)
+   * Returns decrypted share if available and deletes it immediately
+   */
+  fastify.post('/poll', async (request, reply) => {
+    try {
+      const body = pollSchema.parse(request.body);
+
+      const result = await recoveryService.pollVerificationStatus(
+        body.sessionId,
+        body.partyId
+      );
+
+      return reply.send({
+        success: true,
+        data: result,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'VALIDATION_ERROR', message: error.errors[0]?.message || 'Invalid input' },
+        });
+      }
+      logger.error({ error }, 'Recovery poll failed');
       return reply.status(500).send({
         success: false,
         error: { code: 'INTERNAL_ERROR', message: 'An error occurred' },

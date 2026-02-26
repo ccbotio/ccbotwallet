@@ -3,7 +3,7 @@ import { db } from '../../db/index.js';
 import { passkeySessions } from '../../db/schema.js';
 import { randomBytes, createHash } from 'crypto';
 
-const SESSION_EXPIRY_MINUTES = 5;
+const SESSION_EXPIRY_MINUTES = 24 * 60; // 24 hours (dev mode)
 
 export interface CreateSessionParams {
   userId: string;

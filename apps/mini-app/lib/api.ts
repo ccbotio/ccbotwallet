@@ -805,6 +805,40 @@ class ApiClient {
     return result.data;
   }
 
+  /**
+   * Store decrypted share temporarily (from external browser after passkey verification)
+   * PUBLIC endpoint - requires valid recovery session
+   */
+  async recoveryStoreDecrypted(sessionId: string, decryptedShareHex: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: { message: string };
+    }>('/api/recovery/store-decrypted', {
+      method: 'POST',
+      body: { sessionId, decryptedShareHex },
+    });
+    return result.data;
+  }
+
+  /**
+   * Poll for recovery verification status (from Telegram Mini App)
+   * Returns decrypted share if available
+   */
+  async checkRecoveryVerification(sessionId: string, partyId: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        verified: boolean;
+        status: string;
+        recoveryShareHex?: string;
+      };
+    }>('/api/recovery/poll', {
+      method: 'POST',
+      body: { sessionId, partyId },
+    });
+    return result.data;
+  }
+
   // ==================== PIN RESET ====================
 
   /**
