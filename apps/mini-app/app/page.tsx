@@ -1038,16 +1038,7 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
           ))}
         </div>
 
-        {/* Paste button - uses Telegram clipboard API */}
-        <button
-          className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
-          onClick={handlePinPaste}
-        >
-          <span className="material-symbols-outlined text-base">content_paste</span>
-          <span>Paste PIN</span>
-        </button>
-
-        <div className="grid grid-cols-3 gap-4 w-full max-w-[280px]">
+        <div className="grid grid-cols-3 gap-4 w-full max-w-[280px] mt-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
@@ -1184,18 +1175,7 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
 
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-        {/* Paste button - uses Telegram clipboard API */}
-        {!isLoading && (
-          <button
-            className="flex items-center gap-2 text-purple text-sm mb-3 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
-            onClick={handlePinPaste}
-          >
-            <span className="material-symbols-outlined text-base">content_paste</span>
-            <span>Paste PIN</span>
-          </button>
-        )}
-
-        <div className="grid grid-cols-3 gap-4 w-full max-w-[280px] mt-2">
+        <div className="grid grid-cols-3 gap-4 w-full max-w-[280px] mt-4">
           {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
             <motion.button
               key={key}
@@ -1487,19 +1467,6 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
         </motion.div>
 
         {/* Paste button - uses Telegram clipboard API */}
-        {!showSuccess && !isLockedOut && (
-          <motion.button
-            className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.32 }}
-            onClick={handlePinPaste}
-          >
-            <span className="material-symbols-outlined text-base">content_paste</span>
-            <span>Paste PIN</span>
-          </motion.button>
-        )}
-
         {/* Error message */}
         <AnimatePresence>
           {error && (
