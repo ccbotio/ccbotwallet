@@ -26,6 +26,7 @@ export interface PendingTransaction {
   recipientPartyId: string;
   recipientUsername?: string;
   amount: string;
+  memo?: string;
 }
 
 export interface SecurityState {
@@ -53,6 +54,7 @@ export interface SecurityActions {
   // Lock
   lock(): void;
   unlock(pin: string): Promise<boolean>;
+  forceUnlock(): void; // Unlock without PIN - for use after PIN setup during onboarding
   resetActivityTimer(): void;
   setLockTimeout(seconds: number): Promise<void>;
 
@@ -473,6 +475,13 @@ export function SecurityProvider({
     [userId, isLockedOut, pinAttempts, resetTimer]
   );
 
+  // Force unlock without PIN verification - for use after PIN setup during onboarding
+  const forceUnlock = useCallback(() => {
+    setIsLocked(false);
+    clearLockState();
+    resetTimer();
+  }, [resetTimer]);
+
   const resetActivityTimer = useCallback(() => {
     resetTimer();
     setLastActivityAt(new Date());
@@ -758,6 +767,7 @@ export function SecurityProvider({
     // Actions
     lock,
     unlock,
+    forceUnlock,
     resetActivityTimer,
     setLockTimeout: setLockTimeoutAction,
     enableBiometric,

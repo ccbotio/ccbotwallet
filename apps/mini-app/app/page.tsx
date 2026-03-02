@@ -4537,7 +4537,7 @@ function SendScreen({ onBack }: { onBack: () => void }) {
 
   // Check if running on mobile (only show QR scanner on mobile)
   const isMobile = typeof window !== 'undefined' &&
-    ['android', 'ios'].includes(window.Telegram?.WebApp?.platform || '');
+    ['android', 'ios'].includes(String(window.Telegram?.WebApp?.platform || ''));
 
   const ccBalance = wallet?.balance ? parseFloat(wallet.balance) : 0;
 
@@ -6223,7 +6223,7 @@ function BridgeScreen({ onBack }: { onBack: () => void }) {
         }
       } else {
         // No wallet found - show message or open WalletConnect
-        window.Telegram?.WebApp?.showAlert?.('Please install MetaMask or use WalletConnect');
+        try { (window.Telegram?.WebApp as any)?.showAlert?.('Please install MetaMask or use WalletConnect'); } catch {}
         window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
       }
     } catch (error) {
@@ -6870,7 +6870,7 @@ interface AgentMessage {
 }
 
 function AIAssistantScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
-  const { wallet, userShare } = useWalletContext();
+  const { wallet, userShareHex: userShare } = useWalletContext();
   const { getUsdValue, getPortfolioChange } = usePrice();
   const [messages, setMessages] = useState<AgentMessage[]>([
     { id: 1, type: "assistant", text: "Hello! I'm CC Bot. I can help you send CC, check balance, or view transactions. What would you like to do?", time: "Just now" }
