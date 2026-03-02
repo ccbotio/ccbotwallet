@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, Fragment } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import QRCode from "react-qr-code";
@@ -203,7 +203,9 @@ type Screen =
   | "forgot-pin-code"
   | "forgot-pin-passkey"
   | "forgot-pin-new"
-  | "forgot-pin-confirm";
+  | "forgot-pin-confirm"
+  | "activity"
+  | "notification-settings";
 
 // Passkey credential data stored during onboarding
 interface PasskeyCredentialData {
@@ -216,6 +218,7 @@ interface PendingTransaction {
   recipientPartyId: string;
   recipientUsername?: string;
   amount: string;
+  memo?: string;
 }
 
 interface NavigationState {
@@ -558,51 +561,309 @@ function SplashScreen({ onComplete }: { onComplete: () => void }) {
 
 // ==================== ONBOARDING SCREEN ====================
 function OnboardingScreen({ onContinue, onExisting }: { onContinue: () => void; onExisting: () => void }) {
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+
+  return (
+    <>
+      <motion.div
+        className="absolute inset-0 flex flex-col px-6 pt-6 overflow-hidden"
+        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0, x: -100 }}
+      >
+        {/* Content area - scrollable if needed */}
+        <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
+          <motion.div
+            className="flex items-center justify-center mb-6"
+            animate={{ y: [0, -8, 0] }}
+            transition={{ duration: 4, repeat: Infinity }}
+          >
+            <Image src="/ccbotlogo.png" alt="CC Bot" width={140} height={140} priority />
+          </motion.div>
+
+          <h1 className="text-white text-3xl font-bold mb-3 text-center">
+            Welcome to<br /><span className="text-yellow">CC Bot Wallet</span>
+          </h1>
+
+        </div>
+
+        {/* Bottom buttons — always visible */}
+        <div className="flex-shrink-0">
+          {/* Terms of Service Checkbox */}
+          <div className="flex items-start gap-3 mb-4 px-1">
+            <button
+              onClick={() => setAgreedToTerms(!agreedToTerms)}
+              className={`flex-shrink-0 w-6 h-6 rounded-md border-2 flex items-center justify-center transition-all ${
+                agreedToTerms
+                  ? 'bg-purple border-purple'
+                  : 'bg-transparent border-taupe/50 hover:border-purple/50'
+              }`}
+            >
+              {agreedToTerms && (
+                <span className="material-symbols-outlined text-white text-lg">check</span>
+              )}
+            </button>
+            <p className="text-taupe text-sm leading-relaxed">
+              I have read and agree to the{' '}
+              <button
+                onClick={() => setShowTermsModal(true)}
+                className="text-purple underline hover:text-lilac transition-colors"
+              >
+                Terms of Service
+              </button>
+            </p>
+          </div>
+
+          <motion.button
+            className={`w-full py-4 rounded-2xl text-white font-bold text-lg mb-3 transition-all ${
+              agreedToTerms
+                ? 'bg-gradient-to-r from-purple to-lilac'
+                : 'bg-white/20 cursor-not-allowed'
+            }`}
+            whileTap={agreedToTerms ? { scale: 0.98 } : {}}
+            onClick={() => agreedToTerms && onContinue()}
+            disabled={!agreedToTerms}
+          >
+            Create New Wallet
+          </motion.button>
+
+          <motion.button
+            className={`w-full py-4 rounded-2xl font-medium text-lg transition-all ${
+              agreedToTerms
+                ? 'bg-white/10 text-white'
+                : 'bg-white/5 text-taupe/50 cursor-not-allowed'
+            }`}
+            whileTap={agreedToTerms ? { scale: 0.98 } : {}}
+            onClick={() => agreedToTerms && onExisting()}
+            disabled={!agreedToTerms}
+          >
+            I Have a Wallet
+          </motion.button>
+        </div>
+      </motion.div>
+
+      {/* Terms of Service Modal */}
+      <AnimatePresence>
+        {showTermsModal && (
+          <TermsOfServiceModal onClose={() => setShowTermsModal(false)} />
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
+
+// ==================== TERMS OF SERVICE MODAL ====================
+function TermsOfServiceModal({ onClose }: { onClose: () => void }) {
   return (
     <motion.div
-      className="absolute inset-0 flex flex-col px-6 pt-8 pb-6 overflow-hidden"
+      className="fixed inset-0 z-[100] flex items-end justify-center"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      exit={{ opacity: 0, x: -100 }}
+      exit={{ opacity: 0 }}
     >
-      {/* Content area - scrollable if needed */}
-      <div className="flex-1 flex flex-col items-center justify-center overflow-y-auto min-h-0">
-        <motion.div
-          className="flex items-center justify-center mb-6"
-          animate={{ y: [0, -8, 0] }}
-          transition={{ duration: 4, repeat: Infinity }}
-        >
-          <Image src="/ccbotlogo.png" alt="CC Bot" width={140} height={140} priority />
-        </motion.div>
+      {/* Backdrop */}
+      <motion.div
+        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+        onClick={onClose}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      />
 
-        <h1 className="text-white text-3xl font-bold mb-3 text-center">
-          Welcome to<br /><span className="text-yellow">CC Bot Wallet</span>
-        </h1>
+      {/* Modal Content */}
+      <motion.div
+        className="relative w-full max-h-[85vh] bg-[#1a1a2e] rounded-t-3xl overflow-hidden flex flex-col"
+        initial={{ y: "100%" }}
+        animate={{ y: 0 }}
+        exit={{ y: "100%" }}
+        transition={{ type: "spring", damping: 25, stiffness: 300 }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-white/10 flex-shrink-0">
+          <h2 className="text-white text-xl font-bold">Terms of Service</h2>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+          >
+            <span className="material-symbols-outlined text-white text-xl">close</span>
+          </button>
+        </div>
 
-      </div>
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4">
+          <div className="text-taupe text-sm leading-relaxed space-y-6">
+            <p className="text-white/60 text-xs">Last Updated: February 2025</p>
 
-      {/* Bottom buttons — always visible */}
-      <div className="flex-shrink-0">
-        <motion.button
-          className="w-full py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-lg mb-3"
-          whileTap={{ scale: 0.98 }}
-          onClick={onContinue}
-        >
-          Create New Wallet
-        </motion.button>
+            <section>
+              <h3 className="text-white font-semibold mb-2">1. Acceptance of Terms</h3>
+              <p>
+                By accessing or using CC Bot Wallet ("Service"), a self-custodial digital wallet application
+                built on the Canton Network, you agree to be bound by these Terms of Service. If you do not
+                agree to these terms, please do not use the Service.
+              </p>
+            </section>
 
-        <motion.button
-          className="w-full py-4 bg-white/10 rounded-2xl text-white font-medium text-lg"
-          whileTap={{ scale: 0.98 }}
-          onClick={onExisting}
-        >
-          I Have a Wallet
-        </motion.button>
+            <section>
+              <h3 className="text-white font-semibold mb-2">2. Service Description</h3>
+              <p>
+                CC Bot Wallet is a non-custodial cryptocurrency wallet that enables you to:
+              </p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Create and manage digital wallets on the Canton Network</li>
+                <li>Send and receive Canton Coin (CC) tokens</li>
+                <li>View transaction history and wallet balances</li>
+                <li>Interact with the Canton Network ecosystem</li>
+              </ul>
+            </section>
 
-        <p className="text-center text-taupe text-sm mt-4">
-          By continuing, you agree to our Terms of Service
-        </p>
-      </div>
+            <section>
+              <h3 className="text-white font-semibold mb-2">3. Self-Custody & User Responsibility</h3>
+              <p>
+                <strong className="text-white">You are solely responsible for:</strong>
+              </p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Safeguarding your PIN code, recovery phrase, and any authentication credentials</li>
+                <li>Maintaining the security of your device and Telegram account</li>
+                <li>All transactions conducted through your wallet</li>
+                <li>Backing up your recovery code securely - loss of this code may result in permanent loss of access to your funds</li>
+              </ul>
+              <p className="mt-3 text-yellow-400/80">
+                ⚠️ We do not store your private keys. If you lose access to your recovery credentials,
+                we cannot restore your wallet or recover your funds.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">4. Security Architecture</h3>
+              <p>
+                CC Bot Wallet uses advanced cryptographic techniques to protect your assets:
+              </p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>2-of-3 Shamir Secret Sharing for key management</li>
+                <li>Ed25519 digital signatures for transaction authorization</li>
+                <li>AES-256-GCM encryption for local data storage</li>
+                <li>PIN-based authentication with brute-force protection</li>
+              </ul>
+              <p className="mt-2">
+                While we implement industry-standard security measures, no system is completely secure.
+                You acknowledge the inherent risks of using blockchain technology.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">5. Canton Network</h3>
+              <p>
+                This Service operates on the Canton Network, a privacy-enabled blockchain platform. By using
+                CC Bot Wallet, you acknowledge that:
+              </p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Transactions are subject to Canton Network protocols and fees</li>
+                <li>Network availability depends on Canton Network infrastructure</li>
+                <li>Smart contract interactions follow Canton Network's DAML standards</li>
+                <li>You are responsible for understanding Canton Network's operational characteristics</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">6. Risk Disclosure</h3>
+              <p className="text-yellow-400/80">
+                <strong>Cryptocurrency involves significant risks, including but not limited to:</strong>
+              </p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Price volatility - digital asset values may fluctuate significantly</li>
+                <li>Regulatory uncertainty - laws governing digital assets may change</li>
+                <li>Technical risks - software bugs, network issues, or protocol changes</li>
+                <li>Irreversible transactions - blockchain transactions cannot be reversed</li>
+                <li>Loss of access - losing credentials results in permanent fund loss</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">7. Prohibited Activities</h3>
+              <p>You agree not to use the Service for:</p>
+              <ul className="list-disc pl-5 mt-2 space-y-1">
+                <li>Money laundering or terrorist financing</li>
+                <li>Fraudulent activities or scams</li>
+                <li>Circumventing legal restrictions or sanctions</li>
+                <li>Any illegal activities under applicable law</li>
+                <li>Attempting to compromise the security of the Service</li>
+              </ul>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">8. Privacy</h3>
+              <p>
+                We collect minimal data necessary to operate the Service. Your email is used for account
+                recovery purposes. Transaction data is stored locally and on the Canton Network blockchain.
+                We do not sell your personal information to third parties.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">9. Limitation of Liability</h3>
+              <p>
+                TO THE MAXIMUM EXTENT PERMITTED BY LAW, CC BOT WALLET AND ITS DEVELOPERS SHALL NOT BE
+                LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, INCLUDING
+                BUT NOT LIMITED TO LOSS OF FUNDS, DATA, OR PROFITS, ARISING FROM YOUR USE OF THE SERVICE.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">10. Service Modifications</h3>
+              <p>
+                We reserve the right to modify, suspend, or discontinue the Service at any time without
+                prior notice. We may also update these Terms of Service periodically. Continued use of the
+                Service constitutes acceptance of any changes.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">11. Intellectual Property</h3>
+              <p>
+                CC Bot Wallet, including its design, logos, and codebase, is protected by intellectual
+                property rights. You are granted a limited, non-exclusive license to use the Service for
+                personal, non-commercial purposes.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">12. Governing Law</h3>
+              <p>
+                These Terms shall be governed by and construed in accordance with applicable laws, without
+                regard to conflict of law principles. Any disputes shall be resolved through binding
+                arbitration in accordance with applicable arbitration rules.
+              </p>
+            </section>
+
+            <section>
+              <h3 className="text-white font-semibold mb-2">13. Contact</h3>
+              <p>
+                For questions about these Terms of Service, please contact us through our official
+                support channels.
+              </p>
+            </section>
+
+            <div className="pt-4 pb-2 border-t border-white/10 mt-6">
+              <p className="text-center text-white/40 text-xs">
+                © 2025 CC Bot Wallet. Built on Canton Network.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer Button */}
+        <div className="flex-shrink-0 px-6 py-4 border-t border-white/10">
+          <motion.button
+            className="w-full py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold text-lg"
+            whileTap={{ scale: 0.98 }}
+            onClick={onClose}
+          >
+            I Understand
+          </motion.button>
+        </div>
+      </motion.div>
     </motion.div>
   );
 }
@@ -644,16 +905,45 @@ function EmailSetupScreen({
     setError("");
 
     try {
-      // Verify token is set before making API call
+      // Ensure we have a valid token - re-authenticate if needed
       if (!api.hasToken()) {
-        console.error('[EmailSetupScreen] No auth token available!');
-        setError("Authentication not ready. Please wait and try again.");
-        setIsLoading(false);
-        return;
+        console.log('[EmailSetupScreen] No token, authenticating...');
+        const tg = window.Telegram?.WebApp;
+        const isLocalDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+        const initData = tg?.initData || (isLocalDev ? 'dev_mode_555666777' : '');
+        if (initData) {
+          const authResult = await api.authenticate(initData);
+          api.setTokens(authResult.token, authResult.refreshToken);
+          console.log('[EmailSetupScreen] Authenticated successfully');
+        } else {
+          setError("Authentication not ready. Please wait and try again.");
+          setIsLoading(false);
+          return;
+        }
       }
 
       // First check if email already has a wallet
-      const emailCheck = await api.checkEmail(email);
+      let emailCheck;
+      try {
+        emailCheck = await api.checkEmail(email);
+      } catch (authErr: any) {
+        // If token expired, re-authenticate and retry
+        if (authErr?.message?.includes('expired') || authErr?.message?.includes('Invalid') || authErr?.statusCode === 401) {
+          console.log('[EmailSetupScreen] Token expired, re-authenticating...');
+          const tg = window.Telegram?.WebApp;
+          const isLocalDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+          const initData = tg?.initData || (isLocalDev ? 'dev_mode_555666777' : '');
+          if (initData) {
+            const authResult = await api.authenticate(initData);
+            api.setTokens(authResult.token, authResult.refreshToken);
+            emailCheck = await api.checkEmail(email);
+          } else {
+            throw authErr;
+          }
+        } else {
+          throw authErr;
+        }
+      }
 
       if (emailCheck.hasWallet && emailCheck.partyId) {
         // Email has existing wallet - show recovery option
@@ -783,7 +1073,26 @@ function EmailVerifyScreen({
     setError("");
 
     try {
-            const result = await api.verifyEmailCode(email, code);
+      let result;
+      try {
+        result = await api.verifyEmailCode(email, code);
+      } catch (authErr: any) {
+        // If token expired, re-authenticate and retry
+        if (authErr?.message?.includes('expired') || authErr?.message?.includes('Invalid') || authErr?.statusCode === 401) {
+          console.log('[EmailVerifyScreen] Token expired, re-authenticating...');
+          const tg = window.Telegram?.WebApp;
+          const initData = tg?.initData || ((typeof window !== 'undefined' && window.location.hostname === 'localhost') ? 'dev_mode_555666777' : '');
+          if (initData) {
+            const authResult = await api.authenticate(initData);
+            api.setTokens(authResult.token, authResult.refreshToken);
+            result = await api.verifyEmailCode(email, code);
+          } else {
+            throw authErr;
+          }
+        } else {
+          throw authErr;
+        }
+      }
       if (result.verified) {
         try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
         onComplete();
@@ -876,6 +1185,36 @@ function EmailVerifyScreen({
     }
   };
 
+  // Input ref for native keyboard
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [isFocused, setIsFocused] = useState(false);
+
+  // Auto-focus input on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Handle input change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setCode(value);
+    setError("");
+    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
+
+    // Auto-verify when 6 digits entered
+    if (value.length === 6) {
+      setTimeout(() => handleVerifyRef.current(), 300);
+    }
+  };
+
+  // Focus input when clicking on boxes
+  const handleBoxesClick = () => {
+    inputRef.current?.focus();
+  };
+
   return (
     <motion.div
       className="absolute inset-0 flex flex-col px-5 pt-4 pb-5 overflow-hidden"
@@ -885,62 +1224,69 @@ function EmailVerifyScreen({
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
       <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-        <div className="w-14 h-14 rounded-full bg-purple/20 flex items-center justify-center mb-4">
-          <span className="material-symbols-outlined text-2xl text-purple">mark_email_read</span>
-        </div>
+        {/* CC Bot Logo */}
+        <Image src="/ccbotlogo.png" alt="CC Bot" width={56} height={56} className="mb-5" />
+
         <h2 className="text-white text-xl font-bold mb-1">Enter Code</h2>
-        <p className="text-taupe text-center text-sm mb-1">We sent a 6-digit code to</p>
-        <p className="text-purple text-center text-sm mb-5">{email}</p>
+        <p className="text-purple text-center text-sm mb-6">{email}</p>
 
-        <div className="flex gap-2 mb-2">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <motion.div
-              key={i}
-              className={`w-11 h-12 rounded-lg flex items-center justify-center text-xl font-bold ${
-                error ? "bg-red-500/20 border-red-500" : i < code.length ? "bg-purple/20 border-purple" : "bg-white/10 border-white/20"
-              } border-2`}
-              animate={error ? { x: [-5, 5, -5, 5, 0] } : i < code.length ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 0.2 }}
-            >
-              <span className="text-white">{code[i] || ""}</span>
-            </motion.div>
-          ))}
+        {/* Hidden input for native keyboard */}
+        <input
+          ref={inputRef}
+          type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={6}
+          value={code}
+          onChange={handleInputChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          autoComplete="one-time-code"
+          disabled={isLoading}
+          className="absolute opacity-0 pointer-events-none"
+          style={{ fontSize: '16px' }}
+        />
+
+        {/* Code boxes - clickable to focus input */}
+        <div className="flex gap-3 mb-6 cursor-pointer" onClick={handleBoxesClick}>
+          {[0, 1, 2, 3, 4, 5].map((i) => {
+            const isActive = isFocused && i === code.length && !error;
+            const isFilled = i < code.length;
+            return (
+              <motion.div
+                key={i}
+                className={`w-13 h-16 rounded-xl border-2 flex items-center justify-center text-2xl font-bold relative ${
+                  error
+                    ? "bg-red-500/20 border-red-500 text-red-500"
+                    : isFilled
+                      ? "bg-purple/20 border-purple text-white"
+                      : isActive
+                        ? "bg-purple/10 border-purple"
+                        : "bg-white/5 border-white/20"
+                }`}
+                style={{ width: '52px', height: '64px' }}
+                animate={error ? { x: [-5, 5, -5, 5, 0] } : isFilled ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 0.2 }}
+              >
+                {code[i] || ""}
+                {/* Blinking cursor for active box */}
+                {isActive && (
+                  <motion.div
+                    className="absolute w-0.5 h-7 bg-purple rounded-full"
+                    animate={{ opacity: [1, 0, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                )}
+              </motion.div>
+            );
+          })}
         </div>
-
-        {/* Paste button - uses Telegram clipboard API */}
-        <button
-          className="flex items-center gap-2 text-purple text-sm mb-4 px-4 py-2 bg-purple/10 rounded-xl active:bg-purple/20 transition-colors"
-          onClick={handlePaste}
-        >
-          <span className="material-symbols-outlined text-base">content_paste</span>
-          <span>Paste code</span>
-        </button>
 
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
-        <div className="grid grid-cols-3 gap-3 mb-4">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
-            <motion.button
-              key={key}
-              className={`w-[76px] h-[76px] rounded-2xl flex items-center justify-center text-2xl font-semibold
-                ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => key === "del" ? handleDelete() : key && handleCodeInput(key)}
-              disabled={isLoading}
-            >
-              {key === "del" ? "DEL" : key}
-            </motion.button>
-          ))}
-        </div>
-
-        <motion.button
-          className="w-full max-w-sm py-3 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white font-bold disabled:opacity-50 mb-3"
-          whileTap={{ scale: 0.98 }}
-          onClick={handleVerify}
-          disabled={code.length !== 6 || isLoading}
-        >
-          {isLoading ? "Verifying..." : "Verify"}
-        </motion.button>
+        <p className="text-taupe/60 text-xs mb-4 text-center">
+          Tap boxes to open keyboard, long-press to paste
+        </p>
 
         <button
           className={`text-sm ${canResend ? "text-purple" : "text-taupe"}`}
@@ -957,57 +1303,35 @@ function EmailVerifyScreen({
 // ==================== PIN SCREENS ====================
 function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => void; onBack?: () => void }) {
   const [pin, setPin] = useState("");
-
-  const handlePress = (digit: string) => {
-    if (pin.length < 6) {
-      const newPin = pin + digit;
-      setPin(newPin);
-      try {
-        window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
-      } catch {}
-      if (newPin.length === 6) {
-        setTimeout(() => onComplete(newPin), 300);
-      }
-    }
-  };
-
-  const handleDelete = () => {
-    setPin(pin.slice(0, -1));
-    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
-  };
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Ref for onComplete to avoid stale closure
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
+  // Auto-focus input on mount to open keyboard
   useEffect(() => {
-    return setupKeyboardListeners({
-      onDigit: (digit) => {
-        setPin(prev => {
-          if (prev.length >= 6) return prev;
-          const next = prev + digit;
-          if (next.length === 6) setTimeout(() => onCompleteRef.current(next), 300);
-          return next;
-        });
-      },
-      onBackspace: () => setPin(prev => prev.slice(0, -1))
-    });
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
-  // Paste handler
-  const handlePinPaste = async () => {
-    const result = await readClipboard();
-    if (result.success && result.text) {
-      const digits = extractDigits(result.text, 6);
-      if (digits.length > 0) {
-        setPin(digits);
-        hapticSuccess();
-        if (digits.length === 6) setTimeout(() => onCompleteRef.current(digits), 300);
-      }
-    } else {
-      hapticError();
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setPin(value);
+    try {
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+    } catch {}
+    if (value.length === 6) {
+      setTimeout(() => onCompleteRef.current(value), 300);
     }
+  };
+
+  // Focus input when clicking on dots
+  const handleDotsClick = () => {
+    inputRef.current?.focus();
   };
 
   return (
@@ -1021,36 +1345,59 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
       )}
 
       <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-        <div className="w-14 h-14 rounded-full bg-purple/20 flex items-center justify-center mb-4">
-          <span className="material-symbols-outlined text-2xl text-purple">lock</span>
-        </div>
+        {/* CC Bot Logo */}
+        <Image src="/ccbotlogo.png" alt="CC Bot" width={56} height={56} className="mb-5" />
+
         <h2 className="text-white text-xl font-bold mb-1">Create PIN</h2>
-        <p className="text-taupe text-center text-sm mb-6">Enter a 6-digit PIN to secure your wallet</p>
+        
+        {/* Hidden input for native keyboard */}
+        <input
+          ref={inputRef}
+          type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={6}
+          value={pin}
+          onChange={handleChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          autoComplete="off"
+          className="absolute opacity-0 pointer-events-none"
+          style={{ fontSize: '16px' }} // Prevents zoom on iOS
+        />
 
-        <div className="flex gap-3 mb-4">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <motion.div
-              key={i}
-              className={`w-3 h-3 rounded-full ${i < pin.length ? "bg-yellow" : "bg-white/20"}`}
-              animate={i < pin.length ? { scale: [1, 1.3, 1] } : {}}
-              transition={{ duration: 0.2 }}
-            />
-          ))}
+        {/* PIN boxes - clickable to focus input */}
+        <div className="flex gap-3 mb-8 cursor-pointer" onClick={handleDotsClick}>
+          {[0, 1, 2, 3, 4, 5].map((i) => {
+            const isActive = isFocused && i === pin.length;
+            const isFilled = i < pin.length;
+            return (
+              <motion.div
+                key={i}
+                className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold relative ${
+                  isFilled
+                    ? "bg-yellow/20 border-yellow text-yellow"
+                    : isActive
+                    ? "bg-purple/10 border-purple"
+                    : "bg-white/5 border-white/20"
+                }`}
+                animate={isFilled ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 0.15 }}
+              >
+                {isFilled ? "•" : ""}
+                {/* Blinking cursor for active box */}
+                {isActive && (
+                  <motion.div
+                    className="absolute w-0.5 h-6 bg-purple rounded-full"
+                    animate={{ opacity: [1, 0, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                )}
+              </motion.div>
+            );
+          })}
         </div>
 
-        <div className="grid grid-cols-3 gap-4 w-full max-w-[280px] mt-4">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
-            <motion.button
-              key={key}
-              className={`aspect-square rounded-full flex items-center justify-center text-3xl font-medium
-                ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
-            >
-              {key === "del" ? <span className="material-symbols-outlined text-2xl">backspace</span> : key}
-            </motion.button>
-          ))}
-        </div>
       </div>
     </motion.div>
   );
@@ -1059,91 +1406,50 @@ function CreatePinScreen({ onComplete, onBack }: { onComplete: (pin: string) => 
 function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { originalPin: string; onComplete: () => void; onBack: () => void; isLoading?: boolean }) {
   const [pin, setPin] = useState("");
   const [error, setError] = useState("");
-
-  const handlePress = (digit: string) => {
-    if (isLoading) return;
-    if (pin.length < 6) {
-      const newPin = pin + digit;
-      setPin(newPin);
-      setError("");
-      try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
-
-      if (newPin.length === 6) {
-        if (newPin === originalPin) {
-          try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
-          // PIN is used to encrypt the user share - never store it
-          setTimeout(() => onComplete(), 300);
-        } else {
-          try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
-          setError("PINs don't match");
-          setTimeout(() => setPin(""), 500);
-        }
-      }
-    }
-  };
-
-  const handleDelete = () => {
-    setPin(pin.slice(0, -1));
-    setError("");
-    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
-  };
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Refs to avoid stale closures
-  const isLoadingRef = useRef(isLoading);
-  isLoadingRef.current = isLoading;
   const originalPinRef = useRef(originalPin);
   originalPinRef.current = originalPin;
   const onCompleteRef = useRef(onComplete);
   onCompleteRef.current = onComplete;
 
-  // PIN verification logic
-  const verifyPin = (digits: string) => {
-    if (digits.length === 6) {
-      if (digits === originalPinRef.current) {
-        hapticSuccess();
+  // Auto-focus input on mount to open keyboard
+  useEffect(() => {
+    if (!isLoading) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isLoading]);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isLoading) return;
+    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setPin(value);
+    setError("");
+    try {
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+    } catch {}
+
+    if (value.length === 6) {
+      if (value === originalPinRef.current) {
+        try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
         setTimeout(() => onCompleteRef.current(), 300);
       } else {
-        hapticError();
+        try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
         setError("PINs don't match");
         setTimeout(() => setPin(""), 500);
       }
     }
   };
 
-  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
-  useEffect(() => {
-    return setupKeyboardListeners({
-      onDigit: (digit) => {
-        if (isLoadingRef.current) return;
-        setPin(prev => {
-          if (prev.length >= 6) return prev;
-          const next = prev + digit;
-          setError("");
-          verifyPin(next);
-          return next;
-        });
-      },
-      onBackspace: () => {
-        if (isLoadingRef.current) return;
-        setPin(prev => prev.slice(0, -1));
-        setError("");
-      }
-    });
-  }, []);
-
-  // Paste handler
-  const handlePinPaste = async () => {
-    if (isLoading) return;
-    const result = await readClipboard();
-    if (result.success && result.text) {
-      const digits = extractDigits(result.text, 6);
-      if (digits.length > 0) {
-        setPin(digits);
-        setError("");
-        verifyPin(digits);
-      }
-    } else {
-      hapticError();
+  // Focus input when clicking on dots
+  const handleDotsClick = () => {
+    if (!isLoading) {
+      inputRef.current?.focus();
     }
   };
 
@@ -1156,38 +1462,69 @@ function ConfirmPinScreen({ originalPin, onComplete, onBack, isLoading }: { orig
       <button onClick={onBack} className="text-taupe mb-4 self-start flex-shrink-0">← Back</button>
 
       <div className="flex-1 flex flex-col items-center justify-center min-h-0">
-        <div className="w-14 h-14 rounded-full bg-purple/20 flex items-center justify-center mb-4">
-          <span className="material-symbols-outlined text-2xl text-purple">{isLoading ? "hourglass_top" : "shield_lock"}</span>
-        </div>
+        {/* CC Bot Logo */}
+        {isLoading ? (
+          <div className="w-14 h-14 mb-5 flex items-center justify-center">
+            <div className="w-10 h-10 border-3 border-purple border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <Image src="/ccbotlogo.png" alt="CC Bot" width={56} height={56} className="mb-5" />
+        )}
+
         <h2 className="text-white text-xl font-bold mb-1">{isLoading ? "Creating Wallet..." : "Confirm PIN"}</h2>
-        <p className="text-taupe text-center text-sm mb-6">{isLoading ? "Setting up your Canton wallet" : "Re-enter your PIN to confirm"}</p>
+        <p className="text-taupe text-center text-sm mb-6">{isLoading ? "Setting up your Canton wallet" : "Verify your PIN to continue"}</p>
 
-        <div className="flex gap-3 mb-3">
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <motion.div
-              key={i}
-              className={`w-3 h-3 rounded-full ${error ? "bg-red-500" : i < pin.length ? "bg-yellow" : "bg-white/20"}`}
-              animate={error ? { x: [-5, 5, -5, 5, 0] } : i < pin.length ? { scale: [1, 1.3, 1] } : {}}
-              transition={{ duration: 0.3 }}
-            />
-          ))}
+        {/* Hidden input for native keyboard */}
+        <input
+          ref={inputRef}
+          type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={6}
+          value={pin}
+          onChange={handleChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          autoComplete="off"
+          disabled={isLoading}
+          className="absolute opacity-0 pointer-events-none"
+          style={{ fontSize: '16px' }}
+        />
+
+        {/* PIN boxes - clickable to focus input */}
+        <div className="flex gap-3 mb-4 cursor-pointer" onClick={handleDotsClick}>
+          {[0, 1, 2, 3, 4, 5].map((i) => {
+            const isActive = isFocused && i === pin.length && !error;
+            const isFilled = i < pin.length;
+            return (
+              <motion.div
+                key={i}
+                className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold relative ${
+                  error
+                    ? "bg-red-500/20 border-red-500 text-red-500"
+                    : isFilled
+                    ? "bg-yellow/20 border-yellow text-yellow"
+                    : isActive
+                    ? "bg-purple/10 border-purple"
+                    : "bg-white/5 border-white/20"
+                }`}
+                animate={error ? { x: [-5, 5, -5, 5, 0] } : isFilled ? { scale: [1, 1.05, 1] } : {}}
+                transition={{ duration: 0.2 }}
+              >
+                {isFilled ? "•" : ""}
+                {isActive && (
+                  <motion.div
+                    className="absolute w-0.5 h-6 bg-purple rounded-full"
+                    animate={{ opacity: [1, 0, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                )}
+              </motion.div>
+            );
+          })}
         </div>
 
-        {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
-
-        <div className="grid grid-cols-3 gap-4 w-full max-w-[280px] mt-4">
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key) => (
-            <motion.button
-              key={key}
-              className={`aspect-square rounded-full flex items-center justify-center text-3xl font-medium
-                ${key === "" ? "invisible" : key === "del" ? "text-taupe" : "bg-white/10 text-white active:bg-white/20"}`}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
-            >
-              {key === "del" ? <span className="material-symbols-outlined text-2xl">backspace</span> : key}
-            </motion.button>
-          ))}
-        </div>
+        {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
       </div>
     </motion.div>
   );
@@ -1208,11 +1545,12 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
   const [isVerifying, setIsVerifying] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [remainingTime, setRemainingTime] = useState<string>("");
+  const [isFocused, setIsFocused] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Get lockout state from security context
   const isLockedOut = security.isLockedOut;
   const lockoutEndsAt = security.lockoutEndsAt;
-  const pinAttempts = security.pinAttempts;
 
   // Countdown timer for lockout
   useEffect(() => {
@@ -1245,74 +1583,51 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
     }
   }, [isLockedOut, lockoutEndsAt]);
 
-  const handlePress = async (digit: string) => {
+  // Auto-focus input on mount to open keyboard
+  useEffect(() => {
+    if (!isLockedOut && !showSuccess) {
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isLockedOut, showSuccess]);
+
+  const handleChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (isVerifying || isLockedOut || showSuccess) return;
-    if (pin.length < 6) {
-      const newPin = pin + digit;
-      setPin(newPin);
-      setError("");
-      try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
+    const value = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setPin(value);
+    setError("");
+    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
 
-      if (newPin.length === 6) {
-        setIsVerifying(true);
-        try {
-          // Use security context for unlock
-          const success = await security.unlock(newPin);
+    if (value.length === 6) {
+      setIsVerifying(true);
+      try {
+        const success = await security.unlock(value);
 
-          if (success) {
-            setShowSuccess(true);
-            // Small delay for success animation
-            setTimeout(() => {
-              onUnlock();
-            }, 600);
+        if (success) {
+          setShowSuccess(true);
+          setTimeout(() => {
+            onUnlock();
+          }, 600);
+        } else {
+          if (security.pinAttempts >= 5) {
+            setError("Too many attempts. Try again in 15 minutes.");
           } else {
-            // Check if now locked out
-            if (security.pinAttempts >= 5) {
-              setError("Too many attempts. Try again in 15 minutes.");
-            } else {
-              setError(`Incorrect PIN. ${5 - security.pinAttempts} attempts remaining.`);
-            }
-            setTimeout(() => setPin(""), 300);
+            setError(`Incorrect PIN. ${5 - security.pinAttempts} attempts remaining.`);
           }
-        } finally {
-          setIsVerifying(false);
+          setTimeout(() => setPin(""), 300);
         }
+      } finally {
+        setIsVerifying(false);
       }
     }
   };
 
-  const handleDelete = () => {
-    if (showSuccess) return;
-    setPin(pin.slice(0, -1));
-    setError("");
-    try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
-  };
-
-  // Keyboard support (desktop only, no hidden input to avoid mobile keyboard)
-  const handlePressRef = useRef(handlePress);
-  handlePressRef.current = handlePress;
-
-  useEffect(() => {
-    return setupKeyboardListeners({
-      onDigit: (digit) => handlePressRef.current(digit),
-      onBackspace: () => {
-        setPin(prev => prev.slice(0, -1));
-        setError("");
-      }
-    });
-  }, []);
-
-  // Paste handler
-  const handlePinPaste = async () => {
-    const result = await readClipboard();
-    if (result.success && result.text) {
-      const digits = extractDigits(result.text, 6);
-      for (const digit of digits) {
-        handlePressRef.current(digit);
-      }
-      if (digits.length > 0) hapticSuccess();
-    } else {
-      hapticError();
+  // Focus input when clicking on dots
+  const handleDotsClick = () => {
+    if (!isLockedOut && !showSuccess && !isVerifying) {
+      inputRef.current?.focus();
     }
   };
 
@@ -1417,56 +1732,76 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
           {showSuccess ? "Unlocking your wallet..." : isLockedOut ? `Try again in ${remainingTime}` : "Enter your PIN to unlock"}
         </motion.p>
 
-        {/* PIN dots */}
+        {/* Hidden input for native keyboard */}
+        <input
+          ref={inputRef}
+          type="tel"
+          inputMode="numeric"
+          pattern="[0-9]*"
+          maxLength={6}
+          value={pin}
+          onChange={handleChange}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          autoComplete="off"
+          disabled={isLockedOut || showSuccess || isVerifying}
+          className="absolute opacity-0 pointer-events-none"
+          style={{ fontSize: '16px' }}
+        />
+
+        {/* PIN boxes - clickable to focus input */}
         <motion.div
-          className="flex gap-3 mb-3"
+          className="flex gap-3 mb-4 cursor-pointer"
+          onClick={handleDotsClick}
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.3 }}
         >
-          {[0, 1, 2, 3, 4, 5].map((i) => (
-            <motion.div
-              key={i}
-              className="relative"
-              animate={
-                showSuccess
-                  ? { scale: [1, 1.5, 1], y: [0, -10, 0] }
-                  : error
-                    ? { x: [-5, 5, -5, 5, 0] }
-                    : i < pin.length
-                      ? { scale: [1, 1.3, 1] }
-                      : {}
-              }
-              transition={
-                showSuccess
-                  ? { duration: 0.4, delay: i * 0.05 }
-                  : { duration: 0.3 }
-              }
-            >
-              <div
-                className={`w-3 h-3 rounded-full transition-colors duration-200 ${
+          {[0, 1, 2, 3, 4, 5].map((i) => {
+            const isActive = isFocused && i === pin.length && !error && !showSuccess;
+            const isFilled = i < pin.length;
+            return (
+              <motion.div
+                key={i}
+                className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold transition-colors duration-200 relative ${
                   showSuccess
-                    ? "bg-green-400"
+                    ? "bg-green-400/20 border-green-400 text-green-400"
                     : error
-                      ? "bg-red-500"
-                      : i < pin.length
-                        ? "bg-yellow"
-                        : "bg-white/20"
+                      ? "bg-red-500/20 border-red-500 text-red-500"
+                      : isFilled
+                        ? "bg-yellow/20 border-yellow text-yellow"
+                        : isActive
+                          ? "bg-purple/10 border-purple"
+                          : "bg-white/5 border-white/20"
                 }`}
-              />
-              {i < pin.length && !error && !showSuccess && (
-                <motion.div
-                  className="absolute inset-0 rounded-full bg-yellow"
-                  initial={{ scale: 1.5, opacity: 0.5 }}
-                  animate={{ scale: 2, opacity: 0 }}
-                  transition={{ duration: 0.5 }}
-                />
-              )}
-            </motion.div>
-          ))}
+                animate={
+                  showSuccess
+                    ? { scale: [1, 1.1, 1], y: [0, -5, 0] }
+                    : error
+                      ? { x: [-5, 5, -5, 5, 0] }
+                      : isFilled
+                        ? { scale: [1, 1.05, 1] }
+                        : {}
+                }
+                transition={
+                  showSuccess
+                    ? { duration: 0.4, delay: i * 0.05 }
+                    : { duration: 0.2 }
+                }
+              >
+                {isFilled ? "•" : ""}
+                {isActive && (
+                  <motion.div
+                    className="absolute w-0.5 h-6 bg-purple rounded-full"
+                    animate={{ opacity: [1, 0, 1] }}
+                    transition={{ duration: 1, repeat: Infinity }}
+                  />
+                )}
+              </motion.div>
+            );
+          })}
         </motion.div>
 
-        {/* Paste button - uses Telegram clipboard API */}
         {/* Error message */}
         <AnimatePresence>
           {error && (
@@ -1491,42 +1826,6 @@ function LockScreen({ onUnlock, userName, userPhotoUrl, onForgotPin }: LockScree
             <div className="w-6 h-6 border-2 border-purple border-t-transparent rounded-full animate-spin" />
           </motion.div>
         )}
-
-        {/* PIN keypad */}
-        <motion.div
-          className="grid grid-cols-3 gap-4 w-full max-w-[280px] mt-4"
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.35 }}
-        >
-          {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "del"].map((key, index) => (
-            <motion.button
-              key={key || "empty"}
-              className={`aspect-square rounded-full flex items-center justify-center text-3xl font-medium transition-all
-                ${key === ""
-                  ? "invisible"
-                  : key === "del"
-                    ? "text-taupe hover:text-white active:scale-95"
-                    : "bg-white/10 text-white hover:bg-white/15 active:bg-white/20 active:scale-95"
-                }
-                ${(isLockedOut || showSuccess) && key !== "" ? "opacity-50 pointer-events-none" : ""}
-              `}
-              style={{ touchAction: "manipulation" }}
-              whileTap={key !== "" ? { scale: 0.92 } : {}}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4 + index * 0.02 }}
-              disabled={isLockedOut || showSuccess}
-              onClick={() => key === "del" ? handleDelete() : key && handlePress(key)}
-            >
-              {key === "del" ? (
-                <span className="material-symbols-outlined text-2xl">backspace</span>
-              ) : (
-                key
-              )}
-            </motion.button>
-          ))}
-        </motion.div>
 
         {/* Forgot PIN link */}
         {onForgotPin && !showSuccess && (
@@ -3143,8 +3442,7 @@ function ForgotPinNewScreen({ onContinue, onBack }: {
           <span className="material-symbols-outlined text-2xl text-green-400">lock</span>
         </div>
         <h2 className="text-white text-xl font-bold mb-1">Create New PIN</h2>
-        <p className="text-taupe text-center text-sm mb-6">Enter a 6-digit PIN to secure your wallet</p>
-
+        
         {/* PIN dots */}
         <div className="flex gap-4 mb-6">
           {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -3624,7 +3922,7 @@ function Header({ title, onBack, rightAction }: { title: string; onBack?: () => 
 }
 
 // ==================== DASHBOARD ====================
-function Dashboard({ onNavigate }: { onNavigate: (screen: Screen, params?: any) => void }) {
+function Dashboard({ onNavigate, hasPendingTasks = true }: { onNavigate: (screen: Screen, params?: any) => void; hasPendingTasks?: boolean }) {
   const { user, wallet, transactions, loadTransactions, refreshBalance } = useWalletContext();
   const { price, getUsdValue, getPortfolioChange } = usePrice(30000); // Update every 30s
   const tgUser = window.Telegram?.WebApp.initDataUnsafe?.user;
@@ -3643,7 +3941,9 @@ function Dashboard({ onNavigate }: { onNavigate: (screen: Screen, params?: any) 
   const portfolioChange = getPortfolioChange(ccBalance);
 
   const tokens = [
-    { symbol: "CC", name: "Canton Coin", balance: ccBalance, value: usdValue, change: portfolioChange.percent, icon: "logo", color: "#875CFF" },
+    { symbol: "CC", name: "CC", balance: ccBalance, value: usdValue, change: portfolioChange.percent, icon: "canton", color: "#00D4AA" },
+    { symbol: "USDCX", name: "USDCX", balance: "0.00", value: "$0.00", change: "+0.00%", icon: "usdc", color: "#2775CA" },
+    { symbol: "cBTC", name: "cBTC", balance: "0.00", value: "$0.00", change: "+0.00%", icon: "cbtc", color: "#F7931A" },
   ];
 
   const recentTxs = transactions.slice(0, 4).map(tx => ({
@@ -3687,6 +3987,35 @@ function Dashboard({ onNavigate }: { onNavigate: (screen: Screen, params?: any) 
             </div>
           </div>
           <div className="flex gap-2">
+            {/* Glowing Gift Box - Tasks (glows only when pending tasks exist) */}
+            <motion.button
+              className="w-10 h-10 rounded-full flex items-center justify-center relative"
+              style={{
+                background: hasPendingTasks ? "rgba(243, 255, 151, 0.15)" : "rgba(255, 255, 252, 0.05)",
+                border: hasPendingTasks ? "1px solid rgba(243, 255, 151, 0.4)" : "1px solid rgba(255, 255, 252, 0.1)",
+                boxShadow: hasPendingTasks ? "0 0 15px rgba(243, 255, 151, 0.3)" : "none"
+              }}
+              whileTap={{ scale: 0.9 }}
+              animate={hasPendingTasks ? {
+                boxShadow: [
+                  "0 0 15px rgba(243, 255, 151, 0.3)",
+                  "0 0 25px rgba(243, 255, 151, 0.5)",
+                  "0 0 15px rgba(243, 255, 151, 0.3)"
+                ]
+              } : {}}
+              transition={{ duration: 1.5, repeat: Infinity }}
+              onClick={() => onNavigate("tasks")}
+            >
+              <span className={`material-symbols-outlined ${hasPendingTasks ? "text-[#F3FF97]" : "text-[#FFFFFC]"}`}>redeem</span>
+              {/* Pulse indicator - only show when pending tasks */}
+              {hasPendingTasks && (
+                <motion.div
+                  className="absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full bg-[#F3FF97]"
+                  animate={{ scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                />
+              )}
+            </motion.button>
             <motion.button
               className="w-10 h-10 rounded-full flex items-center justify-center press-glow-purple"
               style={{ background: "rgba(255, 255, 252, 0.05)", border: "1px solid rgba(255, 255, 252, 0.1)" }}
@@ -3800,11 +4129,15 @@ function Dashboard({ onNavigate }: { onNavigate: (screen: Screen, params?: any) 
               whileHover={{ background: "rgba(135, 92, 255, 0.08)", borderColor: "rgba(135, 92, 255, 0.2)" }}
             >
               <div
-                className="w-12 h-12 rounded-full flex items-center justify-center"
+                className="w-12 h-12 rounded-full flex items-center justify-center overflow-hidden"
                 style={{ backgroundColor: `${token.color}20` }}
               >
-                {token.icon === "logo" ? (
-                  <Image src="/ccbotlogo.png" alt="CC" width={28} height={28} />
+                {token.icon === "canton" ? (
+                  <Image src="/cclogo.jpg" alt="CC" width={32} height={32} className="object-cover rounded-full" />
+                ) : token.icon === "usdc" ? (
+                  <Image src="/usdcxlogo.jpg" alt="USDCX" width={32} height={32} className="object-cover rounded-full" />
+                ) : token.icon === "cbtc" ? (
+                  <Image src="/cbtclogo.jpg" alt="cBTC" width={32} height={32} className="object-cover rounded-full" />
                 ) : (
                   <span className="material-symbols-outlined" style={{ color: token.color }}>{token.icon}</span>
                 )}
@@ -3875,7 +4208,7 @@ function Dashboard({ onNavigate }: { onNavigate: (screen: Screen, params?: any) 
 }
 
 // ==================== WALLET SCREEN ====================
-function WalletScreen({ onNavigate }: { onNavigate: (screen: Screen, params?: any) => void }) {
+function WalletScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen, params?: any) => void; onBack: () => void }) {
   const { wallet, refreshBalance } = useWalletContext();
 
   useEffect(() => {
@@ -3891,7 +4224,7 @@ function WalletScreen({ onNavigate }: { onNavigate: (screen: Screen, params?: an
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <Header title="Wallet" />
+      <Header title="Wallet" onBack={onBack} />
 
       <div className="px-4">
         {/* Balance */}
@@ -3921,25 +4254,66 @@ function WalletScreen({ onNavigate }: { onNavigate: (screen: Screen, params?: an
           </motion.button>
         </div>
 
-        {/* Token */}
+        {/* Tokens */}
         <h3 className="text-white font-bold mb-3">Tokens</h3>
         <div className="space-y-3 mb-6">
+          {/* CC */}
           <motion.div
             className="bg-white/5 rounded-2xl p-4 flex items-center gap-4"
             whileTap={{ scale: 0.98 }}
           >
             <div
-              className="w-14 h-14 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: "#875CFF20" }}
+              className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
+              style={{ backgroundColor: "#00D4AA20" }}
             >
-              <Image src="/ccbotlogo.png" alt="CC" width={32} height={32} />
+              <Image src="/cclogo.jpg" alt="CC" width={36} height={36} className="object-cover rounded-full" />
             </div>
             <div className="flex-1">
-              <p className="text-white font-medium text-lg">Canton Coin</p>
+              <p className="text-white font-medium text-lg">CC</p>
               <p className="text-taupe">{ccBalance} CC</p>
             </div>
             <div className="text-right">
               <p className="text-white font-medium text-lg">{ccBalance} CC</p>
+            </div>
+          </motion.div>
+
+          {/* USDCX */}
+          <motion.div
+            className="bg-white/5 rounded-2xl p-4 flex items-center gap-4"
+            whileTap={{ scale: 0.98 }}
+          >
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
+              style={{ backgroundColor: "#2775CA20" }}
+            >
+              <Image src="/usdcxlogo.jpg" alt="USDCX" width={36} height={36} className="object-cover rounded-full" />
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-medium text-lg">USDCX</p>
+              <p className="text-taupe">0.00 USDCX</p>
+            </div>
+            <div className="text-right">
+              <p className="text-white font-medium text-lg">$0.00</p>
+            </div>
+          </motion.div>
+
+          {/* cBTC */}
+          <motion.div
+            className="bg-white/5 rounded-2xl p-4 flex items-center gap-4"
+            whileTap={{ scale: 0.98 }}
+          >
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center overflow-hidden"
+              style={{ backgroundColor: "#F7931A20" }}
+            >
+              <Image src="/cbtclogo.jpg" alt="cBTC" width={36} height={36} className="object-cover rounded-full" />
+            </div>
+            <div className="flex-1">
+              <p className="text-white font-medium text-lg">cBTC</p>
+              <p className="text-taupe">0.00 cBTC</p>
+            </div>
+            <div className="text-right">
+              <p className="text-white font-medium text-lg">$0.00</p>
             </div>
           </motion.div>
         </div>
@@ -4001,7 +4375,7 @@ function TransactionConfirmation({ pendingTransaction, onConfirm, onCancel }: Tr
     <AnimatePresence>
       {/* Blur Background Overlay */}
       <motion.div
-        className="absolute inset-0 z-40"
+        className="fixed inset-0 z-[99]"
         style={{ backdropFilter: "blur(8px)", WebkitBackdropFilter: "blur(8px)" }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -4013,13 +4387,13 @@ function TransactionConfirmation({ pendingTransaction, onConfirm, onCancel }: Tr
 
       {/* Slide-up Modal */}
       <motion.div
-        className="absolute bottom-0 left-0 right-0 z-50"
+        className="fixed bottom-0 left-0 right-0 z-[100]"
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         exit={{ y: "100%" }}
         transition={{ type: "spring", damping: 25, stiffness: 300 }}
       >
-        <div className="bg-[#0a0812] rounded-t-[32px] border-t border-purple/30 p-6 pb-10">
+        <div className="bg-[#0a0812] rounded-t-[32px] border-t border-purple/30 p-6 pb-32">
           {/* Handle Bar */}
           <div className="flex justify-center mb-4">
             <div className="w-12 h-1 bg-white/20 rounded-full" />
@@ -4067,6 +4441,19 @@ function TransactionConfirmation({ pendingTransaction, onConfirm, onCancel }: Tr
               </div>
             </div>
 
+            {/* Memo/Note (if provided) */}
+            {pendingTransaction.memo && (
+              <div className="bg-white/5 rounded-2xl p-4">
+                <div className="flex items-start gap-3">
+                  <span className="material-symbols-outlined text-taupe text-sm mt-0.5">notes</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-taupe text-sm mb-1">Note</p>
+                    <p className="text-white text-sm">{pendingTransaction.memo}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Divider */}
             <div className="border-t border-white/10 my-2" />
 
@@ -4105,6 +4492,28 @@ function TransactionConfirmation({ pendingTransaction, onConfirm, onCancel }: Tr
   );
 }
 
+// ==================== TOKEN OPTIONS ====================
+const TOKEN_OPTIONS = [
+  {
+    symbol: 'CC',
+    name: 'CC',
+    logo: '/cclogo.jpg',
+    color: '#00D4AA'
+  },
+  {
+    symbol: 'cBTC',
+    name: 'cBTC',
+    logo: '/cbtclogo.jpg',
+    color: '#F7931A'
+  },
+  {
+    symbol: 'USDCX',
+    name: 'USDCX',
+    logo: '/usdcxlogo.jpg',
+    color: '#2775CA'
+  },
+];
+
 // ==================== SEND SCREEN ====================
 function SendScreen({ onBack }: { onBack: () => void }) {
   const { wallet, sendTransfer, isTransferring, transferError, refreshBalance } = useWalletContext();
@@ -4113,6 +4522,8 @@ function SendScreen({ onBack }: { onBack: () => void }) {
   const [recipientPartyId, setRecipientPartyId] = useState("");
   const [recipientUsername, setRecipientUsername] = useState("");
   const [amount, setAmount] = useState("");
+  const [selectedToken, setSelectedToken] = useState(TOKEN_OPTIONS[0]);
+  const [showTokenMenu, setShowTokenMenu] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showPinModal, setShowPinModal] = useState(false);
   const [pin, setPin] = useState("");
@@ -4122,8 +4533,23 @@ function SendScreen({ onBack }: { onBack: () => void }) {
   const [searchResults, setSearchResults] = useState<Array<{ username: string; partyId: string }>>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [memo, setMemo] = useState("");
 
-  const balance = wallet?.balance ? parseFloat(wallet.balance) : 0;
+  // Check if running on mobile (only show QR scanner on mobile)
+  const isMobile = typeof window !== 'undefined' &&
+    ['android', 'ios'].includes(window.Telegram?.WebApp?.platform || '');
+
+  const ccBalance = wallet?.balance ? parseFloat(wallet.balance) : 0;
+
+  // Token balances - CC from wallet, others are 0 for now (not yet implemented)
+  const tokenBalances: Record<string, number> = {
+    'CC': ccBalance,
+    'cBTC': 0,
+    'USDCX': 0,
+  };
+
+  // Get balance for selected token
+  const balance = tokenBalances[selectedToken.symbol] ?? 0;
 
   // Search usernames when input starts with @
   useEffect(() => {
@@ -4213,6 +4639,7 @@ function SendScreen({ onBack }: { onBack: () => void }) {
       recipientPartyId: targetPartyId,
       recipientUsername: recipientUsername || undefined,
       amount,
+      memo: memo || undefined,
     });
     setShowPinModal(true);
   };
@@ -4328,7 +4755,10 @@ function SendScreen({ onBack }: { onBack: () => void }) {
             />
             {isSearching && <span className="material-symbols-outlined text-taupe animate-spin text-sm">progress_activity</span>}
             {recipientUsername && <span className="material-symbols-outlined text-green-500 text-sm">check_circle</span>}
-            <button className="text-purple"><span className="material-symbols-outlined">qr_code_scanner</span></button>
+            {/* QR Scanner only on mobile */}
+            {isMobile && (
+              <button className="text-purple"><span className="material-symbols-outlined">qr_code_scanner</span></button>
+            )}
           </div>
 
           {/* Username Autocomplete Dropdown */}
@@ -4357,28 +4787,44 @@ function SendScreen({ onBack }: { onBack: () => void }) {
           )}
         </div>
 
+        {/* Amount */}
         <div className="mb-6">
           <label className="text-taupe text-sm mb-2 block">Amount</label>
           <div className="bg-white/5 rounded-2xl p-4">
+            {/* Amount Input + Token Selector Row */}
             <div className="flex items-center gap-3 mb-3">
               <input
                 type="text"
                 placeholder="0.00"
-                className="flex-1 bg-transparent text-white text-3xl font-bold outline-none"
+                className="flex-1 bg-transparent text-white text-3xl font-bold outline-none min-w-0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && recipient && amount) handleSend();
                 }}
               />
-              <button className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl">
-                <Image src="/ccbotlogo.png" alt="CC" width={20} height={20} />
-                <span className="text-white font-medium">CC</span>
+              {/* Token Selector Button */}
+              <button
+                onClick={() => setShowTokenMenu(true)}
+                className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl border border-purple/50 transition-all flex-shrink-0"
+              >
+                <img
+                  src={selectedToken.logo}
+                  alt={selectedToken.symbol}
+                  className="rounded-full object-cover"
+                  style={{ width: '24px', height: '24px' }}
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/ccbotlogo.png';
+                  }}
+                />
+                <span className="text-white font-semibold">{selectedToken.symbol}</span>
+                <span className="material-symbols-outlined text-taupe text-sm">expand_more</span>
               </button>
             </div>
+            {/* Token Name & Balance Row */}
             <div className="flex justify-between text-sm">
-              <span className="text-taupe">Canton Coin</span>
-              <span className="text-taupe">Balance: {balance.toFixed(2)} CC</span>
+              <span className="text-taupe">{selectedToken.name}</span>
+              <span className="text-taupe">Balance: {balance.toFixed(2)} {selectedToken.symbol}</span>
             </div>
           </div>
         </div>
@@ -4395,7 +4841,7 @@ function SendScreen({ onBack }: { onBack: () => void }) {
           ))}
         </div>
 
-        <div className="bg-white/5 rounded-2xl p-4">
+        <div className="bg-white/5 rounded-2xl p-4 mb-6">
           <div className="flex justify-between mb-2">
             <span className="text-taupe">Network</span>
             <span className="text-white">Canton Network</span>
@@ -4403,6 +4849,26 @@ function SendScreen({ onBack }: { onBack: () => void }) {
           <div className="flex justify-between">
             <span className="text-taupe">Estimated Time</span>
             <span className="text-white">~2 seconds</span>
+          </div>
+        </div>
+
+        {/* Note/Memo Field */}
+        <div className="mb-6">
+          <label className="text-taupe text-sm mb-2 block">Note (Optional)</label>
+          <div className="bg-white/5 rounded-2xl p-4">
+            <div className="flex items-start gap-3">
+              <span className="material-symbols-outlined text-taupe mt-0.5">notes</span>
+              <textarea
+                placeholder="Add a memo or note for this transaction..."
+                className="flex-1 bg-transparent text-white outline-none text-sm resize-none min-h-[60px]"
+                value={memo}
+                onChange={(e) => setMemo(e.target.value)}
+                maxLength={200}
+              />
+            </div>
+            <div className="text-right mt-2">
+              <span className="text-taupe text-xs">{memo.length}/200</span>
+            </div>
           </div>
         </div>
       </div>
@@ -4418,7 +4884,7 @@ function SendScreen({ onBack }: { onBack: () => void }) {
           onClick={handleSend}
           disabled={!recipient || !amount || parseFloat(amount) <= 0 || parseFloat(amount) > balance}
         >
-          {isTransferring ? "Sending..." : "Send CC"}
+          {isTransferring ? "Sending..." : `Send ${selectedToken.symbol}`}
         </motion.button>
       </div>
 
@@ -4495,6 +4961,81 @@ function SendScreen({ onBack }: { onBack: () => void }) {
               </button>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Token Selection Menu */}
+      <AnimatePresence>
+        {showTokenMenu && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="fixed inset-0 bg-black/60 z-[100]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowTokenMenu(false)}
+            />
+            {/* Bottom Sheet */}
+            <motion.div
+              className="fixed bottom-0 left-0 right-0 z-[101] bg-[#0a0812] rounded-t-3xl border-t border-purple/30"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            >
+              <div className="p-6 pb-10">
+                {/* Handle */}
+                <div className="flex justify-center mb-4">
+                  <div className="w-12 h-1 bg-white/20 rounded-full" />
+                </div>
+
+                <h3 className="text-white text-lg font-bold text-center mb-4">Select Token</h3>
+
+                <div className="space-y-2">
+                  {TOKEN_OPTIONS.map((token) => (
+                    <button
+                      key={token.symbol}
+                      onClick={() => {
+                        setSelectedToken(token);
+                        setShowTokenMenu(false);
+                        try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
+                      }}
+                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border-2 transition-all ${
+                        selectedToken.symbol === token.symbol
+                          ? 'border-purple bg-purple/10'
+                          : 'border-white/10 bg-white/5 hover:border-purple/50'
+                      }`}
+                    >
+                      <img
+                        src={token.logo}
+                        alt={token.symbol}
+                        className="rounded-full object-cover flex-shrink-0"
+                        style={{ width: '40px', height: '40px', minWidth: '40px', maxWidth: '40px' }}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = '/ccbotlogo.png';
+                        }}
+                      />
+                      <div className="flex-1 text-left">
+                        <p className="text-white font-semibold">{token.symbol}</p>
+                        <p className="text-taupe text-sm">{token.name}</p>
+                      </div>
+                      {selectedToken.symbol === token.symbol && (
+                        <span className="material-symbols-outlined text-purple">check_circle</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setShowTokenMenu(false)}
+                  className="w-full mt-4 py-3 text-taupe"
+                >
+                  Cancel
+                </button>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
     </motion.div>
@@ -4598,12 +5139,273 @@ function ReceiveScreen({ onBack }: { onBack: () => void }) {
 }
 
 // ==================== SWAP SCREEN ====================
+// Swap transaction type
+interface SwapTransaction {
+  id: string;
+  fromToken: string;
+  toToken: string;
+  fromAmount: string;
+  toAmount: string;
+  rate: string;
+  status: 'completed' | 'pending' | 'failed';
+  txHash?: string;
+  timestamp: string;
+  networkFee: string;
+}
+
+// Swap Preview Data Interface
+interface SwapPreviewData {
+  fromToken: typeof TOKEN_OPTIONS[0];
+  toToken: typeof TOKEN_OPTIONS[0];
+  fromAmount: string;
+  toAmount: string;
+  toAmountMin: string;
+  exchangeRate: string;
+  priceImpact: number;
+  slippage: number;
+  networkFee: string;
+  networkFeeUsd: string;
+  estimatedTime: string;
+  route: string[];
+}
+
 function SwapScreen({ onBack }: { onBack: () => void }) {
-  const { wallet } = useWalletContext();
+  const { wallet, transactions } = useWalletContext();
   const { price } = usePrice();
   const [fromAmount, setFromAmount] = useState("");
+  const [activeTab, setActiveTab] = useState<'swap' | 'history'>('swap');
+  const [fromToken, setFromToken] = useState(TOKEN_OPTIONS[0]); // CC
+  const [toToken, setToToken] = useState(TOKEN_OPTIONS[2]); // USDCX
+  const [showFromTokenMenu, setShowFromTokenMenu] = useState(false);
+  const [showToTokenMenu, setShowToTokenMenu] = useState(false);
 
-  const ccBalance = wallet?.balance ? parseFloat(wallet.balance).toFixed(2) : "0.00";
+  // Swap Preview States
+  const [showSwapPreview, setShowSwapPreview] = useState(false);
+  const [swapPreviewData, setSwapPreviewData] = useState<SwapPreviewData | null>(null);
+  const [isSwapping, setIsSwapping] = useState(false);
+  const [swapSuccess, setSwapSuccess] = useState(false);
+  const [swapError, setSwapError] = useState<string | null>(null);
+  const [slippageTolerance, setSlippageTolerance] = useState(0.5); // 0.5%
+  const [showSlippageSettings, setShowSlippageSettings] = useState(false);
+
+  const ccBalance = wallet?.balance ? parseFloat(wallet.balance) : 0;
+
+  // Token balances
+  const tokenBalances: Record<string, number> = {
+    'CC': ccBalance,
+    'cBTC': 0,
+    'USDCX': 0,
+  };
+
+  // Get token info by symbol
+  const getTokenInfo = (symbol: string) => {
+    return TOKEN_OPTIONS.find(t => t.symbol === symbol) || TOKEN_OPTIONS[0];
+  };
+
+  // Swap from/to tokens
+  const handleSwapTokens = () => {
+    const temp = fromToken;
+    setFromToken(toToken);
+    setToToken(temp);
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+  };
+
+  // Mock swap history - In production, this would come from API
+  const swapHistory: SwapTransaction[] = [
+    {
+      id: 'swap_1',
+      fromToken: 'CC',
+      toToken: 'USDCX',
+      fromAmount: '100.00',
+      toAmount: '0.50',
+      rate: '0.005',
+      status: 'completed',
+      txHash: '00000001792ba70c37cdfb0e6c51eb91f2ed0968f8deedb767d00123456789ab',
+      timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
+      networkFee: '0.001'
+    },
+    {
+      id: 'swap_2',
+      fromToken: 'CC',
+      toToken: 'cBTC',
+      fromAmount: '500.00',
+      toAmount: '0.00025',
+      rate: '0.0000005',
+      status: 'completed',
+      txHash: '00000001792ba70c37cdfb0e6c51eb91f2ed0968f8deedb767d00987654321cd',
+      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+      networkFee: '0.001'
+    },
+    {
+      id: 'swap_3',
+      fromToken: 'USDCX',
+      toToken: 'CC',
+      fromAmount: '1.00',
+      toAmount: '200.00',
+      rate: '200',
+      status: 'pending',
+      txHash: '00000001792ba70c37cdfb0e6c51eb91f2ed0968f8deedb767d00abcdef1234ef',
+      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
+      networkFee: '0.01'
+    },
+  ];
+
+  // Format timestamp for display
+  const formatSwapDate = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  // Open transaction in Lighthouse explorer
+  const openInExplorer = (txHash: string) => {
+    window.open(`https://lighthouse.devnet.cantonloop.com/tx/${txHash}`, '_blank');
+    window.Telegram?.WebApp.HapticFeedback?.impactOccurred("light");
+  };
+
+  // Get status badge styling
+  const getStatusBadge = (status: SwapTransaction['status']) => {
+    switch (status) {
+      case 'completed':
+        return { bg: 'bg-green-500/20', text: 'text-green-400', label: 'Completed' };
+      case 'pending':
+        return { bg: 'bg-yellow/20', text: 'text-yellow', label: 'Pending' };
+      case 'failed':
+        return { bg: 'bg-red-500/20', text: 'text-red-400', label: 'Failed' };
+    }
+  };
+
+  // Calculate exchange rates between tokens (mock rates - would come from DEX/AMM in production)
+  const getExchangeRate = (from: string, to: string): number => {
+    const rates: Record<string, Record<string, number>> = {
+      'CC': { 'USDCX': 0.005, 'cBTC': 0.0000005 },
+      'USDCX': { 'CC': 200, 'cBTC': 0.0001 },
+      'cBTC': { 'CC': 2000000, 'USDCX': 10000 },
+    };
+    return rates[from]?.[to] || 1;
+  };
+
+  // Calculate estimated output amount
+  const calculateToAmount = (amount: string, from: string, to: string): string => {
+    const numAmount = parseFloat(amount) || 0;
+    const rate = getExchangeRate(from, to);
+    return (numAmount * rate).toFixed(to === 'cBTC' ? 8 : 2);
+  };
+
+  // Calculate price impact (mock - would be calculated from liquidity pool)
+  const calculatePriceImpact = (amount: string): number => {
+    const numAmount = parseFloat(amount) || 0;
+    // Simulate higher impact for larger trades
+    if (numAmount > 10000) return 5.2;
+    if (numAmount > 5000) return 2.8;
+    if (numAmount > 1000) return 0.8;
+    if (numAmount > 100) return 0.3;
+    return 0.1;
+  };
+
+  // Get price impact severity color
+  const getPriceImpactColor = (impact: number): string => {
+    if (impact >= 5) return 'text-red-400';
+    if (impact >= 2) return 'text-orange-400';
+    if (impact >= 1) return 'text-yellow';
+    return 'text-green-400';
+  };
+
+  // Handle swap preview
+  const handleSwapPreview = () => {
+    if (!fromAmount || parseFloat(fromAmount) <= 0) {
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+      return;
+    }
+
+    const balance = tokenBalances[fromToken.symbol] || 0;
+    if (parseFloat(fromAmount) > balance) {
+      setSwapError('Insufficient balance');
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+      return;
+    }
+
+    const toAmount = calculateToAmount(fromAmount, fromToken.symbol, toToken.symbol);
+    const priceImpact = calculatePriceImpact(fromAmount);
+    const minReceived = (parseFloat(toAmount) * (1 - slippageTolerance / 100)).toFixed(
+      toToken.symbol === 'cBTC' ? 8 : 2
+    );
+
+    const previewData: SwapPreviewData = {
+      fromToken,
+      toToken,
+      fromAmount,
+      toAmount,
+      toAmountMin: minReceived,
+      exchangeRate: getExchangeRate(fromToken.symbol, toToken.symbol).toString(),
+      priceImpact,
+      slippage: slippageTolerance,
+      networkFee: '0.001',
+      networkFeeUsd: '0.002',
+      estimatedTime: '~5 sec',
+      route: fromToken.symbol === toToken.symbol ? [fromToken.symbol] : [fromToken.symbol, toToken.symbol],
+    };
+
+    setSwapPreviewData(previewData);
+    setSwapError(null);
+    setShowSwapPreview(true);
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("medium");
+  };
+
+  // Execute swap
+  const executeSwap = async () => {
+    if (!swapPreviewData) return;
+
+    setIsSwapping(true);
+    setSwapError(null);
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("heavy");
+
+    try {
+      // Simulate swap execution - in production, this would call the Canton Network
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Success
+      setSwapSuccess(true);
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+
+      // Reset after delay
+      setTimeout(() => {
+        setShowSwapPreview(false);
+        setSwapSuccess(false);
+        setSwapPreviewData(null);
+        setFromAmount("");
+      }, 2000);
+
+    } catch (error) {
+      setSwapError('Swap failed. Please try again.');
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+    } finally {
+      setIsSwapping(false);
+    }
+  };
+
+  // Close preview
+  const closeSwapPreview = () => {
+    if (!isSwapping) {
+      setShowSwapPreview(false);
+      setSwapPreviewData(null);
+      setSwapError(null);
+    }
+  };
+
+  // Slippage presets
+  const slippagePresets = [0.1, 0.5, 1.0];
+
+  // Dynamic to amount calculation for display
+  const estimatedToAmount = fromAmount ? calculateToAmount(fromAmount, fromToken.symbol, toToken.symbol) : '';
 
   return (
     <motion.div
@@ -4613,83 +5415,646 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
     >
       <Header title="Swap" onBack={onBack} />
 
-      <div className="flex-1 px-4 pb-40">
-        <div className="bg-white/5 rounded-2xl p-4 mb-2">
-          <div className="flex justify-between mb-2">
-            <span className="text-taupe text-sm">From</span>
-            <span className="text-taupe text-sm">Balance: {ccBalance} CC</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="0.00"
-              className="flex-1 bg-transparent text-white text-2xl font-bold outline-none min-w-0"
-              value={fromAmount}
-              onChange={(e) => setFromAmount(e.target.value)}
-            />
-            <button className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-xl shrink-0">
-              <Image src="/cantonlogo.png" alt="CC" width={20} height={20} className="rounded-full" />
-              <span className="text-white font-medium">CC</span>
-              <span className="text-taupe text-xs">▼</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="flex justify-center -my-3 z-10 relative">
-          <motion.button
-            className="w-12 h-12 rounded-full bg-purple flex items-center justify-center text-xl shadow-lg"
-            whileTap={{ scale: 0.9, rotate: 180 }}
+      {/* Tab Navigation */}
+      <div className="px-4 mb-4">
+        <div className="flex bg-white/5 rounded-xl p-1">
+          <button
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'swap'
+                ? 'bg-purple text-white'
+                : 'text-taupe hover:text-white'
+            }`}
+            onClick={() => setActiveTab('swap')}
           >
-            <span className="material-symbols-outlined text-white">swap_vert</span>
-          </motion.button>
+            Swap
+          </button>
+          <button
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1.5 ${
+              activeTab === 'history'
+                ? 'bg-purple text-white'
+                : 'text-taupe hover:text-white'
+            }`}
+            onClick={() => setActiveTab('history')}
+          >
+            <span className="material-symbols-outlined text-sm">history</span>
+            History
+          </button>
         </div>
+      </div>
 
-        <div className="bg-white/5 rounded-2xl p-4 mt-2 mb-6">
-          <div className="flex justify-between mb-2">
-            <span className="text-taupe text-sm">To</span>
-            <span className="text-taupe text-sm">Balance: 0.00 USDC</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <input
-              type="text"
-              placeholder="0.00"
-              className="flex-1 bg-transparent text-white text-2xl font-bold outline-none min-w-0"
-              readOnly
-            />
-            <button className="flex items-center gap-2 bg-white/10 px-3 py-2 rounded-xl shrink-0">
-              <div className="w-5 h-5 rounded-full bg-[#2775CA] flex items-center justify-center">
-                <span className="text-white text-xs font-bold">$</span>
+      {activeTab === 'swap' ? (
+        <>
+          <div className="flex-1 px-4 pb-40">
+            {/* From Token */}
+            <div className="bg-white/5 rounded-2xl p-4 mb-2">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-taupe text-sm">From</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-taupe text-sm">Balance: {tokenBalances[fromToken.symbol]?.toFixed(2) || '0.00'}</span>
+                  <button
+                    onClick={() => setFromAmount(tokenBalances[fromToken.symbol]?.toString() || '0')}
+                    className="text-purple text-xs font-semibold hover:text-lilac transition-colors"
+                  >
+                    MAX
+                  </button>
+                </div>
               </div>
-              <span className="text-white font-medium">USDC</span>
-              <span className="text-taupe text-xs">▼</span>
-            </button>
-          </div>
-        </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="text"
+                    placeholder="0.00"
+                    className="w-full bg-transparent text-white text-2xl font-bold outline-none"
+                    value={fromAmount}
+                    onChange={(e) => setFromAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                  />
+                  {fromAmount && parseFloat(fromAmount) > 0 && (
+                    <p className="text-taupe text-xs mt-1">≈ ${(parseFloat(fromAmount) * 0.005).toFixed(2)} USD</p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowFromTokenMenu(true)}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl shrink-0 transition-colors"
+                >
+                  <img
+                    src={fromToken.logo}
+                    alt={fromToken.symbol}
+                    className="w-6 h-6 rounded-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+                  />
+                  <span className="text-white font-medium">{fromToken.symbol}</span>
+                  <span className="material-symbols-outlined text-taupe text-sm">expand_more</span>
+                </button>
+              </div>
+            </div>
 
-        <div className="bg-white/5 rounded-2xl p-4">
-          <div className="flex justify-between mb-2">
-            <span className="text-taupe">Rate</span>
-            <span className="text-white">1 CC = ${price?.toFixed(4) || "0.00"} USD</span>
-          </div>
-          <div className="flex justify-between mb-2">
-            <span className="text-taupe">Slippage</span>
-            <span className="text-white">0.5%</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-taupe">Network Fee</span>
-            <span className="text-white">~0.001 CC</span>
-          </div>
-        </div>
-      </div>
+            {/* Swap Button */}
+            <div className="flex justify-center -my-3 z-10 relative">
+              <motion.button
+                className="w-12 h-12 rounded-full bg-purple flex items-center justify-center text-xl shadow-lg"
+                whileTap={{ scale: 0.9, rotate: 180 }}
+                onClick={handleSwapTokens}
+              >
+                <span className="material-symbols-outlined text-white">swap_vert</span>
+              </motion.button>
+            </div>
 
-      <div className="absolute bottom-32 left-0 right-0 px-4 z-10">
-        <motion.button
-          className="w-full py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white text-lg font-bold"
-          whileTap={{ scale: 0.98 }}
-        >
-          Swap
-        </motion.button>
-      </div>
+            {/* To Token */}
+            <div className="bg-white/5 rounded-2xl p-4 mt-2 mb-6">
+              <div className="flex justify-between mb-2">
+                <span className="text-taupe text-sm">To (estimated)</span>
+                <span className="text-taupe text-sm">Balance: {tokenBalances[toToken.symbol]?.toFixed(2) || '0.00'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <input
+                    type="text"
+                    placeholder="0.00"
+                    className="w-full bg-transparent text-white text-2xl font-bold outline-none"
+                    value={estimatedToAmount}
+                    readOnly
+                  />
+                  {estimatedToAmount && parseFloat(estimatedToAmount) > 0 && (
+                    <p className="text-taupe text-xs mt-1">
+                      ≈ ${(parseFloat(estimatedToAmount) * (toToken.symbol === 'USDCX' ? 1 : toToken.symbol === 'cBTC' ? 40000 : 0.005)).toFixed(2)} USD
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowToTokenMenu(true)}
+                  className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-2 rounded-xl shrink-0 transition-colors"
+                >
+                  <img
+                    src={toToken.logo}
+                    alt={toToken.symbol}
+                    className="w-6 h-6 rounded-full object-cover"
+                    onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+                  />
+                  <span className="text-white font-medium">{toToken.symbol}</span>
+                  <span className="material-symbols-outlined text-taupe text-sm">expand_more</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Rate Info */}
+            <div className="bg-white/5 rounded-2xl p-4">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-taupe text-sm">Exchange Rate</span>
+                <span className="text-white text-sm">1 {fromToken.symbol} = {getExchangeRate(fromToken.symbol, toToken.symbol)} {toToken.symbol}</span>
+              </div>
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-taupe text-sm">Slippage Tolerance</span>
+                <button
+                  onClick={() => setShowSlippageSettings(!showSlippageSettings)}
+                  className="flex items-center gap-1 text-purple text-sm"
+                >
+                  {slippageTolerance}%
+                  <span className="material-symbols-outlined text-xs">settings</span>
+                </button>
+              </div>
+
+              {/* Slippage Settings */}
+              <AnimatePresence>
+                {showSlippageSettings && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="flex gap-2 mt-2 mb-3">
+                      {slippagePresets.map((preset) => (
+                        <button
+                          key={preset}
+                          onClick={() => setSlippageTolerance(preset)}
+                          className={`flex-1 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            slippageTolerance === preset
+                              ? 'bg-purple text-white'
+                              : 'bg-white/10 text-taupe hover:bg-white/20'
+                          }`}
+                        >
+                          {preset}%
+                        </button>
+                      ))}
+                      <input
+                        type="text"
+                        placeholder="Custom"
+                        className="flex-1 py-1.5 px-2 rounded-lg text-sm bg-white/10 text-white text-center outline-none focus:ring-1 focus:ring-purple"
+                        onChange={(e) => {
+                          const val = parseFloat(e.target.value);
+                          if (!isNaN(val) && val > 0 && val <= 50) {
+                            setSlippageTolerance(val);
+                          }
+                        }}
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-taupe text-sm">Price Impact</span>
+                <span className={`text-sm ${getPriceImpactColor(fromAmount ? calculatePriceImpact(fromAmount) : 0)}`}>
+                  {fromAmount ? `~${calculatePriceImpact(fromAmount).toFixed(2)}%` : '-'}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-taupe text-sm">Network Fee</span>
+                <span className="text-white text-sm">~0.001 CC ($0.002)</span>
+              </div>
+            </div>
+
+            {/* Error Message */}
+            {swapError && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-4 p-3 bg-red-500/20 border border-red-500/30 rounded-xl flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-red-400">error</span>
+                <span className="text-red-400 text-sm">{swapError}</span>
+              </motion.div>
+            )}
+          </div>
+
+          {/* Review Swap Button */}
+          <div className="absolute bottom-32 left-0 right-0 px-4 z-10">
+            <motion.button
+              className={`w-full py-4 rounded-2xl text-white text-lg font-bold transition-all ${
+                fromAmount && parseFloat(fromAmount) > 0
+                  ? 'bg-gradient-to-r from-purple to-lilac'
+                  : 'bg-white/10 text-taupe'
+              }`}
+              whileTap={{ scale: fromAmount ? 0.98 : 1 }}
+              onClick={handleSwapPreview}
+              disabled={!fromAmount || parseFloat(fromAmount) <= 0}
+            >
+              {fromAmount && parseFloat(fromAmount) > 0
+                ? 'Review Swap'
+                : 'Enter Amount'}
+            </motion.button>
+          </div>
+        </>
+      ) : (
+        /* Swap History Tab - Standard Wallet Style */
+        <div className="flex-1 px-4 pb-32 overflow-y-auto">
+          {swapHistory.length === 0 ? (
+            /* Empty State - Minimal */
+            <div className="flex flex-col items-center justify-center py-20">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                <span className="material-symbols-outlined text-3xl text-taupe">swap_horiz</span>
+              </div>
+              <p className="text-taupe text-sm">No swaps yet</p>
+            </div>
+          ) : (
+            /* Transaction List - Simple Style */
+            <div className="space-y-2">
+              {swapHistory.map((swap) => {
+                const statusBadge = getStatusBadge(swap.status);
+                return (
+                  <motion.div
+                    key={swap.id}
+                    className="bg-white/5 rounded-xl p-3 flex items-center gap-3"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    {/* Icon */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      swap.status === 'completed' ? 'bg-green-500/20' :
+                      swap.status === 'pending' ? 'bg-yellow/20' : 'bg-red-500/20'
+                    }`}>
+                      <span className={`material-symbols-outlined ${
+                        swap.status === 'completed' ? 'text-green-400' :
+                        swap.status === 'pending' ? 'text-yellow' : 'text-red-400'
+                      }`}>
+                        {swap.status === 'pending' ? 'schedule' : 'swap_horiz'}
+                      </span>
+                    </div>
+
+                    {/* Details */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
+                          <img
+                            src={getTokenInfo(swap.fromToken).logo}
+                            alt={swap.fromToken}
+                            className="w-5 h-5 rounded-full"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          <span className="text-white font-medium text-sm">{swap.fromToken}</span>
+                          <span className="text-taupe mx-0.5">→</span>
+                          <img
+                            src={getTokenInfo(swap.toToken).logo}
+                            alt={swap.toToken}
+                            className="w-5 h-5 rounded-full"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          <span className="text-white font-medium text-sm">{swap.toToken}</span>
+                        </div>
+                        {swap.status === 'pending' && (
+                          <span className="text-[10px] text-yellow bg-yellow/20 px-1.5 py-0.5 rounded">Pending</span>
+                        )}
+                      </div>
+                      <p className="text-taupe text-xs">{formatSwapDate(swap.timestamp)}</p>
+                    </div>
+
+                    {/* Amount */}
+                    <div className="text-right">
+                      <p className="text-white font-medium text-sm">-{swap.fromAmount}</p>
+                      <p className="text-green-400 text-xs">+{swap.toAmount}</p>
+                    </div>
+
+                    {/* TX Link */}
+                    {swap.txHash && (
+                      <button
+                        className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openInExplorer(swap.txHash!);
+                        }}
+                      >
+                        <span className="material-symbols-outlined text-sm text-purple">open_in_new</span>
+                      </button>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* From Token Selection Menu */}
+      <AnimatePresence>
+        {showFromTokenMenu && (
+          <motion.div
+            className="fixed inset-0 bg-black/60 z-50 flex items-end"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowFromTokenMenu(false)}
+          >
+            <motion.div
+              className="w-full bg-[#1a1a2e] rounded-t-3xl p-6 pb-10"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-center mb-4">
+                <div className="w-12 h-1 bg-white/20 rounded-full" />
+              </div>
+              <h3 className="text-white text-lg font-bold text-center mb-4">Select Token</h3>
+              <div className="space-y-2">
+                {TOKEN_OPTIONS.map((token) => (
+                  <button
+                    key={token.symbol}
+                    className={`w-full p-4 rounded-xl flex items-center gap-3 transition-colors ${
+                      fromToken.symbol === token.symbol
+                        ? 'bg-purple/20 border border-purple/50'
+                        : 'bg-white/5 hover:bg-white/10'
+                    }`}
+                    onClick={() => {
+                      if (token.symbol !== toToken.symbol) {
+                        setFromToken(token);
+                      }
+                      setShowFromTokenMenu(false);
+                    }}
+                  >
+                    <img
+                      src={token.logo}
+                      alt={token.symbol}
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+                    />
+                    <div className="flex-1 text-left">
+                      <p className="text-white font-semibold">{token.symbol}</p>
+                      <p className="text-taupe text-sm">{token.name}</p>
+                    </div>
+                    <p className="text-taupe text-sm">{tokenBalances[token.symbol]?.toFixed(2) || '0.00'}</p>
+                    {fromToken.symbol === token.symbol && (
+                      <span className="material-symbols-outlined text-purple">check_circle</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="w-full mt-4 py-3 text-taupe font-medium"
+                onClick={() => setShowFromTokenMenu(false)}
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* To Token Selection Menu */}
+      <AnimatePresence>
+        {showToTokenMenu && (
+          <motion.div
+            className="fixed inset-0 bg-black/60 z-50 flex items-end"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowToTokenMenu(false)}
+          >
+            <motion.div
+              className="w-full bg-[#1a1a2e] rounded-t-3xl p-6 pb-10"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex justify-center mb-4">
+                <div className="w-12 h-1 bg-white/20 rounded-full" />
+              </div>
+              <h3 className="text-white text-lg font-bold text-center mb-4">Select Token</h3>
+              <div className="space-y-2">
+                {TOKEN_OPTIONS.map((token) => (
+                  <button
+                    key={token.symbol}
+                    className={`w-full p-4 rounded-xl flex items-center gap-3 transition-colors ${
+                      toToken.symbol === token.symbol
+                        ? 'bg-purple/20 border border-purple/50'
+                        : 'bg-white/5 hover:bg-white/10'
+                    }`}
+                    onClick={() => {
+                      if (token.symbol !== fromToken.symbol) {
+                        setToToken(token);
+                      }
+                      setShowToTokenMenu(false);
+                    }}
+                  >
+                    <img
+                      src={token.logo}
+                      alt={token.symbol}
+                      className="w-10 h-10 rounded-full object-cover"
+                      onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+                    />
+                    <div className="flex-1 text-left">
+                      <p className="text-white font-semibold">{token.symbol}</p>
+                      <p className="text-taupe text-sm">{token.name}</p>
+                    </div>
+                    <p className="text-taupe text-sm">{tokenBalances[token.symbol]?.toFixed(2) || '0.00'}</p>
+                    {toToken.symbol === token.symbol && (
+                      <span className="material-symbols-outlined text-purple">check_circle</span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <button
+                className="w-full mt-4 py-3 text-taupe font-medium"
+                onClick={() => setShowToTokenMenu(false)}
+              >
+                Cancel
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Swap Preview Modal */}
+      <AnimatePresence>
+        {showSwapPreview && swapPreviewData && (
+          <motion.div
+            className="fixed inset-0 bg-black/80 z-50 flex items-end pb-20"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={closeSwapPreview}
+          >
+            <motion.div
+              className="w-full bg-[#1a1a2e] rounded-t-3xl max-h-[70vh] flex flex-col"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="pt-4 px-6 pb-3 border-b border-white/5 flex-shrink-0">
+                <div className="flex justify-center mb-3">
+                  <div className="w-10 h-1 bg-white/20 rounded-full" />
+                </div>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-white text-lg font-bold">Review Swap</h3>
+                  {!isSwapping && (
+                    <button
+                      onClick={closeSwapPreview}
+                      className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+                    >
+                      <span className="material-symbols-outlined text-taupe text-sm">close</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {/* Success State */}
+                {swapSuccess ? (
+                  <motion.div
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-center py-8"
+                  >
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      transition={{ type: "spring", delay: 0.2 }}
+                      className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4"
+                    >
+                      <span className="material-symbols-outlined text-4xl text-green-400">check_circle</span>
+                    </motion.div>
+                    <h4 className="text-white text-xl font-bold mb-2">Swap Successful!</h4>
+                    <p className="text-taupe text-sm">
+                      Swapped {swapPreviewData.fromAmount} {swapPreviewData.fromToken.symbol} for {swapPreviewData.toAmount} {swapPreviewData.toToken.symbol}
+                    </p>
+                  </motion.div>
+                ) : (
+                  <>
+                    {/* Swap Summary - Compact */}
+                    <div className="bg-white/5 rounded-xl p-3 mb-4">
+                      <div className="flex items-center justify-between">
+                        {/* From */}
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={swapPreviewData.fromToken.logo}
+                            alt={swapPreviewData.fromToken.symbol}
+                            className="w-8 h-8 rounded-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+                          />
+                          <div>
+                            <p className="text-white font-semibold text-sm">{swapPreviewData.fromAmount} {swapPreviewData.fromToken.symbol}</p>
+                            <p className="text-taupe text-xs">${(parseFloat(swapPreviewData.fromAmount) * 0.005).toFixed(2)}</p>
+                          </div>
+                        </div>
+
+                        {/* Arrow */}
+                        <span className="material-symbols-outlined text-purple text-lg">arrow_forward</span>
+
+                        {/* To */}
+                        <div className="flex items-center gap-2">
+                          <div className="text-right">
+                            <p className="text-white font-semibold text-sm">~{swapPreviewData.toAmount} {swapPreviewData.toToken.symbol}</p>
+                            <p className="text-taupe text-xs">${(parseFloat(swapPreviewData.toAmount) * (swapPreviewData.toToken.symbol === 'USDCX' ? 1 : swapPreviewData.toToken.symbol === 'cBTC' ? 40000 : 0.005)).toFixed(2)}</p>
+                          </div>
+                          <img
+                            src={swapPreviewData.toToken.logo}
+                            alt={swapPreviewData.toToken.symbol}
+                            className="w-8 h-8 rounded-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Transaction Details */}
+                    <div className="bg-white/5 rounded-xl p-3">
+                      <div className="space-y-2 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-taupe">Rate</span>
+                          <span className="text-white">1 {swapPreviewData.fromToken.symbol} = {swapPreviewData.exchangeRate} {swapPreviewData.toToken.symbol}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-taupe">Price Impact</span>
+                          <span className={`font-medium ${getPriceImpactColor(swapPreviewData.priceImpact)}`}>
+                            {swapPreviewData.priceImpact < 0.01 ? '<0.01' : swapPreviewData.priceImpact.toFixed(2)}%
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-taupe">Slippage</span>
+                          <span className="text-white">{swapPreviewData.slippage}%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-taupe">Min. Received</span>
+                          <span className="text-white">{swapPreviewData.toAmountMin} {swapPreviewData.toToken.symbol}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-taupe">Network Fee</span>
+                          <span className="text-white">~{swapPreviewData.networkFee} CC</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* High Price Impact Warning */}
+                    {swapPreviewData.priceImpact >= 2 && (
+                      <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        className={`mt-3 p-2.5 rounded-xl flex items-center gap-2 ${
+                          swapPreviewData.priceImpact >= 5
+                            ? 'bg-red-500/20 border border-red-500/30'
+                            : 'bg-orange-500/20 border border-orange-500/30'
+                        }`}
+                      >
+                        <span className={`material-symbols-outlined text-lg ${
+                          swapPreviewData.priceImpact >= 5 ? 'text-red-400' : 'text-orange-400'
+                        }`}>warning</span>
+                        <p className={`text-xs ${
+                          swapPreviewData.priceImpact >= 5 ? 'text-red-400' : 'text-orange-400'
+                        }`}>
+                          {swapPreviewData.priceImpact >= 5 ? 'High price impact - you may receive less' : 'Moderate price impact'}
+                        </p>
+                      </motion.div>
+                    )}
+
+                    {/* Error Message */}
+                    {swapError && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 flex items-center gap-2"
+                      >
+                        <span className="material-symbols-outlined text-red-400 text-lg">error</span>
+                        <p className="text-red-400 text-sm">{swapError}</p>
+                      </motion.div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* Fixed Footer with Confirm Button */}
+              {!swapSuccess && (
+                <div className="flex-shrink-0 p-4 pt-3 border-t border-white/5 bg-[#1a1a2e]">
+                  <motion.button
+                    className={`w-full py-3.5 rounded-xl text-white font-bold transition-all ${
+                      isSwapping
+                        ? 'bg-purple/50'
+                        : swapPreviewData.priceImpact >= 5
+                          ? 'bg-gradient-to-r from-red-500 to-red-600'
+                          : 'bg-gradient-to-r from-purple to-lilac'
+                    }`}
+                    whileTap={{ scale: isSwapping ? 1 : 0.98 }}
+                    onClick={executeSwap}
+                    disabled={isSwapping}
+                  >
+                    {isSwapping ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <motion.span
+                          className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full"
+                          animate={{ rotate: 360 }}
+                          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        />
+                        Swapping...
+                      </span>
+                    ) : swapPreviewData.priceImpact >= 5 ? (
+                      'Swap Anyway'
+                    ) : (
+                      'Confirm Swap'
+                    )}
+                  </motion.button>
+                  <p className="text-center text-taupe text-[10px] mt-2">
+                    Transactions on Canton Network are final
+                  </p>
+                </div>
+              )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
@@ -4698,23 +6063,261 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
 function BridgeScreen({ onBack }: { onBack: () => void }) {
   const { wallet } = useWalletContext();
   const [amount, setAmount] = useState("");
-  const [selectedFromChain, setSelectedFromChain] = useState("canton");
-  const [selectedToChain, setSelectedToChain] = useState("ethereum");
+  // Default: Ethereum -> Canton (xReserve deposit flow)
+  // User can swap direction
+  const [selectedFromChain, setSelectedFromChain] = useState("ethereum");
+  const [selectedToChain, setSelectedToChain] = useState("canton");
+
+  // EVM Wallet Connection State
+  const [evmConnected, setEvmConnected] = useState(false);
+  const [evmAddress, setEvmAddress] = useState<string | null>(null);
+  const [evmBalance, setEvmBalance] = useState("0.00");
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [feeBreakdownOpen, setFeeBreakdownOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+
+  // Bridge History (in production, fetch from API)
+  const [bridgeHistory, setBridgeHistory] = useState<Array<{
+    id: string;
+    type: 'deposit' | 'withdrawal';
+    status: 'pending' | 'confirming' | 'completed' | 'failed';
+    fromChain: string;
+    toChain: string;
+    fromToken: string;
+    toToken: string;
+    amount: string;
+    receiveAmount: string;
+    txHash: string;
+    timestamp: Date;
+  }>>([
+    // Mock data for demo
+    {
+      id: '1',
+      type: 'deposit',
+      status: 'completed',
+      fromChain: 'ethereum',
+      toChain: 'canton',
+      fromToken: 'USDC',
+      toToken: 'USDCx',
+      amount: '100.00',
+      receiveAmount: '99.80',
+      txHash: '0x1234...abcd',
+      timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+    },
+    {
+      id: '2',
+      type: 'withdrawal',
+      status: 'confirming',
+      fromChain: 'canton',
+      toChain: 'ethereum',
+      fromToken: 'USDCx',
+      toToken: 'USDC',
+      amount: '50.00',
+      receiveAmount: '49.90',
+      txHash: '0x5678...efgh',
+      timestamp: new Date(Date.now() - 30 * 60 * 1000), // 30 min ago
+    },
+    {
+      id: '3',
+      type: 'deposit',
+      status: 'pending',
+      fromChain: 'ethereum',
+      toChain: 'canton',
+      fromToken: 'USDC',
+      toToken: 'USDCx',
+      amount: '250.00',
+      receiveAmount: '249.50',
+      txHash: '0x9abc...ijkl',
+      timestamp: new Date(Date.now() - 5 * 60 * 1000), // 5 min ago
+    },
+  ]);
 
   const ccBalance = wallet?.balance ? parseFloat(wallet.balance).toFixed(2) : "0.00";
 
+  // Bridge fee breakdown
+  const feeBreakdown = {
+    attestationGas: 2.00,
+    forwardingFee: 1.25,
+    forwardingGas: 1.50,
+  };
+  const totalFees = feeBreakdown.attestationGas + feeBreakdown.forwardingFee + feeBreakdown.forwardingGas;
+
+  // Bridge fee percentage
+  const bridgeFee = 0.2; // 0.2%
+  const receivePercentage = 100 - bridgeFee; // 99.8%
+
+  // xReserve Bridge: USDC (Ethereum) <-> USDCx (Canton)
+  // Token changes based on selected chain
+  const fromTokenInfo = selectedFromChain === 'ethereum'
+    ? { symbol: "USDC", name: "USD Coin", logo: "https://coin-images.coingecko.com/coins/images/6319/large/usdc.png" }
+    : { symbol: "USDCx", name: "USD Coin X", logo: "https://coin-images.coingecko.com/coins/images/6319/large/usdc.png" };
+
+  const toTokenInfo = selectedToChain === 'ethereum'
+    ? { symbol: "USDC", name: "USD Coin", logo: "https://coin-images.coingecko.com/coins/images/6319/large/usdc.png" }
+    : { symbol: "USDCx", name: "USD Coin X", logo: "https://coin-images.coingecko.com/coins/images/6319/large/usdc.png" };
+
+  // Token balances
+  const tokenBalances: Record<string, string> = {
+    'USDC': evmConnected ? evmBalance : '0.00', // Ethereum USDC balance from connected wallet
+    'USDCx': ccBalance, // Canton USDCx balance (linked to CC wallet)
+  };
+
+  // Only Canton and Ethereum supported via Circle xReserve
   const chains = [
-    { id: "canton", name: "Canton", icon: "hexagon", color: "#875CFF" },
-    { id: "ethereum", name: "Ethereum", icon: "currency_exchange", color: "#627EEA" },
-    { id: "polygon", name: "Polygon", icon: "change_history", color: "#8247E5" },
-    { id: "arbitrum", name: "Arbitrum", icon: "architecture", color: "#28A0F0" },
-    { id: "base", name: "Base", icon: "lens_blur", color: "#0052FF" },
+    { id: "canton", name: "Canton Network", logo: "https://coin-images.coingecko.com/coins/images/70468/large/Canton-Ticker_%281%29.png", color: "#875CFF" },
+    { id: "ethereum", name: "Ethereum", logo: "https://coin-images.coingecko.com/coins/images/279/large/ethereum.png", color: "#627EEA" },
   ];
+
+  const getChain = (id: string) => chains.find(c => c.id === id) || chains[0];
+  const fromChain = getChain(selectedFromChain);
+  const toChain = getChain(selectedToChain);
+
+  // Bridge Preview State
+  const [showBridgePreview, setShowBridgePreview] = useState(false);
+  const [isBridging, setIsBridging] = useState(false);
+  const [bridgeSuccess, setBridgeSuccess] = useState(false);
+
+  // Dev mode flag
+  const isDevMode = true; // Set to false in production
+
+  // Connect EVM Wallet (MetaMask, WalletConnect, etc.)
+  const connectEvmWallet = async () => {
+    setIsConnecting(true);
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("medium");
+
+    // Dev mode: simulate wallet connection
+    if (isDevMode) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setEvmAddress('0x742d35Cc6634C0532925a3b844Bc9e7595f8fE21');
+      setEvmConnected(true);
+      setEvmBalance('1,250.00');
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+      setIsConnecting(false);
+      return;
+    }
+
+    try {
+      // Check if MetaMask or other EVM wallet is available
+      if (typeof window !== 'undefined' && (window as any).ethereum) {
+        const ethereum = (window as any).ethereum;
+
+        // Request account access
+        const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+
+        if (accounts && accounts.length > 0) {
+          const address = accounts[0];
+          setEvmAddress(address);
+          setEvmConnected(true);
+
+          // Get USDC balance (simplified - in production use proper contract call)
+          // USDC contract on Ethereum mainnet: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
+          try {
+            // For now, just show connected state
+            // Real implementation would call USDC balanceOf
+            setEvmBalance('0.00');
+          } catch (err) {
+            console.error('Failed to get balance:', err);
+          }
+
+          window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+        }
+      } else {
+        // No wallet found - show message or open WalletConnect
+        window.Telegram?.WebApp?.showAlert?.('Please install MetaMask or use WalletConnect');
+        window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+      }
+    } catch (error) {
+      console.error('Wallet connection error:', error);
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // Execute Bridge
+  const executeBridge = async () => {
+    setIsBridging(true);
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("heavy");
+
+    // Simulate bridge transaction
+    await new Promise(resolve => setTimeout(resolve, 2500));
+
+    setBridgeSuccess(true);
+    window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+
+    // Add to history
+    const newTx = {
+      id: Date.now().toString(),
+      type: 'deposit' as const,
+      status: 'pending' as const,
+      fromChain: selectedFromChain,
+      toChain: selectedToChain,
+      fromToken: fromTokenInfo.symbol,
+      toToken: toTokenInfo.symbol,
+      amount: amount,
+      receiveAmount: receiveAmount,
+      txHash: `0x${Math.random().toString(16).slice(2, 10)}...${Math.random().toString(16).slice(2, 6)}`,
+      timestamp: new Date(),
+    };
+    setBridgeHistory(prev => [newTx, ...prev]);
+
+    setTimeout(() => {
+      setShowBridgePreview(false);
+      setBridgeSuccess(false);
+      setIsBridging(false);
+      setAmount('');
+    }, 2000);
+  };
+
+  // Disconnect EVM Wallet
+  const disconnectEvmWallet = () => {
+    setEvmConnected(false);
+    setEvmAddress(null);
+    setEvmBalance('0.00');
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+  };
+
+  // Format address for display
+  const formatAddress = (address: string) => {
+    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  };
+
+  // Calculate receive amount
+  const receiveAmount = amount ? (parseFloat(amount) * (receivePercentage / 100)).toFixed(4) : "";
 
   const handleSwapChains = () => {
     const temp = selectedFromChain;
     setSelectedFromChain(selectedToChain);
     setSelectedToChain(temp);
+    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+  };
+
+  // Format time ago
+  const formatTimeAgo = (date: Date) => {
+    const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+    if (seconds < 60) return 'Just now';
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  };
+
+  // Get status color and icon
+  const getStatusInfo = (status: string) => {
+    switch (status) {
+      case 'completed':
+        return { color: 'text-green-400', bg: 'bg-green-500/20', icon: 'check_circle' };
+      case 'confirming':
+        return { color: 'text-yellow-400', bg: 'bg-yellow-500/20', icon: 'schedule' };
+      case 'pending':
+        return { color: 'text-blue-400', bg: 'bg-blue-500/20', icon: 'pending' };
+      case 'failed':
+        return { color: 'text-red-400', bg: 'bg-red-500/20', icon: 'error' };
+      default:
+        return { color: 'text-taupe', bg: 'bg-white/10', icon: 'help' };
+    }
   };
 
   return (
@@ -4723,167 +6326,562 @@ function BridgeScreen({ onBack }: { onBack: () => void }) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <Header title="Bridge" onBack={onBack} />
+      {/* Custom Header with History Button */}
+      <div className="flex items-center justify-between px-4 py-3">
+        <motion.button
+          onClick={onBack}
+          className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
+          whileTap={{ scale: 0.95 }}
+        >
+          <span className="material-symbols-outlined text-white">arrow_back</span>
+        </motion.button>
+        <h1 className="text-white text-lg font-semibold">Bridge</h1>
+        <motion.button
+          onClick={() => {
+            setShowHistory(true);
+            window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+          }}
+          className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
+          whileTap={{ scale: 0.95 }}
+        >
+          <span className="material-symbols-outlined text-white">history</span>
+        </motion.button>
+      </div>
+
+      {/* Bridge History Modal */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div
+            className="fixed inset-0 z-50 flex flex-col bg-[#0a0a0f]"
+            initial={{ opacity: 0, x: '100%' }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+          >
+            {/* History Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
+              <motion.button
+                onClick={() => {
+                  setShowHistory(false);
+                  window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+                }}
+                className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center"
+                whileTap={{ scale: 0.95 }}
+              >
+                <span className="material-symbols-outlined text-white">arrow_back</span>
+              </motion.button>
+              <h1 className="text-white text-lg font-semibold">Bridge History</h1>
+              <div className="w-10" />
+            </div>
+
+            {/* History List */}
+            <div className="flex-1 overflow-y-auto">
+              {bridgeHistory.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center px-4">
+                  <div className="w-14 h-14 rounded-full bg-white/5 flex items-center justify-center mb-3">
+                    <span className="material-symbols-outlined text-white/30 text-2xl">receipt_long</span>
+                  </div>
+                  <p className="text-white/80 font-medium mb-1">No transactions yet</p>
+                  <p className="text-white/40 text-sm">Your bridge history will appear here</p>
+                </div>
+              ) : (
+                <div>
+                  {bridgeHistory.map((tx, index) => {
+                    // Determine explorer URL based on chain
+                    const getExplorerUrl = () => {
+                      if (tx.fromChain === 'ethereum') {
+                        // Etherscan (use sepolia for testnet)
+                        const isTestnet = true; // In production, check environment
+                        return isTestnet
+                          ? `https://sepolia.etherscan.io/tx/${tx.txHash}`
+                          : `https://etherscan.io/tx/${tx.txHash}`;
+                      } else {
+                        // Canton Lighthouse Explorer
+                        return `https://lighthouse.canton.network/tx/${tx.txHash}`;
+                      }
+                    };
+
+                    return (
+                    <motion.div
+                      key={tx.id}
+                      className="flex items-center gap-4 px-5 py-4 border-b border-white/5 active:bg-white/[0.02] cursor-pointer"
+                      whileTap={{ scale: 0.995 }}
+                      onClick={() => {
+                        window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+                        window.Telegram?.WebApp?.openLink?.(getExplorerUrl()) || window.open(getExplorerUrl(), '_blank');
+                      }}
+                    >
+                      {/* Token Icons */}
+                      <div className="relative">
+                        <img
+                          src="https://coin-images.coingecko.com/coins/images/6319/large/usdc.png"
+                          alt={tx.fromToken}
+                          className="w-10 h-10 rounded-full"
+                        />
+                        <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#0a0a0f] flex items-center justify-center">
+                          <img
+                            src="https://coin-images.coingecko.com/coins/images/6319/large/usdc.png"
+                            alt={tx.toToken}
+                            className="w-4 h-4 rounded-full"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Details */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-white font-medium">{tx.fromToken}</span>
+                          <span className="text-white/30">→</span>
+                          <span className="text-white font-medium">{tx.toToken}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-white/40 text-sm">{formatTimeAgo(tx.timestamp)}</p>
+                          <span className="text-white/20">•</span>
+                          <p className="text-white/40 text-sm font-mono">{tx.txHash}</p>
+                        </div>
+                      </div>
+
+                      {/* Amount & Status */}
+                      <div className="text-right flex items-center gap-2">
+                        <div>
+                          <p className="text-white font-medium">{tx.amount}</p>
+                          <p className={`text-sm ${
+                            tx.status === 'completed' ? 'text-green-400' :
+                            tx.status === 'confirming' ? 'text-amber-400' :
+                            tx.status === 'pending' ? 'text-white/40' :
+                            'text-red-400'
+                          }`}>
+                            {tx.status === 'completed' ? 'Completed' :
+                             tx.status === 'confirming' ? 'Confirming' :
+                             tx.status === 'pending' ? 'Pending' : 'Failed'}
+                          </p>
+                        </div>
+                        <span className="material-symbols-outlined text-white/30 text-lg">open_in_new</span>
+                      </div>
+                    </motion.div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex-1 px-4 pb-40">
-        {/* From Chain */}
-        <div className="bg-white/5 rounded-2xl p-4 mb-2">
-          <div className="flex justify-between mb-3">
-            <span className="text-taupe text-sm">From</span>
-            <span className="text-taupe text-sm">Balance: {ccBalance} CC</span>
-          </div>
-          <div className="flex items-center gap-3 mb-3">
-            <input
-              type="text"
-              placeholder="0.00"
-              className="flex-1 bg-transparent text-white text-2xl font-bold outline-none"
-              value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-            />
-            <button className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl">
-              <Image src="/ccbotlogo.png" alt="CC" width={20} height={20} />
-              <span className="text-white font-medium">CC</span>
-              <span className="text-taupe">▼</span>
-            </button>
-          </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {chains.map((chain) => (
-              <motion.button
-                key={chain.id}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all ${
-                  selectedFromChain === chain.id
-                    ? "bg-white/20 border border-white/30"
-                    : "bg-white/5 border border-transparent"
-                }`}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSelectedFromChain(chain.id)}
+        {/* From Section */}
+        <div className="bg-white/5 rounded-2xl p-5 mb-3">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-3">
+              <img
+                src={fromChain.logo}
+                alt={fromChain.name}
+                className="w-7 h-7 rounded-full"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+              />
+              <span className="text-white text-base font-medium">{fromChain.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-taupe text-sm">Balance: {tokenBalances[fromTokenInfo.symbol]}</span>
+              <button
+                onClick={() => setAmount(tokenBalances[fromTokenInfo.symbol])}
+                className="text-purple text-sm font-semibold"
               >
-                <span
-                  className="material-symbols-outlined text-sm"
-                  style={{ color: chain.color }}
-                >
-                  {chain.icon}
-                </span>
-                <span className="text-white text-sm">{chain.name}</span>
-              </motion.button>
-            ))}
+                MAX
+              </button>
+            </div>
+          </div>
+
+          {/* Amount + Token Display Row */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="0.00"
+                className="w-full bg-transparent text-white text-3xl font-bold outline-none"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value.replace(/[^0-9.]/g, ''))}
+                disabled={selectedFromChain === 'ethereum' && !evmConnected}
+              />
+              {amount && parseFloat(amount) > 0 && (
+                <p className="text-taupe text-sm mt-2">≈ ${parseFloat(amount).toFixed(2)}</p>
+              )}
+            </div>
+
+            {/* Token Display */}
+            <div className="flex items-center gap-2 bg-white/10 px-4 py-3 rounded-xl">
+              <img
+                src={fromTokenInfo.logo}
+                alt={fromTokenInfo.symbol}
+                className="w-7 h-7 rounded-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+              />
+              <span className="text-white font-medium">{fromTokenInfo.symbol}</span>
+            </div>
           </div>
         </div>
 
         {/* Swap Button */}
-        <div className="flex justify-center -my-3 z-10 relative">
+        <div className="flex justify-center items-center -my-3 z-10 relative">
           <motion.button
-            className="w-12 h-12 rounded-full bg-purple flex items-center justify-center text-xl shadow-lg"
+            className="w-12 h-12 rounded-full bg-purple flex items-center justify-center shadow-lg"
             whileTap={{ scale: 0.9, rotate: 180 }}
             onClick={handleSwapChains}
           >
-            <span className="material-symbols-outlined text-white">swap_vert</span>
+            <span className="material-symbols-outlined text-white text-xl">swap_vert</span>
           </motion.button>
         </div>
 
-        {/* To Chain */}
-        <div className="bg-white/5 rounded-2xl p-4 mt-2 mb-6">
-          <div className="flex justify-between mb-3">
-            <span className="text-taupe text-sm">To</span>
-            <span className="text-taupe text-sm">You will receive</span>
+        {/* To Section */}
+        <div className="bg-white/5 rounded-2xl p-5 mt-3 mb-4">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-3">
+              <img
+                src={toChain.logo}
+                alt={toChain.name}
+                className="w-7 h-7 rounded-full"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+              />
+              <span className="text-white text-base font-medium">{toChain.name}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-3 mb-3">
-            <input
-              type="text"
-              placeholder="0.00"
-              className="flex-1 bg-transparent text-white text-2xl font-bold outline-none"
-              value={amount ? (parseFloat(amount) * 0.998).toFixed(2) : ""}
-              readOnly
-            />
-            <button className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl">
-              <Image src="/ccbotlogo.png" alt="CC" width={20} height={20} />
-              <span className="text-white font-medium">CC</span>
-              <span className="text-taupe">▼</span>
+
+          {/* Amount + Token Display Row */}
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="0.00"
+                className="w-full bg-transparent text-white text-3xl font-bold outline-none"
+                value={receiveAmount}
+                readOnly
+              />
+              {receiveAmount && parseFloat(receiveAmount) > 0 && (
+                <p className="text-taupe text-sm mt-2">≈ ${parseFloat(receiveAmount).toFixed(2)}</p>
+              )}
+            </div>
+
+            {/* Token Display */}
+            <div className="flex items-center gap-2 bg-white/10 px-4 py-3 rounded-xl">
+              <img
+                src={toTokenInfo.logo}
+                alt={toTokenInfo.symbol}
+                className="w-7 h-7 rounded-full object-cover"
+                onError={(e) => { (e.target as HTMLImageElement).src = '/ccbotlogo.png'; }}
+              />
+              <span className="text-white font-medium">{toTokenInfo.symbol}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Fee Breakdown - Collapsible */}
+        <div className="bg-white/5 rounded-xl overflow-hidden mb-4">
+          <button
+            onClick={() => {
+              setFeeBreakdownOpen(!feeBreakdownOpen);
+              window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+            }}
+            className="w-full p-4 flex justify-between items-center"
+          >
+            <span className="text-white font-medium">Fee Breakdown</span>
+            <div className="flex items-center gap-2">
+              <span className="text-taupe">${totalFees.toFixed(2)}</span>
+              <motion.span
+                className="material-symbols-outlined text-taupe"
+                animate={{ rotate: feeBreakdownOpen ? 180 : 0 }}
+                transition={{ duration: 0.2 }}
+              >
+                expand_more
+              </motion.span>
+            </div>
+          </button>
+
+          <AnimatePresence>
+            {feeBreakdownOpen && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 space-y-3 border-t border-white/10 pt-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-taupe text-sm">Circle Attestation Gas</span>
+                    <span className="text-white text-sm">${feeBreakdown.attestationGas.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-taupe text-sm">Ethereum Forwarding Fee</span>
+                    <span className="text-white text-sm">${feeBreakdown.forwardingFee.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-taupe text-sm">Ethereum Forwarding Gas</span>
+                    <span className="text-white text-sm">${feeBreakdown.forwardingGas.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center pt-2 border-t border-white/10">
+                    <span className="text-white text-sm font-medium">Net Amount</span>
+                    <span className="text-green-400 text-sm font-medium">
+                      {receiveAmount ? `${receiveAmount} ${toTokenInfo.symbol}` : '-'}
+                    </span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Est. Time */}
+        <div className="bg-white/5 rounded-xl p-4 flex justify-between items-center">
+          <span className="text-taupe">Estimated Time</span>
+          <span className="text-white font-medium">{selectedFromChain === 'ethereum' ? '~15-20 min' : '~5-10 min'}</span>
+        </div>
+      </div>
+
+      {/* Bridge Button / Connect Wallet */}
+      <div className="absolute bottom-32 left-0 right-0 px-4 z-10 space-y-3">
+        {/* Connected Wallet Display */}
+        {evmConnected && evmAddress && (
+          <div className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple to-lilac flex items-center justify-center">
+                <span className="material-symbols-outlined text-white text-sm">account_balance_wallet</span>
+              </div>
+              <div>
+                <p className="text-white text-sm font-medium">{formatAddress(evmAddress)}</p>
+                <p className="text-taupe text-xs">Ethereum Wallet</p>
+              </div>
+            </div>
+            <button
+              onClick={disconnectEvmWallet}
+              className="text-taupe hover:text-red-400 transition-colors"
+            >
+              <span className="material-symbols-outlined text-lg">logout</span>
             </button>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-            {chains.map((chain) => (
-              <motion.button
-                key={chain.id}
-                className={`flex items-center gap-2 px-3 py-2 rounded-xl whitespace-nowrap transition-all ${
-                  selectedToChain === chain.id
-                    ? "bg-white/20 border border-white/30"
-                    : "bg-white/5 border border-transparent"
-                }`}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setSelectedToChain(chain.id)}
-              >
-                <span
-                  className="material-symbols-outlined text-sm"
-                  style={{ color: chain.color }}
-                >
-                  {chain.icon}
-                </span>
-                <span className="text-white text-sm">{chain.name}</span>
-              </motion.button>
-            ))}
-          </div>
-        </div>
+        )}
 
-        {/* Bridge Details */}
-        <div className="bg-white/5 rounded-2xl p-4 mb-4">
-          <div className="flex justify-between mb-2">
-            <span className="text-taupe">Route</span>
-            <span className="text-white flex items-center gap-1">
-              <span className="material-symbols-outlined text-sm" style={{ color: chains.find(c => c.id === selectedFromChain)?.color }}>
-                {chains.find(c => c.id === selectedFromChain)?.icon}
-              </span>
-              →
-              <span className="material-symbols-outlined text-sm" style={{ color: chains.find(c => c.id === selectedToChain)?.color }}>
-                {chains.find(c => c.id === selectedToChain)?.icon}
-              </span>
-            </span>
-          </div>
-          <div className="flex justify-between mb-2">
-            <span className="text-taupe">Est. Time</span>
-            <span className="text-white">~2-5 min</span>
-          </div>
-          <div className="flex justify-between mb-2">
-            <span className="text-taupe">Bridge Fee</span>
-            <span className="text-white">0.2%</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-taupe">Network Fee</span>
-            <span className="text-white">~0.001 CC</span>
-          </div>
-        </div>
-
-        {/* Security Notice */}
-        <div className="bg-purple/10 border border-purple/20 rounded-2xl p-4 flex items-start gap-3">
-          <span className="material-symbols-outlined text-purple">verified_user</span>
-          <div>
-            <p className="text-white text-sm font-medium">Secure Cross-Chain Transfer</p>
-            <p className="text-taupe text-xs">Assets are secured by Canton Network&apos;s privacy-preserving protocol</p>
-          </div>
-        </div>
+        {/* Main Action Button */}
+        {selectedFromChain === 'ethereum' && !evmConnected ? (
+          <motion.button
+            className="w-full py-4 rounded-2xl text-white text-lg font-bold bg-purple flex items-center justify-center"
+            whileTap={{ scale: 0.98 }}
+            onClick={connectEvmWallet}
+            disabled={isConnecting}
+          >
+            {isConnecting ? (
+              <>
+                <motion.span
+                  className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full mr-2"
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                />
+                Connecting...
+              </>
+            ) : (
+              'Connect Wallet'
+            )}
+          </motion.button>
+        ) : (
+          <motion.button
+            className={`w-full py-4 rounded-2xl text-white text-lg font-bold transition-all ${
+              amount && parseFloat(amount) > 0
+                ? 'bg-purple'
+                : 'bg-white/10 text-taupe'
+            }`}
+            whileTap={{ scale: amount && parseFloat(amount) > 0 ? 0.98 : 1 }}
+            disabled={!amount || parseFloat(amount) <= 0}
+            onClick={() => {
+              if (amount && parseFloat(amount) > 0) {
+                setShowBridgePreview(true);
+                window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("medium");
+              }
+            }}
+          >
+            {amount && parseFloat(amount) > 0 ? 'Review Bridge' : 'Enter Amount'}
+          </motion.button>
+        )}
       </div>
 
-      <div className="absolute bottom-32 left-0 right-0 px-4 z-10">
-        <motion.button
-          className="w-full py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white text-lg font-bold"
-          whileTap={{ scale: 0.98 }}
-        >
-          Bridge Assets
-        </motion.button>
-      </div>
+      {/* Bridge Preview Modal */}
+      <AnimatePresence>
+        {showBridgePreview && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="fixed inset-0 bg-black/60 z-40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => !isBridging && setShowBridgePreview(false)}
+            />
+
+            {/* Modal */}
+            <motion.div
+              className="fixed bottom-0 left-0 right-0 z-50"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            >
+              <div className="bg-[#1a1a2e] rounded-t-3xl max-h-[80vh] flex flex-col pb-20">
+                {/* Handle */}
+                <div className="flex justify-center pt-3 pb-2">
+                  <div className="w-10 h-1 bg-white/20 rounded-full" />
+                </div>
+
+                {bridgeSuccess ? (
+                  /* Success State */
+                  <div className="flex-1 flex flex-col items-center justify-center py-10 px-6">
+                    <div className="w-16 h-16 rounded-full border-2 border-white/20 flex items-center justify-center mb-5">
+                      <span className="text-white text-2xl">✓</span>
+                    </div>
+                    <h2 className="text-white text-lg font-semibold mb-2">Transaction Submitted</h2>
+                    <p className="text-white/50 text-center text-sm">
+                      {amount} {fromTokenInfo.symbol} → {receiveAmount} {toTokenInfo.symbol}
+                    </p>
+                    <p className="text-white/30 text-xs mt-3">
+                      Est. {selectedFromChain === 'ethereum' ? '15-20 min' : '5-10 min'}
+                    </p>
+                  </div>
+                ) : (
+                  /* Preview Content */
+                  <div className="flex-1 overflow-y-auto px-5 pb-4">
+                    <h2 className="text-white text-lg font-semibold text-center mb-5">Review Transaction</h2>
+
+                    {/* From */}
+                    <div className="border border-white/10 rounded-xl p-4 mb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <img src={fromTokenInfo.logo} alt="" className="w-10 h-10 rounded-full" />
+                          <div>
+                            <p className="text-white font-semibold text-xl">{amount}</p>
+                            <p className="text-white/50 text-sm">{fromTokenInfo.symbol} on {fromChain.name}</p>
+                          </div>
+                        </div>
+                        <span className="text-white/30 text-sm">You pay</span>
+                      </div>
+                    </div>
+
+                    {/* Arrow */}
+                    <div className="flex justify-center -my-1.5 relative z-10">
+                      <div className="w-8 h-8 rounded-full bg-[#1a1a2e] border border-white/10 flex items-center justify-center">
+                        <span className="text-white/50 text-sm">↓</span>
+                      </div>
+                    </div>
+
+                    {/* To */}
+                    <div className="border border-white/10 rounded-xl p-4 mb-5">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <img src={toTokenInfo.logo} alt="" className="w-10 h-10 rounded-full" />
+                          <div>
+                            <p className="text-white font-semibold text-xl">{receiveAmount}</p>
+                            <p className="text-white/50 text-sm">{toTokenInfo.symbol} on {toChain.name}</p>
+                          </div>
+                        </div>
+                        <span className="text-white/30 text-sm">You receive</span>
+                      </div>
+                    </div>
+
+                    {/* Transaction Details */}
+                    <div className="border border-white/10 rounded-xl p-4 mb-4">
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white/50">Rate</span>
+                          <span className="text-white">1 {fromTokenInfo.symbol} = 1 {toTokenInfo.symbol}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-white/50">Bridge fee</span>
+                          <span className="text-white">{bridgeFee}%</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-white/50">Network cost</span>
+                          <span className="text-white">${totalFees.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-white/50">Time</span>
+                          <span className="text-white">{selectedFromChain === 'ethereum' ? '15-20 min' : '5-10 min'}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Wallet */}
+                    {evmConnected && evmAddress && (
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-white/50">From wallet</span>
+                        <span className="text-white font-mono">{formatAddress(evmAddress)}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Action Buttons */}
+                {!bridgeSuccess && (
+                  <div className="px-5 pb-8 pt-3 flex gap-3">
+                    <button
+                      className="flex-1 py-3.5 rounded-xl border border-white/20 text-white font-medium text-sm"
+                      onClick={() => setShowBridgePreview(false)}
+                      disabled={isBridging}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      className="flex-1 py-3.5 rounded-xl bg-white text-black font-medium text-sm flex items-center justify-center"
+                      onClick={executeBridge}
+                      disabled={isBridging}
+                    >
+                      {isBridging ? (
+                        'Processing...'
+                      ) : (
+                        'Confirm'
+                      )}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
     </motion.div>
   );
 }
 
 // ==================== AI ASSISTANT SCREEN ====================
+interface AgentMessage {
+  id: number;
+  type: "user" | "assistant";
+  text: string;
+  time: string;
+  pendingAction?: {
+    id: string;
+    type: "send" | "swap";
+    params: Record<string, string>;
+    expiresAt: number;
+  };
+  txResult?: {
+    txHash: string;
+    explorerUrl: string;
+    amount: string;
+    recipient: string;
+    status: string;
+  };
+}
+
 function AIAssistantScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
-  const { wallet } = useWalletContext();
-  const { price, getUsdValue, getPortfolioChange } = usePrice();
-  const [messages, setMessages] = useState([
-    { id: 1, type: "assistant", text: "Hello! I'm your CC Wallet AI Assistant. How can I help you today?", time: "Just now" }
+  const { wallet, userShare } = useWalletContext();
+  const { getUsdValue, getPortfolioChange } = usePrice();
+  const [messages, setMessages] = useState<AgentMessage[]>([
+    { id: 1, type: "assistant", text: "Hello! I'm CC Bot. I can help you send CC, check balance, or view transactions. What would you like to do?", time: "Just now" }
   ]);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [pendingAction, setPendingAction] = useState<AgentMessage["pendingAction"] | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pinValue, setPinValue] = useState("");
+  const [isConfirming, setIsConfirming] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const ccBalance = wallet?.balance ? parseFloat(wallet.balance).toFixed(2) : "0.00";
   const usdValue = getUsdValue(ccBalance);
@@ -4896,62 +6894,117 @@ function AIAssistantScreen({ onNavigate }: { onNavigate: (screen: Screen) => voi
     { icon: "help", label: "Get Help", action: "help" },
   ];
 
-  const handleSend = () => {
-    if (!inputText.trim()) return;
+  // Scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages, isTyping]);
 
-    const userMessage = {
+  const handleSend = async () => {
+    if (!inputText.trim() || isTyping) return;
+
+    const userMessage: AgentMessage = {
       id: messages.length + 1,
       type: "user",
       text: inputText,
       time: "Just now"
     };
 
-    setMessages([...messages, userMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInputText("");
     setIsTyping(true);
 
-    // Simulate AI response
-    setTimeout(() => {
-      const responses: { [key: string]: string } = {
-        default: "I understand you're asking about that. Let me help you with your request. You can use the quick actions below or describe what you'd like to do in more detail.",
-        send: `To send CC tokens, I can help you set up a transfer. You have ${ccBalance} CC available. Just tell me the amount and recipient address or username.`,
-        swap: `I can help you swap tokens. You currently have ${ccBalance} CC (${usdValue}). Swap feature is coming soon!`,
-        balance: `Your current portfolio: ${ccBalance} CC (${usdValue}). ${portfolioChange.usd} (${portfolioChange.percent}) today.`,
-        stake: `Staking CC tokens is coming soon! You currently have ${ccBalance} CC available. Stay tuned for staking rewards.`
+    try {
+      const response = await api.agentChat(inputText);
+
+      const assistantMessage: AgentMessage = {
+        id: messages.length + 2,
+        type: "assistant",
+        text: response.message,
+        time: "Just now",
+        pendingAction: response.pendingAction,
+        txResult: response.txResult,
       };
 
-      const lowerInput = inputText.toLowerCase();
-      let responseText = responses.default;
-      if (lowerInput.includes("send") || lowerInput.includes("transfer")) responseText = responses.send;
-      else if (lowerInput.includes("swap") || lowerInput.includes("exchange")) responseText = responses.swap;
-      else if (lowerInput.includes("balance") || lowerInput.includes("portfolio") || lowerInput.includes("how much")) responseText = responses.balance;
-      else if (lowerInput.includes("stake") || lowerInput.includes("earn") || lowerInput.includes("apy")) responseText = responses.stake;
+      setMessages(prev => [...prev, assistantMessage]);
+
+      // If there's a pending action, show PIN modal
+      if (response.pendingAction) {
+        setPendingAction(response.pendingAction);
+        setShowPinModal(true);
+      }
+    } catch (error) {
+      console.error("Agent chat error:", error);
+      setMessages(prev => [...prev, {
+        id: prev.length + 1,
+        type: "assistant",
+        text: "Something went wrong. Please try again.",
+        time: "Just now"
+      }]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
+  const handleConfirmAction = async () => {
+    if (!pendingAction || !userShare || pinValue.length !== 6) return;
+
+    setIsConfirming(true);
+
+    try {
+      const response = await api.agentConfirm(pendingAction.id, userShare);
 
       setMessages(prev => [...prev, {
         id: prev.length + 1,
         type: "assistant",
-        text: responseText,
+        text: response.message,
+        time: "Just now",
+        txResult: response.txResult,
+      }]);
+
+      setShowPinModal(false);
+      setPendingAction(null);
+      setPinValue("");
+    } catch (error) {
+      console.error("Confirm error:", error);
+      setMessages(prev => [...prev, {
+        id: prev.length + 1,
+        type: "assistant",
+        text: "Transaction failed. Please try again.",
         time: "Just now"
       }]);
-      setIsTyping(false);
-    }, 1500);
+    } finally {
+      setIsConfirming(false);
+    }
+  };
+
+  const handleCancelAction = () => {
+    setShowPinModal(false);
+    setPendingAction(null);
+    setPinValue("");
+    setMessages(prev => [...prev, {
+      id: prev.length + 1,
+      type: "assistant",
+      text: "Transaction cancelled.",
+      time: "Just now"
+    }]);
   };
 
   const handleQuickAction = (action: string) => {
     if (action === "send") onNavigate("send");
     else if (action === "swap") onNavigate("swap");
+    else if (action === "help") onNavigate("help");
     else if (action === "portfolio") {
       setMessages(prev => [...prev, {
         id: prev.length + 1,
         type: "assistant",
-        text: `Your Portfolio Summary:\n\n• Canton Coin: ${ccBalance} CC (${usdValue})\n\nTotal Value: ${usdValue}\n${portfolioChange.usd} (${portfolioChange.percent}) today`,
+        text: `**Portfolio Summary**\n\n• Canton Coin: ${ccBalance} CC (${usdValue})\n\nTotal Value: ${usdValue}\n${portfolioChange.usd} (${portfolioChange.percent}) today`,
         time: "Just now"
       }]);
     } else {
       setMessages(prev => [...prev, {
         id: prev.length + 1,
         type: "assistant",
-        text: "I can help you with:\n\n• Sending & receiving tokens\n• Swapping between assets\n• Checking balances & portfolio\n• Staking for rewards\n• Understanding transactions\n• Navigating the wallet\n\nJust ask me anything!",
+        text: "I can help you with:\n\n• Send & receive tokens\n• Swap tokens\n• Check balance\n• View transactions\n• Register Canton Name\n\nJust ask!",
         time: "Just now"
       }]);
     }
@@ -5061,6 +7114,7 @@ function AIAssistantScreen({ onNavigate }: { onNavigate: (screen: Screen) => voi
               </div>
             </motion.div>
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Quick Actions */}
@@ -5094,29 +7148,129 @@ function AIAssistantScreen({ onNavigate }: { onNavigate: (screen: Screen) => voi
             className="flex-1 bg-transparent text-white text-sm outline-none placeholder:text-white/40"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleSend()}
+            onKeyDown={(e) => e.key === "Enter" && !isTyping && handleSend()}
+            disabled={isTyping}
           />
           <motion.button
             className="w-10 h-10 rounded-xl flex items-center justify-center"
             style={{
-              background: inputText.trim() ? "linear-gradient(135deg, #875CFF 0%, #D5A5E3 100%)" : "rgba(255, 255, 252, 0.1)"
+              background: inputText.trim() && !isTyping ? "linear-gradient(135deg, #875CFF 0%, #D5A5E3 100%)" : "rgba(255, 255, 252, 0.1)"
             }}
             whileTap={{ scale: 0.9 }}
             onClick={handleSend}
+            disabled={isTyping}
           >
             <span className="material-symbols-outlined text-white">send</span>
           </motion.button>
         </div>
       </div>
+
+      {/* PIN Confirmation Modal */}
+      <AnimatePresence>
+        {showPinModal && pendingAction && (
+          <>
+            <motion.div
+              className="fixed inset-0 bg-black/80 z-50"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={handleCancelAction}
+            />
+            <motion.div
+              className="fixed bottom-0 left-0 right-0 bg-[#0D0B12] rounded-t-3xl z-50 p-6"
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+            >
+              <div className="text-center mb-6">
+                <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center mx-auto mb-4">
+                  <span className="material-symbols-outlined text-3xl text-purple">
+                    {pendingAction.type === "send" ? "send" : "swap_horiz"}
+                  </span>
+                </div>
+                <h3 className="text-white text-lg font-bold mb-2">Confirm Transaction</h3>
+                <p className="text-taupe text-sm">
+                  {pendingAction.type === "send"
+                    ? `Send ${pendingAction.params.amount} CC to ${pendingAction.params.recipient?.slice(0, 15)}...`
+                    : `Swap ${pendingAction.params.amount} ${pendingAction.params.fromToken} to ${pendingAction.params.toToken}`
+                  }
+                </p>
+              </div>
+
+              {/* PIN Input */}
+              <div className="flex justify-center gap-3 mb-6">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold ${
+                      pinValue[i] ? "bg-purple text-white" : "bg-white/10 text-white/30"
+                    }`}
+                  >
+                    {pinValue[i] ? "•" : ""}
+                  </div>
+                ))}
+              </div>
+
+              {/* Keypad */}
+              <div className="grid grid-cols-3 gap-3 mb-4">
+                {["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "⌫"].map((key) => (
+                  <motion.button
+                    key={key}
+                    className={`h-14 rounded-xl text-xl font-medium ${
+                      key ? "bg-white/5 text-white" : ""
+                    }`}
+                    whileTap={key ? { scale: 0.95 } : {}}
+                    onClick={() => {
+                      if (key === "⌫") {
+                        setPinValue((prev) => prev.slice(0, -1));
+                      } else if (key && pinValue.length < 6) {
+                        setPinValue((prev) => prev + key);
+                      }
+                    }}
+                    disabled={!key || isConfirming}
+                  >
+                    {key}
+                  </motion.button>
+                ))}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3">
+                <button
+                  className="flex-1 py-3.5 rounded-xl bg-white/10 text-white font-medium"
+                  onClick={handleCancelAction}
+                  disabled={isConfirming}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="flex-1 py-3.5 rounded-xl bg-purple text-white font-medium disabled:opacity-50"
+                  onClick={handleConfirmAction}
+                  disabled={pinValue.length !== 6 || isConfirming}
+                >
+                  {isConfirming ? "Confirming..." : "Confirm"}
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
 // ==================== REWARDS SCREEN ====================
 function RewardsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
+  const { transactions, loadTransactions } = useWalletContext();
   const [kycCompleted, setKycCompleted] = useState(false);
   const [kycInProgress, setKycInProgress] = useState(false);
-  const [kycRewardClaimed, setKycRewardClaimed] = useState(false);
+  const [activeTab, setActiveTab] = useState<'rewards' | 'leaderboard'>('rewards');
+
+  useEffect(() => {
+    if (kycCompleted) {
+      loadTransactions();
+    }
+  }, [kycCompleted, loadTransactions]);
 
   const handleStartKYC = () => {
     setKycInProgress(true);
@@ -5149,7 +7303,7 @@ function RewardsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
             transition={kycInProgress ? { duration: 2, repeat: Infinity, ease: "linear" } : {}}
           >
             <span className="material-symbols-outlined text-4xl text-[#D5A5E3]">
-              {kycInProgress ? "sync" : "shield_person"}
+              {kycInProgress ? "progress_activity" : "badge"}
             </span>
           </motion.div>
 
@@ -5163,43 +7317,9 @@ function RewardsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
             }
           </p>
 
-          {/* KYC Reward Preview */}
-          <div className="w-full bg-gradient-to-br from-yellow/10 to-purple/10 border border-yellow/20 rounded-2xl p-4 mb-6">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-10 h-10 rounded-full bg-yellow/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-yellow">card_giftcard</span>
-              </div>
-              <div className="flex-1">
-                <p className="text-white font-medium">KYC Completion Bonus</p>
-                <p className="text-taupe text-sm">One-time reward</p>
-              </div>
-              <p className="text-yellow font-bold">+50 CC</p>
-            </div>
-          </div>
-
-          {/* Unlockable Rewards Preview */}
-          <div className="w-full bg-white/5 rounded-2xl p-4 mb-6">
-            <p className="text-taupe text-sm mb-3">After KYC, you can access:</p>
-            <div className="space-y-3">
-              {[
-                { icon: "calendar_today", text: "Daily Login Rewards" },
-                { icon: "trending_up", text: "Staking Rewards (up to 12% APY)" },
-                { icon: "people", text: "Referral Bonuses" },
-                { icon: "check_circle", text: "Task Completion Rewards" },
-              ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: "rgba(135, 92, 255, 0.15)" }}>
-                    <span className="material-symbols-outlined text-base text-[#D5A5E3]">{item.icon}</span>
-                  </div>
-                  <span className="text-white text-sm">{item.text}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-
           {!kycInProgress && (
             <motion.button
-              className="w-full py-4 bg-gradient-to-r from-purple to-lilac rounded-2xl text-white text-lg font-bold"
+              className="w-full py-4 bg-purple rounded-2xl text-white text-lg font-bold"
               whileTap={{ scale: 0.98 }}
               onClick={handleStartKYC}
             >
@@ -5215,112 +7335,264 @@ function RewardsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void })
   }
 
   // KYC Completed - Show Rewards
+
+  // Calculate reward stats
+  const now = new Date();
+  const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+  const totalEarned = transactions
+    .filter(tx => tx.type === 'receive')
+    .reduce((sum, tx) => sum + (parseFloat(tx.amount) || 0), 0);
+
+  const mtdEarned = transactions
+    .filter(tx => {
+      if (tx.type !== 'receive') return false;
+      const txDate = new Date(tx.timestamp);
+      const txMonth = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+      return txMonth === currentMonth;
+    })
+    .reduce((sum, tx) => sum + (parseFloat(tx.amount) || 0), 0);
+
+  const mtdTxCount = transactions.filter(tx => {
+    const txDate = new Date(tx.timestamp);
+    const txMonth = `${txDate.getFullYear()}-${String(txDate.getMonth() + 1).padStart(2, '0')}`;
+    return txMonth === currentMonth;
+  }).length;
+
+  // Group by month for history
+  const monthlyData = transactions.reduce((acc, tx) => {
+    const date = new Date(tx.timestamp);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+    if (!acc[monthKey]) {
+      acc[monthKey] = { name: monthName, txCount: 0, earned: 0 };
+    }
+    acc[monthKey].txCount += 1;
+    if (tx.type === 'receive') {
+      acc[monthKey].earned += parseFloat(tx.amount) || 0;
+    }
+    return acc;
+  }, {} as Record<string, { name: string; txCount: number; earned: number }>);
+
+  const sortedMonths = Object.entries(monthlyData).sort(([a], [b]) => b.localeCompare(a));
+
+  // Mock leaderboard data
+  const leaderboard = [
+    { rank: 1, name: "ccbot-7f3a9c", earned: 12453.82, avatar: "1" },
+    { rank: 2, name: "ccbot-2d8b4e", earned: 9821.45, avatar: "2" },
+    { rank: 3, name: "ccbot-9e1c7a", earned: 8234.19, avatar: "3" },
+    { rank: 4, name: "ccbot-4b6d2f", earned: 6891.33, avatar: "4" },
+    { rank: 5, name: "ccbot-8c3e5a", earned: 5672.91, avatar: "5" },
+    { rank: 6, name: "ccbot-1a9f7c", earned: 4523.67, avatar: "6" },
+    { rank: 7, name: "ccbot-5d2b8e", earned: 3891.24, avatar: "7" },
+    { rank: 8, name: "ccbot-3f7c1d", earned: 2934.88, avatar: "8" },
+  ];
+
   return (
     <motion.div
       className="h-full flex flex-col overflow-y-auto pb-32"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
     >
-      <Header title="Rewards" />
+      {/* Header */}
+      <div className="px-4 pt-6 pb-2">
+        <h1 className="text-white text-2xl font-bold">Rewards</h1>
+      </div>
 
-      <div className="px-4">
-        {/* KYC Reward Banner - Show if not claimed */}
-        {!kycRewardClaimed && (
-          <motion.div
-            className="bg-gradient-to-br from-green-500/20 to-yellow/20 rounded-2xl p-4 mb-4 border border-green-500/30"
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
+      {/* Tab Switcher */}
+      <div className="px-4 mb-4">
+        <div className="bg-white/5 rounded-xl p-1 flex">
+          <button
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'rewards'
+                ? 'bg-purple text-white'
+                : 'text-taupe'
+            }`}
+            onClick={() => setActiveTab('rewards')}
           >
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-2xl text-green-400">verified</span>
-              </div>
-              <div className="flex-1">
-                <p className="text-white font-medium">KYC Verified!</p>
-                <p className="text-taupe text-sm">Claim your welcome bonus</p>
-              </div>
-              <p className="text-yellow font-bold text-xl">+50 CC</p>
-            </div>
-            <motion.button
-              className="w-full py-3 bg-green-500 rounded-xl text-white font-bold"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => setKycRewardClaimed(true)}
-            >
-              Claim KYC Bonus
-            </motion.button>
-          </motion.div>
-        )}
-
-        {/* Daily Streak */}
-        <div className="bg-gradient-to-br from-yellow/20 to-purple/20 rounded-3xl p-6 mb-4 border border-yellow/30">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-taupe text-sm">Daily Streak</p>
-              <p className="text-yellow text-3xl font-bold flex items-center gap-1">7 Days <span className="material-symbols-outlined text-orange-500">local_fire_department</span></p>
-            </div>
-            <div className="w-16 h-16 rounded-full bg-yellow/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-3xl text-yellow">redeem</span>
-            </div>
-          </div>
-          <motion.button
-            className="w-full py-3 bg-yellow rounded-xl text-black font-bold"
-            whileTap={{ scale: 0.98 }}
+            My Rewards
+          </button>
+          <button
+            className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === 'leaderboard'
+                ? 'bg-purple text-white'
+                : 'text-taupe'
+            }`}
+            onClick={() => setActiveTab('leaderboard')}
           >
-            Claim Daily Reward
-          </motion.button>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <div className="bg-white/5 rounded-2xl p-4 text-center">
-            <p className="text-taupe text-sm mb-1">Total Earned</p>
-            <p className="text-white text-xl font-bold">{kycRewardClaimed ? "1,300" : "1,250"} CC</p>
-          </div>
-          <div className="bg-white/5 rounded-2xl p-4 text-center">
-            <p className="text-taupe text-sm mb-1">This Week</p>
-            <p className="text-green-400 text-xl font-bold">+{kycRewardClaimed ? "175" : "125"} CC</p>
-          </div>
-        </div>
-
-        {/* Staking Card */}
-        <motion.button
-          className="w-full bg-purple/20 border border-purple/30 rounded-2xl p-4 mb-4 flex items-center gap-4"
-          whileTap={{ scale: 0.98 }}
-          onClick={() => onNavigate("staking")}
-        >
-          <div className="w-12 h-12 rounded-full bg-purple/30 flex items-center justify-center">
-            <span className="material-symbols-outlined text-2xl text-purple">analytics</span>
-          </div>
-          <div className="flex-1 text-left">
-            <p className="text-white font-medium">Stake CC Tokens</p>
-            <p className="text-taupe text-sm">Earn up to 12% APY</p>
-          </div>
-          <span className="text-purple">→</span>
-        </motion.button>
-
-        {/* Reward History */}
-        <h3 className="text-white font-bold mb-3">Reward History</h3>
-        <div className="space-y-2">
-          {kycRewardClaimed ? (
-            <div className="bg-white/5 rounded-xl p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-green-400">verified</span>
-              </div>
-              <div className="flex-1">
-                <p className="text-white text-sm font-medium">KYC Completion Bonus</p>
-                <p className="text-taupe text-xs">Just now</p>
-              </div>
-              <p className="text-green-400 font-medium">+50 CC</p>
-            </div>
-          ) : (
-            <div className="bg-white/5 rounded-xl p-6 text-center">
-              <span className="material-symbols-outlined text-taupe text-3xl mb-2">redeem</span>
-              <p className="text-taupe text-sm">No rewards yet</p>
-              <p className="text-taupe text-xs">Complete tasks to earn CC rewards</p>
-            </div>
-          )}
+            Top Users
+          </button>
         </div>
       </div>
+
+      {activeTab === 'rewards' ? (
+        <div className="px-4">
+          {/* Program Info Card */}
+          <div className="rounded-2xl p-4 mb-4" style={{ background: 'linear-gradient(135deg, rgba(135, 92, 255, 0.15) 0%, rgba(88, 28, 135, 0.1) 100%)', border: '1px solid rgba(135, 92, 255, 0.2)' }}>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple/30 flex items-center justify-center">
+                <span className="material-symbols-outlined text-white">workspace_premium</span>
+              </div>
+              <h3 className="text-white font-semibold">CC Bot Rewards</h3>
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="bg-white/5 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-purple text-lg">account_balance_wallet</span>
+                <span className="text-taupe text-xs">Lifetime Earned</span>
+              </div>
+              <p className="text-white text-2xl font-bold">{totalEarned.toFixed(2)}</p>
+              <p className="text-purple text-sm">CC</p>
+            </div>
+
+            <div className="bg-white/5 rounded-2xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <span className="material-symbols-outlined text-green-400 text-lg">trending_up</span>
+                <span className="text-taupe text-xs">This Month</span>
+              </div>
+              <p className="text-white text-2xl font-bold">{mtdEarned.toFixed(2)}</p>
+              <p className="text-green-400 text-sm">CC</p>
+            </div>
+          </div>
+
+          {/* Current Month Card */}
+          <div className="bg-white/5 rounded-2xl p-4 mb-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-green-500/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-green-400">event_available</span>
+                </div>
+                <div>
+                  <p className="text-white font-medium">{now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</p>
+                  <p className="text-taupe text-sm">{mtdTxCount} transaction{mtdTxCount !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-green-400 font-bold text-xl">+{mtdEarned.toFixed(2)}</p>
+                <p className="text-taupe text-xs">CC earned</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Transactions */}
+          <div className="bg-white/5 rounded-2xl p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+                  <span className="material-symbols-outlined text-blue-400">receipt_long</span>
+                </div>
+                <div>
+                  <p className="text-taupe text-xs">Total Transactions</p>
+                  <p className="text-white text-2xl font-bold">{transactions.length}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-taupe text-xs">Avg per month</p>
+                <p className="text-white font-semibold">{sortedMonths.length > 0 ? Math.round(transactions.length / sortedMonths.length) : 0}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="px-4">
+          {/* Leaderboard Header */}
+          <div className="rounded-2xl p-5 mb-4" style={{ background: 'linear-gradient(135deg, rgba(255, 193, 7, 0.15) 0%, rgba(255, 152, 0, 0.1) 100%)', border: '1px solid rgba(255, 193, 7, 0.2)' }}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="w-10 h-10 rounded-xl bg-yellow-500/30 flex items-center justify-center">
+                <span className="material-symbols-outlined text-yellow-400">leaderboard</span>
+              </div>
+              <div>
+                <h3 className="text-white font-semibold">Top Earners</h3>
+                <p className="text-taupe text-sm">This month's leaderboard</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Top 3 Podium */}
+          <div className="flex items-end justify-center gap-2 mb-6 px-2">
+            {/* 2nd Place */}
+            <div className="flex-1 text-center">
+              <div className="w-12 h-12 rounded-full bg-gray-400/20 flex items-center justify-center mx-auto mb-2 border-2 border-gray-400">
+                <span className="text-white font-bold">{leaderboard[1]?.avatar}</span>
+              </div>
+              <div className="bg-gray-400/20 rounded-t-xl pt-3 pb-2 px-2">
+                <p className="text-gray-300 text-lg font-bold">2</p>
+              </div>
+              <div className="bg-white/5 rounded-b-xl p-2">
+                <p className="text-white text-xs font-medium truncate">{leaderboard[1]?.name}</p>
+                <p className="text-gray-400 text-[10px]">{leaderboard[1]?.earned.toLocaleString()} CC</p>
+              </div>
+            </div>
+
+            {/* 1st Place */}
+            <div className="flex-1 text-center -mt-4">
+              <div className="w-14 h-14 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-2 border-2 border-yellow-500">
+                <span className="text-white font-bold text-lg">{leaderboard[0]?.avatar}</span>
+              </div>
+              <div className="bg-yellow-500/20 rounded-t-xl pt-4 pb-2 px-2">
+                <span className="material-symbols-outlined text-yellow-400 text-xl">emoji_events</span>
+              </div>
+              <div className="bg-white/5 rounded-b-xl p-2">
+                <p className="text-white text-xs font-medium truncate">{leaderboard[0]?.name}</p>
+                <p className="text-yellow-400 text-[10px]">{leaderboard[0]?.earned.toLocaleString()} CC</p>
+              </div>
+            </div>
+
+            {/* 3rd Place */}
+            <div className="flex-1 text-center">
+              <div className="w-12 h-12 rounded-full bg-orange-700/20 flex items-center justify-center mx-auto mb-2 border-2 border-orange-700">
+                <span className="text-white font-bold">{leaderboard[2]?.avatar}</span>
+              </div>
+              <div className="bg-orange-700/20 rounded-t-xl pt-3 pb-2 px-2">
+                <p className="text-orange-400 text-lg font-bold">3</p>
+              </div>
+              <div className="bg-white/5 rounded-b-xl p-2">
+                <p className="text-white text-xs font-medium truncate">{leaderboard[2]?.name}</p>
+                <p className="text-orange-400 text-[10px]">{leaderboard[2]?.earned.toLocaleString()} CC</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Rest of Leaderboard */}
+          <div className="space-y-2">
+            {leaderboard.slice(3).map((user) => (
+              <div key={user.rank} className="bg-white/5 rounded-xl p-3 flex items-center gap-3">
+                <div className="w-8 text-center">
+                  <span className="text-taupe font-semibold">{user.rank}</span>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-purple/20 flex items-center justify-center">
+                  <span className="text-white font-medium">{user.avatar}</span>
+                </div>
+                <div className="flex-1">
+                  <p className="text-white text-sm font-medium">{user.name}</p>
+                </div>
+                <p className="text-green-400 font-medium">{user.earned.toLocaleString()} CC</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Your Rank */}
+          <div className="mt-4 bg-purple/10 rounded-xl p-4 border border-purple/20">
+            <div className="flex items-center gap-3">
+              <div className="w-8 text-center">
+                <span className="text-purple font-bold">#42</span>
+              </div>
+              <div className="w-10 h-10 rounded-full bg-purple/30 flex items-center justify-center">
+                <span className="text-white font-medium">Y</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-white text-sm font-medium">You</p>
+                <p className="text-taupe text-xs">Your current rank</p>
+              </div>
+              <p className="text-purple font-semibold">{totalEarned.toFixed(2)} CC</p>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -5539,12 +7811,48 @@ function DAppsScreen({ onBack }: { onBack: () => void }) {
 // ==================== SETTINGS SCREEN ====================
 function SettingsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }) {
   const user = window.Telegram?.WebApp.initDataUnsafe?.user;
+  const { utxoStatus, isMerging, checkUtxoStatus, mergeUtxos, hasWallet } = useWalletContext();
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [mergeError, setMergeError] = useState<string | null>(null);
+  const [mergeSuccess, setMergeSuccess] = useState<string | null>(null);
+  const [oneStepTransfers, setOneStepTransfers] = useState(true);
+  const [daUtilityTokens, setDaUtilityTokens] = useState(false);
+  const [autoMergeUtxo, setAutoMergeUtxo] = useState(true);
+
+
+  useEffect(() => {
+    if (hasWallet) {
+      checkUtxoStatus();
+    }
+  }, [hasWallet, checkUtxoStatus]);
+
+  const handleMergeClick = () => {
+    setPin("");
+    setMergeError(null);
+    setMergeSuccess(null);
+    setShowPinModal(true);
+  };
+
+  const handleMergeConfirm = async () => {
+    if (pin.length !== 6) return;
+    try {
+      const result = await mergeUtxos(pin);
+      if (result.success) {
+        setMergeSuccess(`${result.mergedCount || 0} UTXOs merged successfully!`);
+        setShowPinModal(false);
+        checkUtxoStatus();
+      } else {
+        setMergeError(result.error || "Failed to merge UTXOs");
+      }
+    } catch {
+      setMergeError("Failed to merge UTXOs");
+    }
+  };
 
   const items = [
-    { icon: "person", label: "Profile", desc: "Manage your account", screen: "profile" },
     { icon: "shield_lock", label: "Security", desc: "PIN, backup", screen: "security" },
-    { icon: "alternate_email", label: "Canton Name", desc: "Manage your CNS", screen: "cns" },
-    { icon: "notifications", label: "Notifications", desc: "Alert preferences", screen: "notifications" },
+    { icon: "notifications", label: "Notifications", desc: "Alert preferences", screen: "notification-settings" },
     { icon: "help", label: "Help Center", desc: "FAQ and support", screen: "help" },
   ];
 
@@ -5592,22 +7900,172 @@ function SettingsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }
           ))}
         </div>
 
+        {/* Wallet Optimization */}
+        {hasWallet && (
+          <div className="mt-6">
+            <p className="text-taupe text-sm mb-3 px-1">Wallet Optimization</p>
+
+            {/* One-step Transfers */}
+            <div className="bg-white/5 rounded-2xl p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-lg text-purple">swap_horiz</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-medium text-sm">One-step Transfers</p>
+                    <p className="text-taupe text-xs">Auto-accept incoming CC</p>
+                  </div>
+                </div>
+                <button
+                  className={`w-12 h-7 rounded-full transition-colors ${oneStepTransfers ? 'bg-purple' : 'bg-white/20'}`}
+                  onClick={() => setOneStepTransfers(!oneStepTransfers)}
+                >
+                  <motion.div
+                    className="w-5 h-5 bg-white rounded-full shadow-md"
+                    animate={{ x: oneStepTransfers ? 24 : 4 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* DA Utility Tokens */}
+            <div className="bg-white/5 rounded-2xl p-4 mt-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-lg text-purple">account_balance</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-medium text-sm">DA Utility Tokens</p>
+                    <p className="text-taupe text-xs">CIP-56 instruments (38)</p>
+                  </div>
+                </div>
+                <button
+                  className={`w-12 h-7 rounded-full transition-colors ${daUtilityTokens ? 'bg-purple' : 'bg-white/20'}`}
+                  onClick={() => setDaUtilityTokens(!daUtilityTokens)}
+                >
+                  <motion.div
+                    className="w-5 h-5 bg-white rounded-full shadow-md"
+                    animate={{ x: daUtilityTokens ? 24 : 4 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                </button>
+              </div>
+            </div>
+
+            {/* Auto UTXO Management */}
+            <div className="bg-white/5 rounded-2xl p-4 mt-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-lg text-purple">tune</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white font-medium text-sm">Auto UTXO Merge</p>
+                    <p className="text-taupe text-xs">Automatically optimize wallet</p>
+                  </div>
+                </div>
+                <button
+                  className={`w-12 h-7 rounded-full transition-colors ${autoMergeUtxo ? 'bg-purple' : 'bg-white/20'}`}
+                  onClick={() => setAutoMergeUtxo(!autoMergeUtxo)}
+                >
+                  <motion.div
+                    className="w-5 h-5 bg-white rounded-full shadow-md"
+                    animate={{ x: autoMergeUtxo ? 24 : 4 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                  />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="mt-6 text-center">
           <p className="text-taupe text-sm">CC Bot Wallet v1.0.0</p>
           <p className="text-taupe text-xs mt-1">Built on Canton Network</p>
         </div>
       </div>
+
+      {/* PIN Modal for Merge */}
+      <AnimatePresence>
+        {showPinModal && (
+          <motion.div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowPinModal(false)}
+          >
+            <motion.div
+              className="bg-[#1a1a2e] rounded-3xl p-6 w-[85%] max-w-sm"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-white text-xl font-bold text-center mb-2">Enter PIN</h3>
+              <p className="text-taupe text-sm text-center mb-6">Enter your PIN to merge UTXOs</p>
+
+              <div className="flex justify-center gap-3 mb-6">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-4 h-4 rounded-full ${
+                      pin.length > i ? "bg-purple" : "bg-white/20"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {mergeError && (
+                <p className="text-red-400 text-sm text-center mb-4">{mergeError}</p>
+              )}
+
+              <div className="grid grid-cols-3 gap-3">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, "", 0, "del"].map((num, idx) => (
+                  <motion.button
+                    key={idx}
+                    className={`h-14 rounded-xl text-2xl font-medium ${
+                      num === "" ? "invisible" : "bg-white/10 text-white"
+                    }`}
+                    whileTap={{ scale: 0.9 }}
+                    onClick={() => {
+                      if (num === "del") {
+                        setPin((p) => p.slice(0, -1));
+                      } else if (num !== "" && pin.length < 6) {
+                        const newPin = pin + num;
+                        setPin(newPin);
+                        if (newPin.length === 6) {
+                          setTimeout(() => handleMergeConfirm(), 100);
+                        }
+                      }
+                      window.Telegram?.WebApp.HapticFeedback?.selectionChanged();
+                    }}
+                  >
+                    {num === "del" ? "DEL" : num}
+                  </motion.button>
+                ))}
+              </div>
+
+              <motion.button
+                className="w-full mt-4 py-3 rounded-xl bg-white/10 text-taupe"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setShowPinModal(false)}
+              >
+                Cancel
+              </motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
 // ==================== SECURITY SCREEN ====================
 function SecurityScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) => void; onBack: () => void }) {
-  const { utxoStatus, isMerging, checkUtxoStatus, mergeUtxos, hasWallet } = useWalletContext();
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [pin, setPin] = useState("");
-  const [mergeError, setMergeError] = useState<string | null>(null);
-  const [mergeSuccess, setMergeSuccess] = useState<string | null>(null);
   const [lockTimeout, setLockTimeout] = useState<number>(300);
   const [availableTimeouts, setAvailableTimeouts] = useState<Array<{ value: number; label: string }>>([]);
   const [showTimeoutModal, setShowTimeoutModal] = useState(false);
@@ -5627,12 +8085,6 @@ function SecurityScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) =
     };
     loadSettings();
   }, []);
-
-  useEffect(() => {
-    if (hasWallet) {
-      checkUtxoStatus();
-    }
-  }, [hasWallet, checkUtxoStatus]);
 
   const handleTimeoutChange = async (seconds: number) => {
     setIsLoadingSettings(true);
@@ -5657,30 +8109,6 @@ function SecurityScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) =
     return '1 hour';
   };
 
-  const handleMergeClick = () => {
-    setPin("");
-    setMergeError(null);
-    setMergeSuccess(null);
-    setShowPinModal(true);
-  };
-
-  const handleMergeSubmit = async () => {
-    if (pin.length !== 6) return;
-
-    setMergeError(null);
-    const result = await mergeUtxos(pin);
-
-    if (result.success) {
-      setShowPinModal(false);
-      setMergeSuccess(`${result.mergedCount} UTXO merged successfully!`);
-      window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("success");
-    } else {
-      setMergeError(result.error || "Merge failed");
-      window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("error");
-    }
-    setPin("");
-  };
-
   return (
     <motion.div
       className="h-full flex flex-col overflow-y-auto pb-32"
@@ -5690,18 +8118,6 @@ function SecurityScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) =
       <Header title="Security" onBack={onBack} />
 
       <div className="px-4">
-        <div className="bg-gradient-to-br from-green-500/20 to-green-500/10 rounded-2xl p-4 mb-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-taupe text-sm">Security Score</p>
-              <p className="text-green-400 text-3xl font-bold">Excellent</p>
-            </div>
-            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-3xl text-green-400">verified_user</span>
-            </div>
-          </div>
-        </div>
-
         <div className="space-y-3">
           <motion.button
             className="w-full bg-white/5 rounded-2xl p-4 flex items-center gap-4"
@@ -5749,155 +8165,8 @@ function SecurityScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) =
             <span className="text-taupe">→</span>
           </motion.button>
 
-          {/* Future: Biometric Toggle (placeholder) */}
-          <div className="w-full bg-white/5 rounded-2xl p-4 flex items-center gap-4 opacity-50">
-            <div className="w-12 h-12 rounded-full bg-purple/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-xl text-purple">fingerprint</span>
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-white font-medium">Biometric Unlock</p>
-              <p className="text-taupe text-sm">Coming soon</p>
-            </div>
-            <span className="text-taupe text-xs">Soon</span>
-          </div>
-        </div>
-
-        {/* UTXO Management Section */}
-        {hasWallet && (
-          <div className="mt-6">
-            <p className="text-taupe text-sm mb-3 px-1">Wallet Optimization</p>
-            <div className={`rounded-2xl p-4 ${
-              utxoStatus?.needsMerge
-                ? "bg-orange-500/10 border border-orange-500/30"
-                : "bg-white/5"
-            }`}>
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                    utxoStatus?.needsMerge ? "bg-orange-500/20" : "bg-purple/20"
-                  }`}>
-                    <span className={`material-symbols-outlined text-xl ${
-                      utxoStatus?.needsMerge ? "text-orange-400" : "text-purple"
-                    }`}>merge</span>
-                  </div>
-                  <div>
-                    <p className="text-white font-medium">UTXO Count</p>
-                    <p className={`text-sm ${utxoStatus?.needsMerge ? "text-orange-400" : "text-taupe"}`}>
-                      {utxoStatus ? `${utxoStatus.utxoCount} fragments` : "Loading..."}
-                    </p>
-                  </div>
-                </div>
-                {utxoStatus && utxoStatus.utxoCount > 1 && (
-                  <motion.button
-                    className={`px-4 py-2 rounded-xl text-sm font-medium ${
-                      utxoStatus.needsMerge
-                        ? "bg-orange-500 text-white"
-                        : "bg-purple/20 text-purple"
-                    }`}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={handleMergeClick}
-                    disabled={isMerging}
-                  >
-                    {isMerging ? "Merging..." : "Merge"}
-                  </motion.button>
-                )}
-              </div>
-              {utxoStatus?.needsMerge && (
-                <p className="text-orange-400 text-xs">
-                  Your wallet has {utxoStatus.utxoCount} fragments. Merging will optimize transactions and reduce fees.
-                </p>
-              )}
-              {mergeSuccess && (
-                <p className="text-green-400 text-xs mt-2">{mergeSuccess}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        <div className="mt-6 p-4 bg-yellow/10 border border-yellow/30 rounded-2xl">
-          <p className="text-yellow text-sm font-medium mb-1 flex items-center gap-1">
-            <span className="material-symbols-outlined text-sm">lock</span> Seedless Security
-          </p>
-          <p className="text-taupe text-xs">
-            Your private keys are encrypted and stored securely. No seed phrase needed.
-          </p>
         </div>
       </div>
-
-      {/* PIN Modal for Merge */}
-      <AnimatePresence>
-        {showPinModal && (
-          <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowPinModal(false)}
-          >
-            <motion.div
-              className="bg-[#1a1a2e] rounded-3xl p-6 w-[85%] max-w-sm"
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-white text-xl font-bold text-center mb-2">Enter PIN</h3>
-              <p className="text-taupe text-sm text-center mb-6">
-                Enter your PIN to merge UTXOs
-              </p>
-
-              <div className="flex justify-center gap-3 mb-6">
-                {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <div
-                    key={i}
-                    className={`w-4 h-4 rounded-full ${
-                      pin.length > i ? "bg-purple" : "bg-white/20"
-                    }`}
-                  />
-                ))}
-              </div>
-
-              {mergeError && (
-                <p className="text-red-400 text-sm text-center mb-4">{mergeError}</p>
-              )}
-
-              <div className="grid grid-cols-3 gap-3">
-                {[1, 2, 3, 4, 5, 6, 7, 8, 9, "", 0, "del"].map((num, idx) => (
-                  <motion.button
-                    key={idx}
-                    className={`h-14 rounded-xl text-2xl font-medium ${
-                      num === "" ? "invisible" : "bg-white/10 text-white"
-                    }`}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => {
-                      if (num === "del") {
-                        setPin((p) => p.slice(0, -1));
-                      } else if (num !== "" && pin.length < 6) {
-                        const newPin = pin + num;
-                        setPin(newPin);
-                        if (newPin.length === 6) {
-                          setTimeout(() => handleMergeSubmit(), 100);
-                        }
-                      }
-                      window.Telegram?.WebApp.HapticFeedback?.selectionChanged();
-                    }}
-                  >
-                    {num === "del" ? "DEL" : num}
-                  </motion.button>
-                ))}
-              </div>
-
-              <motion.button
-                className="w-full mt-4 py-3 rounded-xl bg-white/10 text-taupe"
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setShowPinModal(false)}
-              >
-                Cancel
-              </motion.button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* Timeout Selection Modal */}
       <AnimatePresence>
@@ -5969,6 +8238,40 @@ function ProfileScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) =>
   const { user, wallet } = useWalletContext();
   const tgUser = window.Telegram?.WebApp.initDataUnsafe?.user;
   const [copied, setCopied] = useState<string | null>(null);
+  const [xAccount, setXAccount] = useState<string | null>(null);
+  const [isConnectingX, setIsConnectingX] = useState(false);
+  const [evmWallet, setEvmWallet] = useState<string | null>(null);
+  const [isConnectingEvm, setIsConnectingEvm] = useState(false);
+
+  const connectXAccount = () => {
+    setIsConnectingX(true);
+    // Simulate X OAuth flow
+    setTimeout(() => {
+      setXAccount("@user_x_handle");
+      setIsConnectingX(false);
+      window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("success");
+    }, 1500);
+  };
+
+  const disconnectXAccount = () => {
+    setXAccount(null);
+    window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("warning");
+  };
+
+  const connectEvmWallet = () => {
+    setIsConnectingEvm(true);
+    // Simulate wallet connect flow
+    setTimeout(() => {
+      setEvmWallet("0x1234...abcd");
+      setIsConnectingEvm(false);
+      window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("success");
+    }, 1500);
+  };
+
+  const disconnectEvmWallet = () => {
+    setEvmWallet(null);
+    window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("warning");
+  };
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -5993,21 +8296,27 @@ function ProfileScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) =>
       <div className="px-4">
         {/* Profile Header */}
         <div className="flex flex-col items-center mb-6">
-          <motion.div
-            className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-bold mb-4"
-            style={{
-              background: "linear-gradient(135deg, #875CFF 0%, #D5A5E3 50%, #F3FF97 100%)",
-              boxShadow: "0 0 40px rgba(135, 92, 255, 0.4)"
-            }}
-          >
-            {tgUser?.first_name?.[0] || user?.firstName?.[0] || "U"}
-          </motion.div>
-          <h2 className="text-white text-2xl font-bold">
-            {tgUser?.first_name || user?.firstName || "User"} {tgUser?.last_name || user?.lastName || ""}
-          </h2>
-          {tgUser?.username && (
-            <p className="text-purple text-lg">@{tgUser.username}</p>
+          {tgUser?.photo_url ? (
+            <img
+              src={tgUser.photo_url}
+              alt="Profile"
+              className="w-24 h-24 rounded-full object-cover mb-4"
+              style={{ boxShadow: "0 0 40px rgba(135, 92, 255, 0.4)" }}
+            />
+          ) : (
+            <motion.div
+              className="w-24 h-24 rounded-full flex items-center justify-center text-4xl font-bold mb-4"
+              style={{
+                background: "linear-gradient(135deg, #875CFF 0%, #D5A5E3 50%, #F3FF97 100%)",
+                boxShadow: "0 0 40px rgba(135, 92, 255, 0.4)"
+              }}
+            >
+              {tgUser?.username?.[0]?.toUpperCase() || "U"}
+            </motion.div>
           )}
+          <h2 className="text-white text-2xl font-bold">
+            @{tgUser?.username || "user"}
+          </h2>
         </div>
 
         {/* Account Details */}
@@ -6033,40 +8342,6 @@ function ProfileScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) =>
             </motion.div>
           )}
 
-          {/* Public Key */}
-          {wallet?.publicKey && (
-            <motion.div
-              className="bg-white/5 rounded-2xl p-4"
-              whileTap={{ scale: 0.98 }}
-              onClick={() => copyToClipboard(wallet.publicKey, "publicKey")}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <p className="text-taupe text-sm mb-1">Public Key</p>
-                  <p className="text-white font-mono text-sm">{truncateMiddle(wallet.publicKey, 16, 12)}</p>
-                </div>
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
-                  <span className="material-symbols-outlined text-sm text-purple">
-                    {copied === "publicKey" ? "check" : "content_copy"}
-                  </span>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Telegram ID */}
-          <div className="bg-white/5 rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-taupe text-sm mb-1">Telegram ID</p>
-                <p className="text-white">{user?.telegramId || tgUser?.id || "Unknown"}</p>
-              </div>
-              <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                <span className="material-symbols-outlined text-sm text-green-400">verified</span>
-              </div>
-            </div>
-          </div>
-
           {/* Account Created */}
           <div className="bg-white/5 rounded-2xl p-4">
             <p className="text-taupe text-sm mb-1">Account Status</p>
@@ -6074,55 +8349,102 @@ function ProfileScreen({ onNavigate, onBack }: { onNavigate: (screen: Screen) =>
           </div>
         </div>
 
-        {/* Quick Actions */}
+        {/* Connected Accounts */}
         <div className="mt-6 space-y-3">
-          <p className="text-taupe text-sm px-1">Quick Actions</p>
+          <p className="text-taupe text-sm px-1">Connected Accounts</p>
 
-          <motion.button
-            className="w-full bg-white/5 rounded-2xl p-4 flex items-center gap-4"
+          <motion.div
+            className="bg-white/5 rounded-2xl p-4"
             whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate("pin")}
           >
-            <div className="w-12 h-12 rounded-full bg-purple/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-xl text-purple">pin</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-black flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-white font-medium">X (Twitter)</p>
+                  {xAccount ? (
+                    <p className="text-purple text-sm">{xAccount}</p>
+                  ) : (
+                    <p className="text-taupe text-sm">Not connected</p>
+                  )}
+                </div>
+              </div>
+              {xAccount ? (
+                <motion.button
+                  className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl text-sm font-medium"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={disconnectXAccount}
+                >
+                  Disconnect
+                </motion.button>
+              ) : (
+                <motion.button
+                  className="px-4 py-2 bg-purple text-white rounded-xl text-sm font-medium flex items-center gap-2"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={connectXAccount}
+                  disabled={isConnectingX}
+                >
+                  {isConnectingX ? (
+                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  ) : (
+                    "Connect"
+                  )}
+                </motion.button>
+              )}
             </div>
-            <div className="flex-1 text-left">
-              <p className="text-white font-medium">Change PIN</p>
-              <p className="text-taupe text-sm">Update your security PIN</p>
-            </div>
-            <span className="text-taupe">→</span>
-          </motion.button>
+          </motion.div>
 
-          <motion.button
-            className="w-full bg-white/5 rounded-2xl p-4 flex items-center gap-4"
+          {/* EVM Wallet */}
+          <motion.div
+            className="bg-white/5 rounded-2xl p-4"
             whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate("backup")}
           >
-            <div className="w-12 h-12 rounded-full bg-purple/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-xl text-purple">key</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-white font-medium">EVM Wallet</p>
+                  {evmWallet ? (
+                    <p className="text-purple text-sm font-mono">{evmWallet}</p>
+                  ) : (
+                    <p className="text-taupe text-sm">Not connected</p>
+                  )}
+                </div>
+              </div>
+              {evmWallet ? (
+                <motion.button
+                  className="px-4 py-2 bg-red-500/20 text-red-400 rounded-xl text-sm font-medium"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={disconnectEvmWallet}
+                >
+                  Disconnect
+                </motion.button>
+              ) : (
+                <motion.button
+                  className="px-4 py-2 bg-purple text-white rounded-xl text-sm font-medium flex items-center gap-2"
+                  whileTap={{ scale: 0.95 }}
+                  onClick={connectEvmWallet}
+                  disabled={isConnectingEvm}
+                >
+                  {isConnectingEvm ? (
+                    <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                  ) : (
+                    "Connect"
+                  )}
+                </motion.button>
+              )}
             </div>
-            <div className="flex-1 text-left">
-              <p className="text-white font-medium">Recovery Code</p>
-              <p className="text-taupe text-sm">View your backup code</p>
-            </div>
-            <span className="text-taupe">→</span>
-          </motion.button>
-
-          <motion.button
-            className="w-full bg-white/5 rounded-2xl p-4 flex items-center gap-4"
-            whileTap={{ scale: 0.98 }}
-            onClick={() => onNavigate("cns")}
-          >
-            <div className="w-12 h-12 rounded-full bg-purple/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-xl text-purple">alternate_email</span>
-            </div>
-            <div className="flex-1 text-left">
-              <p className="text-white font-medium">Canton Name</p>
-              <p className="text-taupe text-sm">Manage your @name.canton</p>
-            </div>
-            <span className="text-taupe">→</span>
-          </motion.button>
+          </motion.div>
         </div>
+
       </div>
     </motion.div>
   );
@@ -6753,81 +9075,86 @@ function BackupScreen({ onBack }: { onBack: () => void }) {
 
 // ==================== NOTIFICATIONS SCREEN ====================
 function NotificationsScreen({ onBack }: { onBack: () => void }) {
-  const [notifications, setNotifications] = useState<Array<{
-    id: string;
-    type: string;
-    title: string;
-    body: string;
-    data?: { amount?: string; from?: string; to?: string };
-    read: boolean;
-    createdAt: string;
-  }>>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { transactions, loadTransactions } = useWalletContext();
+  const [activeFilter, setActiveFilter] = useState<'all' | 'send' | 'receive' | 'swap'>('all');
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    loadNotifications();
+    handleRefresh();
   }, []);
 
-  const loadNotifications = async () => {
+  const handleRefresh = async () => {
     setIsLoading(true);
     try {
-            const result = await api.request<{
-        success: boolean;
-        data: { notifications: typeof notifications; total: number };
-      }>("/api/notifications");
-      setNotifications(result.data.notifications || []);
-    } catch (err) {
-      console.error("Failed to load notifications:", err);
-      // Show empty state on error
-      setNotifications([]);
+      await loadTransactions();
     } finally {
       setIsLoading(false);
     }
   };
 
-  const markAsRead = async (id: string) => {
-    try {
-            await api.request(`/api/notifications/${id}/read`, { method: "POST" });
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } catch (err) {
-      console.error("Failed to mark as read:", err);
+  // Filter transactions based on active filter
+  const filteredTransactions = transactions.filter(tx => {
+    if (activeFilter === 'all') return true;
+    return tx.type === activeFilter;
+  });
+
+  // Group transactions by date
+  const groupedTransactions = filteredTransactions.reduce((groups, tx) => {
+    const date = new Date(tx.timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+
+    let dateKey: string;
+    if (date.toDateString() === today.toDateString()) {
+      dateKey = 'Today';
+    } else if (date.toDateString() === yesterday.toDateString()) {
+      dateKey = 'Yesterday';
+    } else {
+      dateKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     }
-  };
 
-  const markAllAsRead = async () => {
-    try {
-            await api.request("/api/notifications/read-all", { method: "POST" });
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-      window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("success");
-    } catch (err) {
-      console.error("Failed to mark all as read:", err);
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
     }
+    groups[dateKey].push(tx);
+    return groups;
+  }, {} as Record<string, typeof transactions>);
+
+  const formatTime = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const formatDate = (timestamp: string) => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
-
-  const getIcon = (type: string) => {
+  const getTransactionIcon = (type: string) => {
     switch (type) {
-      case "transfer_received": return { icon: "arrow_downward", color: "text-green-400", bg: "bg-green-500/20" };
-      case "transfer_sent": return { icon: "arrow_upward", color: "text-red-400", bg: "bg-red-500/20" };
-      default: return { icon: "notifications", color: "text-purple", bg: "bg-purple/20" };
+      case 'send': return { icon: 'arrow_upward', color: 'text-red-400', bg: 'bg-red-500/20' };
+      case 'receive': return { icon: 'arrow_downward', color: 'text-green-400', bg: 'bg-green-500/20' };
+      case 'swap': return { icon: 'swap_horiz', color: 'text-purple', bg: 'bg-purple/20' };
+      default: return { icon: 'receipt_long', color: 'text-taupe', bg: 'bg-white/10' };
     }
   };
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'confirmed': return { text: 'Confirmed', color: 'text-green-400', bg: 'bg-green-500/20' };
+      case 'pending': return { text: 'Pending', color: 'text-yellow-400', bg: 'bg-yellow-500/20' };
+      case 'failed': return { text: 'Failed', color: 'text-red-400', bg: 'bg-red-500/20' };
+      default: return { text: status, color: 'text-taupe', bg: 'bg-white/10' };
+    }
+  };
+
+  const truncateAddress = (addr: string | null) => {
+    if (!addr) return 'Unknown';
+    if (addr.length <= 16) return addr;
+    return `${addr.slice(0, 8)}...${addr.slice(-6)}`;
+  };
+
+  const filters = [
+    { id: 'all', label: 'All', icon: 'list' },
+    { id: 'send', label: 'Sent', icon: 'arrow_upward' },
+    { id: 'receive', label: 'Received', icon: 'arrow_downward' },
+    { id: 'swap', label: 'Swap', icon: 'swap_horiz' },
+  ] as const;
 
   return (
     <motion.div
@@ -6835,69 +9162,278 @@ function NotificationsScreen({ onBack }: { onBack: () => void }) {
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
     >
-      <Header
-        title="Notifications"
-        onBack={onBack}
-        rightAction={
-          unreadCount > 0 ? (
-            <motion.button
-              className="text-purple text-sm font-medium"
-              whileTap={{ scale: 0.95 }}
-              onClick={markAllAsRead}
+      <Header title="Activity" onBack={onBack} />
+
+      {/* Filter Tabs */}
+      <div className="px-4 mb-4">
+        <div className="flex gap-2 bg-white/5 p-1 rounded-xl">
+          {filters.map((filter) => (
+            <button
+              key={filter.id}
+              className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors flex items-center justify-center gap-1 ${
+                activeFilter === filter.id
+                  ? 'bg-purple text-white'
+                  : 'text-taupe'
+              }`}
+              onClick={() => setActiveFilter(filter.id)}
             >
-              Mark all read
-            </motion.button>
-          ) : undefined
-        }
-      />
+              <span className="material-symbols-outlined text-sm">{filter.icon}</span>
+              {filter.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Stats Summary */}
+      <div className="px-4 mb-4">
+        <div className="grid grid-cols-3 gap-2">
+          <div className="bg-white/5 rounded-xl p-3 text-center">
+            <p className="text-green-400 font-bold text-lg">
+              {transactions.filter(t => t.type === 'receive').length}
+            </p>
+            <p className="text-taupe text-xs">Received</p>
+          </div>
+          <div className="bg-white/5 rounded-xl p-3 text-center">
+            <p className="text-red-400 font-bold text-lg">
+              {transactions.filter(t => t.type === 'send').length}
+            </p>
+            <p className="text-taupe text-xs">Sent</p>
+          </div>
+          <div className="bg-white/5 rounded-xl p-3 text-center">
+            <p className="text-purple font-bold text-lg">
+              {transactions.filter(t => t.type === 'swap').length}
+            </p>
+            <p className="text-taupe text-xs">Swaps</p>
+          </div>
+        </div>
+      </div>
 
       <div className="px-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <div className="w-8 h-8 border-2 border-purple border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : notifications.length === 0 ? (
+        ) : filteredTransactions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
-              <span className="material-symbols-outlined text-3xl text-taupe">notifications_off</span>
+              <span className="material-symbols-outlined text-3xl text-taupe">receipt_long</span>
             </div>
-            <p className="text-white font-medium mb-1">No notifications yet</p>
+            <p className="text-white font-medium mb-1">No transactions yet</p>
             <p className="text-taupe text-sm text-center">
-              You'll see transaction alerts and updates here
+              Your transaction history will appear here
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {notifications.map((notification) => {
-              const { icon, color, bg } = getIcon(notification.type);
-              return (
-                <motion.div
-                  key={notification.id}
-                  className={`rounded-2xl p-4 flex items-start gap-3 ${
-                    notification.read ? "bg-white/5" : "bg-purple/10 border border-purple/20"
-                  }`}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
-                >
-                  <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center flex-shrink-0`}>
-                    <span className={`material-symbols-outlined text-xl ${color}`}>{icon}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2">
-                      <p className={`font-medium ${notification.read ? "text-white" : "text-white"}`}>
-                        {notification.title}
-                      </p>
-                      {!notification.read && (
-                        <div className="w-2 h-2 rounded-full bg-purple flex-shrink-0 mt-2" />
-                      )}
-                    </div>
-                    <p className="text-taupe text-sm mt-1">{notification.body}</p>
-                    <p className="text-taupe text-xs mt-2">{formatDate(notification.createdAt)}</p>
-                  </div>
-                </motion.div>
-              );
-            })}
+          <div className="space-y-4">
+            {Object.entries(groupedTransactions).map(([date, txs]) => (
+              <div key={date}>
+                <p className="text-taupe text-xs font-medium mb-2 px-1">{date}</p>
+                <div className="space-y-2">
+                  {txs.map((tx) => {
+                    const { icon, color, bg } = getTransactionIcon(tx.type);
+                    const status = getStatusBadge(tx.status);
+                    return (
+                      <motion.div
+                        key={tx.id}
+                        className="bg-white/5 rounded-2xl p-4 flex items-center gap-3"
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <div className={`w-10 h-10 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
+                          <span className={`material-symbols-outlined text-xl ${color}`}>{icon}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <p className="text-white font-medium capitalize">{tx.type}</p>
+                            <p className={`font-semibold ${tx.type === 'receive' ? 'text-green-400' : 'text-white'}`}>
+                              {tx.type === 'receive' ? '+' : '-'}{tx.amount} CC
+                            </p>
+                          </div>
+                          <div className="flex items-center justify-between mt-1">
+                            <p className="text-taupe text-xs">
+                              {tx.type === 'send' ? 'To: ' : 'From: '}
+                              {truncateAddress(tx.counterparty)}
+                            </p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${status.bg} ${status.color}`}>
+                              {status.text}
+                            </span>
+                          </div>
+                          <p className="text-taupe text-xs mt-1">{formatTime(tx.timestamp)}</p>
+                        </div>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
+        )}
+
+        {/* Refresh Button */}
+        {!isLoading && (
+          <motion.button
+            className="w-full mt-6 py-3 bg-white/5 rounded-xl text-taupe text-sm font-medium flex items-center justify-center gap-2"
+            whileTap={{ scale: 0.98 }}
+            onClick={handleRefresh}
+          >
+            <span className="material-symbols-outlined text-sm">refresh</span>
+            Refresh
+          </motion.button>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+// ==================== NOTIFICATION SETTINGS SCREEN ====================
+function NotificationSettingsScreen({ onBack }: { onBack: () => void }) {
+  const [notifTransactions, setNotifTransactions] = useState(true);
+  const [notifSwaps, setNotifSwaps] = useState(true);
+  const [notifPriceAlerts, setNotifPriceAlerts] = useState(false);
+  const [notifSecurity, setNotifSecurity] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Load notification settings from API
+  useEffect(() => {
+    const loadSettings = async () => {
+      setIsLoading(true);
+      try {
+        const settings = await api.request<{
+          success: boolean;
+          data: {
+            transactions: boolean;
+            swaps: boolean;
+            priceAlerts: boolean;
+            security: boolean;
+          };
+        }>("/api/settings/notifications");
+        if (settings.success) {
+          setNotifTransactions(settings.data.transactions);
+          setNotifSwaps(settings.data.swaps);
+          setNotifPriceAlerts(settings.data.priceAlerts);
+          setNotifSecurity(settings.data.security);
+        }
+      } catch (err) {
+        console.error("Failed to load notification settings:", err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadSettings();
+  }, []);
+
+  // Save notification setting
+  const updateSetting = async (
+    key: 'transactions' | 'swaps' | 'priceAlerts' | 'security',
+    value: boolean,
+    setter: (val: boolean) => void
+  ) => {
+    const previousValue = !value;
+    setter(value);
+    setIsSaving(true);
+
+    try {
+      await api.request("/api/settings/notifications", {
+        method: "PUT",
+        body: JSON.stringify({ [key]: value }),
+      });
+      window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("success");
+    } catch (err) {
+      console.error("Failed to update notification setting:", err);
+      window.Telegram?.WebApp.HapticFeedback?.notificationOccurred("error");
+      setter(previousValue); // Revert on error
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const notificationSettings = [
+    {
+      id: 'transactions',
+      icon: 'send',
+      title: 'Transactions',
+      description: 'Send & receive alerts',
+      value: notifTransactions,
+      onChange: () => updateSetting('transactions', !notifTransactions, setNotifTransactions),
+    },
+    {
+      id: 'swaps',
+      icon: 'currency_exchange',
+      title: 'Swap Alerts',
+      description: 'Swap completion updates',
+      value: notifSwaps,
+      onChange: () => updateSetting('swaps', !notifSwaps, setNotifSwaps),
+    },
+    {
+      id: 'priceAlerts',
+      icon: 'trending_up',
+      title: 'Price Alerts',
+      description: 'CC price changes',
+      value: notifPriceAlerts,
+      onChange: () => updateSetting('priceAlerts', !notifPriceAlerts, setNotifPriceAlerts),
+    },
+    {
+      id: 'security',
+      icon: 'security',
+      title: 'Security Alerts',
+      description: 'Login & suspicious activity',
+      value: notifSecurity,
+      onChange: () => updateSetting('security', !notifSecurity, setNotifSecurity),
+    },
+  ];
+
+  return (
+    <motion.div
+      className="h-full flex flex-col overflow-y-auto pb-32"
+      initial={{ opacity: 0, x: 100 }}
+      animate={{ opacity: 1, x: 0 }}
+    >
+      <Header title="Notifications" onBack={onBack} />
+
+      <div className="px-4">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <div className="w-8 h-8 border-2 border-purple border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : (
+          <>
+            {/* Notification Settings */}
+            <div className="space-y-3">
+              {notificationSettings.map((setting) => (
+                <div key={setting.id} className="bg-white/5 rounded-2xl p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-purple/20 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-lg text-purple">{setting.icon}</span>
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-white font-medium text-sm">{setting.title}</p>
+                        <p className="text-taupe text-xs">{setting.description}</p>
+                      </div>
+                    </div>
+                    <button
+                      className={`w-12 h-7 rounded-full transition-colors ${setting.value ? 'bg-purple' : 'bg-white/20'}`}
+                      onClick={setting.onChange}
+                      disabled={isSaving}
+                    >
+                      <motion.div
+                        className="w-5 h-5 bg-white rounded-full shadow-md"
+                        animate={{ x: setting.value ? 24 : 4 }}
+                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Additional Info */}
+            <div className="mt-6 p-4 bg-white/5 rounded-2xl">
+              <p className="text-taupe text-xs text-center">
+                Notifications are sent via Telegram Bot. Make sure you have not muted the bot to receive alerts.
+              </p>
+            </div>
+          </>
         )}
       </div>
     </motion.div>
@@ -7260,12 +9796,21 @@ function TransactionDetailScreen({
           </div>
         </div>
 
-        {/* Explorer Link (placeholder for future) */}
-        <div className="mt-6 p-4 bg-white/5 rounded-2xl text-center">
-          <p className="text-taupe text-sm">
-            View on Canton Explorer (Coming Soon)
-          </p>
-        </div>
+        {/* Explorer Link - Lighthouse Canton Explorer */}
+        {transaction.txHash && (
+          <motion.button
+            className="mt-6 w-full p-4 bg-gradient-to-r from-purple/20 to-lilac/20 rounded-2xl flex items-center justify-center gap-3"
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              const explorerUrl = `https://lighthouse.cantonloop.com/tx/${transaction.txHash}`;
+              window.open(explorerUrl, '_blank');
+              window.Telegram?.WebApp.HapticFeedback?.impactOccurred("light");
+            }}
+          >
+            <span className="material-symbols-outlined text-purple">open_in_new</span>
+            <span className="text-white font-medium">View on Lighthouse Explorer</span>
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
@@ -7273,14 +9818,56 @@ function TransactionDetailScreen({
 
 // ==================== HISTORY SCREEN ====================
 function HistoryScreen({ onBack, onNavigate }: { onBack: () => void; onNavigate?: (screen: Screen, params?: any) => void }) {
-  const { transactions, loadTransactions } = useWalletContext();
+  const { transactions, loadTransactions, syncTransactions } = useWalletContext();
   const [filter, setFilter] = useState("all");
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const startY = useRef(0);
+  const isPulling = useRef(false);
+
+  const PULL_THRESHOLD = 80;
+  const hasLoadedRef = useRef(false);
 
   useEffect(() => {
+    if (hasLoadedRef.current) return;
+    hasLoadedRef.current = true;
     setIsLoading(true);
     loadTransactions().finally(() => setIsLoading(false));
-  }, [loadTransactions]);
+  }, []);
+
+  // Pull-to-refresh handlers
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (containerRef.current?.scrollTop === 0) {
+      startY.current = e.touches[0].clientY;
+      isPulling.current = true;
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!isPulling.current || isRefreshing) return;
+    const currentY = e.touches[0].clientY;
+    const diff = currentY - startY.current;
+    if (diff > 0 && containerRef.current?.scrollTop === 0) {
+      setPullDistance(Math.min(diff * 0.5, PULL_THRESHOLD + 20));
+    }
+  };
+
+  const handleTouchEnd = async () => {
+    if (pullDistance >= PULL_THRESHOLD && !isRefreshing) {
+      setIsRefreshing(true);
+      window.Telegram?.WebApp.HapticFeedback?.impactOccurred("medium");
+      try {
+        await syncTransactions();
+        await loadTransactions();
+      } finally {
+        setIsRefreshing(false);
+      }
+    }
+    setPullDistance(0);
+    isPulling.current = false;
+  };
 
   const formatDate = (timestamp: string) => {
     const date = new Date(timestamp);
@@ -7291,8 +9878,10 @@ function HistoryScreen({ onBack, onNavigate }: { onBack: () => void; onNavigate?
       return `Today, ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffDays === 1) {
       return 'Yesterday';
-    } else {
+    } else if (diffDays < 7) {
       return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
     }
   };
 
@@ -7302,6 +9891,7 @@ function HistoryScreen({ onBack, onNavigate }: { onBack: () => void; onNavigate?
   };
 
   const shortenAddress = (address: string) => {
+    if (!address) return 'Unknown';
     if (address.length > 20) {
       return `${address.slice(0, 8)}...${address.slice(-8)}`;
     }
@@ -7310,101 +9900,247 @@ function HistoryScreen({ onBack, onNavigate }: { onBack: () => void; onNavigate?
 
   const filtered = filter === "all" ? transactions : transactions.filter(tx => tx.type === filter);
 
+  // Group transactions by date
+  const groupedTransactions = filtered.reduce((groups, tx) => {
+    const date = new Date(tx.timestamp);
+    const dateKey = date.toLocaleDateString([], { year: 'numeric', month: 'long', day: 'numeric' });
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    groups[dateKey].push(tx);
+    return groups;
+  }, {} as Record<string, typeof filtered>);
+
+  const openInExplorer = (txHash: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    window.open(`https://lighthouse.cantonloop.com/tx/${txHash}`, '_blank');
+    window.Telegram?.WebApp.HapticFeedback?.impactOccurred("light");
+  };
+
   return (
-    <motion.div
+    <div
+      ref={containerRef}
       className="h-full flex flex-col overflow-y-auto pb-32"
-      initial={{ opacity: 0, x: 100 }}
-      animate={{ opacity: 1, x: 0 }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
     >
       <Header title="History" onBack={onBack} />
 
+      {/* Pull-to-refresh indicator */}
+      <div
+        className="flex justify-center items-center overflow-hidden transition-all duration-200"
+        style={{ height: pullDistance > 0 ? pullDistance : 0 }}
+      >
+        {isRefreshing ? (
+          <div className="w-6 h-6 border-2 border-purple border-t-transparent rounded-full animate-spin" />
+        ) : pullDistance >= PULL_THRESHOLD ? (
+          <span className="text-purple text-sm">Release to refresh</span>
+        ) : pullDistance > 20 ? (
+          <span className="text-taupe text-sm">Pull to refresh</span>
+        ) : null}
+      </div>
+
       <div className="px-4">
+        {/* Filter tabs */}
         <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-          {["all", "send", "receive"].map((f) => (
+          {[
+            { key: "all", label: "All", icon: "list" },
+            { key: "send", label: "Sent", icon: "arrow_upward" },
+            { key: "receive", label: "Received", icon: "arrow_downward" }
+          ].map((f) => (
             <button
-              key={f}
-              className={`px-4 py-2 rounded-xl text-sm font-medium capitalize whitespace-nowrap ${
-                filter === f ? "bg-purple text-white" : "bg-white/10 text-taupe"
+              key={f.key}
+              className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 whitespace-nowrap transition-colors ${
+                filter === f.key
+                  ? "bg-purple text-white"
+                  : "bg-white/10 text-taupe hover:bg-white/20"
               }`}
-              onClick={() => setFilter(f)}
+              onClick={() => {
+                setFilter(f.key);
+                window.Telegram?.WebApp.HapticFeedback?.selectionChanged();
+              }}
             >
-              {f}
+              <span className="material-symbols-outlined text-sm">{f.icon}</span>
+              {f.label}
             </button>
           ))}
         </div>
 
         {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="w-8 h-8 border-2 border-purple border-t-transparent rounded-full animate-spin" />
+          <div className="flex flex-col items-center justify-center py-16">
+            <div className="w-10 h-10 border-3 border-purple border-t-transparent rounded-full animate-spin mb-4" />
+            <p className="text-taupe text-sm">Loading transactions...</p>
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-12">
-            <span className="material-symbols-outlined text-4xl text-taupe mb-2">receipt_long</span>
-            <p className="text-taupe">No transactions yet</p>
-          </div>
+          <motion.div
+            className="flex flex-col items-center justify-center py-16"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+          >
+            <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center mb-4">
+              <span className="material-symbols-outlined text-4xl text-taupe">
+                {filter === "send" ? "arrow_upward" : filter === "receive" ? "arrow_downward" : "receipt_long"}
+              </span>
+            </div>
+            <p className="text-white font-medium mb-1">
+              {filter === "all" ? "No transactions yet" :
+               filter === "send" ? "No sent transactions" : "No received transactions"}
+            </p>
+            <p className="text-taupe text-sm text-center max-w-[250px]">
+              {filter === "all"
+                ? "Your transaction history will appear here once you send or receive CC tokens."
+                : filter === "send"
+                ? "You haven't sent any CC tokens yet."
+                : "You haven't received any CC tokens yet."}
+            </p>
+          </motion.div>
         ) : (
-          <div className="space-y-2">
-            {filtered.map((tx) => (
-              <motion.div
-                key={tx.id}
-                className="bg-white/5 rounded-2xl p-4 flex items-center gap-4 cursor-pointer"
-                whileTap={{ scale: 0.98 }}
-                onClick={() => onNavigate?.("transaction-detail", { transaction: tx })}
-              >
-                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-xl ${
-                  tx.type === "receive" ? "bg-green-500/20 text-green-400" : "bg-red-500/20 text-red-400"
-                }`}>
-                  <span className="material-symbols-outlined">
-                    {tx.type === "receive" ? "arrow_downward" : "arrow_upward"}
-                  </span>
+          <div className="space-y-4">
+            {Object.entries(groupedTransactions).map(([date, txs]) => (
+              <div key={date}>
+                <p className="text-taupe text-xs font-medium mb-2 px-1">{date}</p>
+                <div className="space-y-2">
+                  {txs.map((tx) => (
+                    <motion.div
+                      key={tx.id}
+                      className="bg-white/5 rounded-2xl p-4 flex items-center gap-3 cursor-pointer active:bg-white/10 transition-colors"
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => onNavigate?.("transaction-detail", { transaction: tx })}
+                    >
+                      <div className={`w-11 h-11 rounded-full flex items-center justify-center ${
+                        tx.type === "receive" ? "bg-green-500/20" : "bg-red-500/20"
+                      }`}>
+                        <span className={`material-symbols-outlined text-xl ${
+                          tx.type === "receive" ? "text-green-400" : "text-red-400"
+                        }`}>
+                          {tx.type === "receive" ? "arrow_downward" : "arrow_upward"}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium truncate">{shortenAddress(tx.counterparty || '')}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-taupe text-sm">{formatDate(tx.timestamp)}</p>
+                          {tx.status === 'pending' && (
+                            <span className="px-1.5 py-0.5 bg-yellow/20 text-yellow text-xs rounded">Pending</span>
+                          )}
+                          {tx.status === 'failed' && (
+                            <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 text-xs rounded">Failed</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right flex items-center gap-2">
+                        <div>
+                          <p className={`font-semibold ${tx.type === "receive" ? "text-green-400" : "text-red-400"}`}>
+                            {formatAmount(tx.type, tx.amount)}
+                          </p>
+                        </div>
+                        {tx.txHash && (
+                          <button
+                            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                            onClick={(e) => openInExplorer(tx.txHash!, e)}
+                          >
+                            <span className="material-symbols-outlined text-sm text-purple">open_in_new</span>
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  ))}
                 </div>
-                <div className="flex-1">
-                  <p className="text-white font-medium">{shortenAddress(tx.counterparty || 'Unknown')}</p>
-                  <p className="text-taupe text-sm">{formatDate(tx.timestamp)}</p>
-                </div>
-                <div className="text-right">
-                  <p className={`font-medium ${tx.type === "receive" ? "text-green-400" : "text-red-400"}`}>
-                    {formatAmount(tx.type, tx.amount)}
-                  </p>
-                  <p className="text-taupe text-xs capitalize">{tx.status}</p>
-                </div>
-                <span className="text-taupe">→</span>
-              </motion.div>
+              </div>
             ))}
           </div>
         )}
+
+        {/* Sync hint */}
+        {!isLoading && transactions.length > 0 && (
+          <p className="text-center text-taupe text-xs mt-6 mb-4">
+            Pull down to sync with Canton Network
+          </p>
+        )}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
-// ==================== CNS SCREEN ====================
+// ==================== CNS SCREEN (Canton Name Service) ====================
 function CNSScreen({ onBack }: { onBack: () => void }) {
+  // Form state
   const [name, setName] = useState("");
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+
+  // Validation & availability
   const [available, setAvailable] = useState<boolean | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const [isChecking, setIsChecking] = useState(false);
+
+  // Registration flow
   const [isRegistering, setIsRegistering] = useState(false);
+  const [registrationStep, setRegistrationStep] = useState<'input' | 'confirm' | 'pending' | 'success'>('input');
+  const [registrationData, setRegistrationData] = useState<{
+    fullName: string;
+    subscriptionRequestCid: string;
+    entryContextCid: string;
+  } | null>(null);
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
+
+  // User's existing names
+  const [myNames, setMyNames] = useState<Array<{ name: string; baseName: string; expiresAt: string }>>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load user's existing names on mount
+  useEffect(() => {
+    const loadNames = async () => {
+      try {
+        const names = await api.getMyAnsNames();
+        setMyNames(names.entries.map(e => ({
+          name: e.name,
+          baseName: e.baseName,
+          expiresAt: e.expiresAt,
+        })));
+      } catch {
+        // User may not have any names yet
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadNames();
+  }, []);
 
   // Debounced name availability check
   useEffect(() => {
-    if (name.length < 3) {
+    if (name.length < 1) {
       setAvailable(null);
-      setError("");
+      setValidationError(null);
       return;
     }
 
     const timer = setTimeout(async () => {
       setIsChecking(true);
+      setValidationError(null);
+
+      // Dev mode: bypass API check
+      const isDevMode = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+      if (isDevMode) {
+        // Simulate availability check in dev mode
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setAvailable(true);
+        setIsChecking(false);
+        return;
+      }
+
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'}/api/username/check/${encodeURIComponent(name)}`);
-        const data = await res.json();
-        setAvailable(data.data?.available ?? false);
-        // Don't set error for check reasons - only for actual registration errors
-        setError("");
+        const result = await api.checkAnsName(name);
+        if (!result.success && result.error) {
+          setValidationError(result.error);
+          setAvailable(false);
+        } else {
+          setAvailable(result.available);
+          setValidationError(result.available ? null : (result.error || 'Name is already taken'));
+        }
       } catch {
-        setError("Failed to check availability");
+        setValidationError("Failed to check availability");
         setAvailable(null);
       } finally {
         setIsChecking(false);
@@ -7414,29 +10150,69 @@ function CNSScreen({ onBack }: { onBack: () => void }) {
     return () => clearTimeout(timer);
   }, [name]);
 
+  // Handle name registration
   const handleRegister = async () => {
-    if (!available || name.length < 3) return;
+    if (!available || name.length < 1) return;
+
     setIsRegistering(true);
     setError("");
+    setRegistrationStep('confirm');
+  };
+
+  // Confirm registration and create entry
+  const confirmRegistration = async () => {
+    setIsRegistering(true);
+    setError("");
+
     try {
-      
-      // Re-authenticate to ensure fresh token (handles expired token in dev mode)
+      // Ensure fresh auth token
       const tg = window.Telegram?.WebApp;
-      const initData = tg?.initData || (process.env.NODE_ENV === 'development' ? 'dev_mode_555666777' : '');
+      const initData = tg?.initData || ((typeof window !== 'undefined' && window.location.hostname === 'localhost') ? 'dev_mode_555666777' : '');
       if (initData) {
         const authResult = await api.authenticate(initData);
         api.setTokens(authResult.token, authResult.refreshToken);
       }
 
-      await api.setUsername(name);
-      setSuccessMessage(`@${name}.canton registered permanently!`);
-      setTimeout(() => onBack(), 1500);
+      // Register the name
+      const result = await api.registerAnsName(name, url, description);
+
+      setRegistrationData({
+        fullName: result.fullName,
+        subscriptionRequestCid: result.subscriptionRequestCid,
+        entryContextCid: result.entryContextCid,
+      });
+
+      setRegistrationStep('pending');
+
+      // Haptic feedback
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+
+      // After a delay, show success (in production, you'd poll for actual confirmation)
+      setTimeout(() => {
+        setRegistrationStep('success');
+      }, 3000);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
+      setRegistrationStep('input');
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
     } finally {
       setIsRegistering(false);
     }
   };
+
+  // Display suffix is always .canton for users, technical suffix is .unverified.cns
+  const displaySuffix = '.canton';
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <motion.div className="h-full flex flex-col items-center justify-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <div className="w-10 h-10 border-3 border-[#F3FF97] border-t-transparent rounded-full animate-spin mb-4" />
+        <p className="text-white/60 text-sm">Loading...</p>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -7444,80 +10220,255 @@ function CNSScreen({ onBack }: { onBack: () => void }) {
       initial={{ opacity: 0, x: 100 }}
       animate={{ opacity: 1, x: 0 }}
     >
-      <Header title="Canton Name" onBack={onBack} />
+      <Header title="Canton Names" onBack={onBack} />
 
       <div className="px-4">
-        <div className="bg-gradient-to-br from-yellow/20 to-purple/20 rounded-2xl p-4 mb-6">
-          <h3 className="text-yellow font-bold mb-2">Get Your @name.canton</h3>
-          <p className="text-taupe text-sm">
-            Choose a permanent name for your wallet. This cannot be changed later.
-          </p>
-        </div>
-
-        <div className="mb-4">
-          <label className="text-taupe text-sm mb-2 block">Choose your name</label>
-          <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-3">
-            <span className="text-yellow text-xl">@</span>
-            <input
-              type="text"
-              placeholder="yourname"
-              className="flex-1 bg-transparent text-white text-xl outline-none"
-              value={name}
-              onChange={(e) => {
-                setName(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 15));
-              }}
-            />
-            <span className="text-taupe">.canton</span>
-            {isChecking && <span className="material-symbols-outlined text-taupe animate-spin text-sm">progress_activity</span>}
+        {/* Info Card */}
+        <div className="bg-gradient-to-br from-[#F3FF97]/20 to-purple/20 rounded-2xl p-4 mb-6 border border-[#F3FF97]/20">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#F3FF97]/20 flex items-center justify-center flex-shrink-0">
+              <span className="material-symbols-outlined text-[#F3FF97]">alternate_email</span>
+            </div>
+            <div>
+              <h3 className="text-white font-semibold mb-1">Get Your @name.canton</h3>
+              <p className="text-white/60 text-sm">
+                Register a permanent, human-readable name for your Canton wallet.
+              </p>
+            </div>
           </div>
         </div>
 
-        {successMessage && (
+        {/* Existing Names */}
+        {myNames.length > 0 && (
+          <div className="mb-6">
+            <h4 className="text-white/70 text-xs font-medium uppercase tracking-wide mb-2">Your Names</h4>
+            <div className="space-y-2">
+              {myNames.map((entry) => (
+                <div key={entry.name} className="bg-white/5 rounded-xl p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[#F3FF97]">@</span>
+                    <span className="text-white font-medium">{entry.baseName}</span>
+                    <span className="text-white/40 text-sm">{displaySuffix}</span>
+                  </div>
+                  <span className="text-white/40 text-xs">
+                    Expires {new Date(entry.expiresAt).toLocaleDateString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Registration Steps */}
+        {registrationStep === 'input' && (
+          <>
+            {/* Name Input */}
+            <div className="mb-4">
+              <label className="text-white/70 text-sm mb-2 block">Choose your name</label>
+              <div className="bg-white/5 rounded-2xl p-4 flex items-center gap-3 border border-white/10 focus-within:border-[#F3FF97]/50 transition-colors">
+                <span className="text-[#F3FF97] text-xl font-medium">@</span>
+                <input
+                  type="text"
+                  placeholder="yourname"
+                  className="flex-1 bg-transparent text-white text-xl outline-none placeholder-white/30"
+                  value={name}
+                  onChange={(e) => {
+                    const value = e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 63);
+                    setName(value);
+                    setError("");
+                  }}
+                />
+                <span className="text-white/40 text-sm">{displaySuffix}</span>
+                {isChecking && (
+                  <span className="material-symbols-outlined text-white/40 animate-spin text-sm">progress_activity</span>
+                )}
+              </div>
+              <p className="text-white/40 text-xs mt-2">
+                Letters, numbers, and hyphens only. 1-63 characters.
+              </p>
+            </div>
+
+            {/* Availability Status */}
+            {name.length > 0 && !isChecking && (
+              <motion.div
+                className={`p-3 rounded-xl mb-4 flex items-center gap-2 ${
+                  available
+                    ? "bg-green-500/10 border border-green-500/30"
+                    : "bg-red-500/10 border border-red-500/30"
+                }`}
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <span className={`material-symbols-outlined text-lg ${available ? "text-green-400" : "text-red-400"}`}>
+                  {available ? "check_circle" : "cancel"}
+                </span>
+                <p className={`text-sm ${available ? "text-green-400" : "text-red-400"}`}>
+                  {available
+                    ? `@${name}${displaySuffix} is available`
+                    : validationError || `@${name}${displaySuffix} is not available`
+                  }
+                </p>
+              </motion.div>
+            )}
+
+            {/* Error Message */}
+            {error && (
+              <motion.div
+                className="p-3 rounded-xl mb-4 bg-red-500/10 border border-red-500/30"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <p className="text-red-400 text-sm">{error}</p>
+              </motion.div>
+            )}
+          </>
+        )}
+
+        {/* Confirmation Step */}
+        {registrationStep === 'confirm' && (
           <motion.div
-            className="p-4 rounded-xl mb-4 bg-green-500/20 border border-green-500/30"
-            initial={{ opacity: 0, y: -10 }}
+            className="space-y-4"
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            <p className="text-green-400">{successMessage}</p>
+            <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
+              <h4 className="text-white font-medium mb-4">Confirm Registration</h4>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-white/60 text-sm">Name</span>
+                  <span className="text-white font-medium">@{name}{displaySuffix}</span>
+                </div>
+
+                {url && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60 text-sm">URL</span>
+                    <span className="text-white/80 text-sm truncate max-w-[200px]">{url}</span>
+                  </div>
+                )}
+
+                {description && (
+                  <div className="flex justify-between items-start">
+                    <span className="text-white/60 text-sm">Description</span>
+                    <span className="text-white/80 text-sm text-right max-w-[200px]">{description}</span>
+                  </div>
+                )}
+
+                {/* Fee Breakdown */}
+                <div className="border-t border-white/10 pt-3 mt-3 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60 text-sm">Network Fee</span>
+                    <span className="text-white/80 text-sm">~0.001 CC</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-white/60 text-sm">Registration Fee</span>
+                    <span className="text-white/80 text-sm">11 CC</span>
+                  </div>
+                  <div className="border-t border-white/10 pt-2 mt-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-white font-medium text-sm">Total</span>
+                      <span className="text-[#F3FF97] font-semibold">~11.001 CC</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <motion.button
+                className="flex-1 py-4 rounded-2xl bg-white/10 text-white font-medium"
+                whileTap={{ scale: 0.98 }}
+                onClick={() => setRegistrationStep('input')}
+              >
+                Back
+              </motion.button>
+              <motion.button
+                className="flex-1 py-4 rounded-2xl bg-[#F3FF97] text-black font-semibold"
+                whileTap={{ scale: 0.98 }}
+                onClick={confirmRegistration}
+                disabled={isRegistering}
+              >
+                {isRegistering ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="material-symbols-outlined animate-spin text-sm">progress_activity</span>
+                    Registering...
+                  </span>
+                ) : (
+                  "Register"
+                )}
+              </motion.button>
+            </div>
           </motion.div>
         )}
 
-        {!successMessage && error && available && (
+        {/* Pending Step */}
+        {registrationStep === 'pending' && (
           <motion.div
-            className="p-4 rounded-xl mb-4 bg-red-500/20 border border-red-500/30"
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-8"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
           >
-            <p className="text-red-400">{error}</p>
-          </motion.div>
-        )}
-
-        {!successMessage && !error && available !== null && (
-          <motion.div
-            className={`p-4 rounded-xl mb-4 ${available ? "bg-green-500/20 border border-green-500/30" : "bg-red-500/20 border border-red-500/30"}`}
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <p className={available ? "text-green-400" : "text-red-400"}>
-              {available ? `@${name}.canton is available!` : `@${name}.canton is taken`}
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-[#F3FF97]/20 flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl text-[#F3FF97] animate-pulse">hourglass_empty</span>
+            </div>
+            <h3 className="text-white text-xl font-semibold mb-2">Payment Pending</h3>
+            <p className="text-white/60 text-sm mb-4">
+              Please confirm the payment in your Canton Wallet to complete registration.
             </p>
+            <div className="bg-white/5 rounded-xl p-3 text-left">
+              <p className="text-white/40 text-xs mb-1">Subscription Request ID</p>
+              <p className="text-white/80 text-xs font-mono break-all">
+                {registrationData?.subscriptionRequestCid || 'Loading...'}
+              </p>
+            </div>
           </motion.div>
         )}
 
+        {/* Success Step */}
+        {registrationStep === 'success' && (
+          <motion.div
+            className="text-center py-8"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+          >
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-green-500/20 flex items-center justify-center">
+              <span className="material-symbols-outlined text-3xl text-green-400">check_circle</span>
+            </div>
+            <h3 className="text-white text-xl font-semibold mb-2">Registration Initiated!</h3>
+            <p className="text-white/60 text-sm mb-4">
+              Your name <span className="text-[#F3FF97]">@{name}{displaySuffix}</span> registration has been submitted.
+            </p>
+            <p className="text-white/40 text-xs">
+              The name will be active after payment confirmation on the Canton Network.
+            </p>
+            <motion.button
+              className="mt-6 px-6 py-3 rounded-2xl bg-white/10 text-white font-medium"
+              whileTap={{ scale: 0.98 }}
+              onClick={onBack}
+            >
+              Done
+            </motion.button>
+          </motion.div>
+        )}
       </div>
 
-      <div className="absolute bottom-32 left-0 right-0 px-4 z-10">
-        <motion.button
-          className={`w-full py-4 rounded-2xl text-lg font-bold ${
-            available && !isRegistering ? "bg-gradient-to-r from-yellow to-purple text-black" : "bg-white/10 text-taupe"
-          }`}
-          whileTap={{ scale: 0.98 }}
-          disabled={!available || isRegistering}
-          onClick={handleRegister}
-        >
-          {isRegistering ? "Registering..." : `Register @${name || "name"}.canton`}
-        </motion.button>
-      </div>
+      {/* Register Button (only on input step) */}
+      {registrationStep === 'input' && (
+        <div className="absolute bottom-32 left-0 right-0 px-4 z-10">
+          <motion.button
+            className={`w-full py-4 rounded-2xl text-lg font-semibold transition-colors ${
+              available && !isRegistering && name.length > 0
+                ? "bg-[#F3FF97] text-black"
+                : "bg-white/10 text-white/40 cursor-not-allowed"
+            }`}
+            whileTap={available && name.length > 0 ? { scale: 0.98 } : {}}
+            disabled={!available || isRegistering || name.length === 0}
+            onClick={handleRegister}
+          >
+            {isRegistering ? "Processing..." : `Register @${name || "name"}${displaySuffix}`}
+          </motion.button>
+        </div>
+      )}
     </motion.div>
   );
 }
@@ -7525,16 +10476,8 @@ function CNSScreen({ onBack }: { onBack: () => void }) {
 // ==================== DISCOVER SCREEN ====================
 function DiscoverScreen({ onNavigate }: { onNavigate: (screen: Screen, params?: any) => void }) {
   const categories = [
-    { id: "dapps", icon: "apps", title: "DApps", desc: "Explore decentralized applications", color: "#875CFF" },
-    { id: "nft", icon: "image", title: "NFTs", desc: "Browse NFT collections", color: "#D5A5E3" },
-    { id: "staking", icon: "trending_up", title: "Staking", desc: "Earn rewards on your CC", color: "#F3FF97" },
-    { id: "cns", icon: "alternate_email", title: "Canton Names", desc: "Get your @name.canton", color: "#22C55E" },
-  ];
-
-  const featured = [
-    { id: "1", title: "Canton DEX", desc: "Swap tokens with low fees", icon: "swap_horiz", category: "DeFi" },
-    { id: "2", title: "CC Staking Pool", desc: "Up to 12% APY", icon: "savings", category: "Staking" },
-    { id: "3", title: "Canton Bridge", desc: "Cross-chain transfers", icon: "link", category: "Bridge" },
+    { id: "cns", icon: "alternate_email", title: "Canton Names", desc: "Get your @name.canton", disabled: false },
+    { id: "staking", icon: "trending_up", title: "Staking", desc: "Earn rewards on your CC", disabled: true },
   ];
 
   return (
@@ -7545,92 +10488,95 @@ function DiscoverScreen({ onNavigate }: { onNavigate: (screen: Screen, params?: 
     >
       {/* Header */}
       <div className="p-4">
-        <h1 className="text-[#FFFFFC] text-2xl font-bold mb-1">Discover</h1>
-        <p className="text-[#A89F91] text-sm">Explore the Canton ecosystem</p>
+        <h1 className="text-white text-xl font-semibold mb-1">Discover</h1>
+        <p className="text-white/60 text-sm">Explore the Canton ecosystem</p>
       </div>
 
       {/* Search Bar */}
-      <div className="px-4 mb-4">
-        <div className="flex items-center gap-3 p-3 rounded-2xl" style={{ background: "rgba(255, 255, 252, 0.05)", border: "1px solid rgba(255, 255, 252, 0.1)" }}>
-          <span className="material-symbols-outlined text-[#A89F91]">search</span>
+      <div className="px-4 mb-5">
+        <div className="flex items-center gap-3 p-3 rounded-xl border border-white/10 bg-white/[0.02]">
+          <span className="material-symbols-outlined text-white/40 text-xl">search</span>
           <input
             type="text"
-            placeholder="Search DApps, tokens, NFTs..."
-            className="flex-1 bg-transparent text-[#FFFFFC] placeholder-[#A89F91] outline-none text-sm"
+            placeholder="Search..."
+            className="flex-1 bg-transparent text-white placeholder-white/40 outline-none text-sm"
           />
         </div>
       </div>
 
-      {/* Categories */}
+      {/* Available Services */}
       <div className="px-4 mb-6">
-        <h2 className="text-[#FFFFFC] font-bold mb-3">Categories</h2>
-        <div className="grid grid-cols-2 gap-3">
+        <h2 className="text-white/70 text-xs font-medium uppercase tracking-wide mb-3">Services</h2>
+        <div className="space-y-2">
           {categories.map((cat) => (
-            <motion.button
+            <button
               key={cat.id}
-              className="p-4 rounded-2xl text-left press-glow-purple"
-              style={{ background: "rgba(255, 255, 252, 0.03)", border: "1px solid rgba(255, 255, 252, 0.08)" }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onNavigate(cat.id as Screen)}
+              className={`w-full p-4 rounded-xl border flex items-center gap-4 text-left transition-colors ${
+                cat.disabled
+                  ? 'border-white/5 bg-white/[0.01] opacity-50 cursor-not-allowed'
+                  : 'border-[#F3FF97]/30 bg-[#F3FF97]/5 active:bg-[#F3FF97]/10'
+              }`}
+              onClick={() => !cat.disabled && onNavigate(cat.id as Screen)}
+              disabled={cat.disabled}
             >
-              <div
-                className="w-10 h-10 rounded-xl flex items-center justify-center mb-3"
-                style={{ background: `${cat.color}20` }}
-              >
-                <span className="material-symbols-outlined" style={{ color: cat.color }}>{cat.icon}</span>
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${cat.disabled ? 'bg-white/5' : 'bg-[#F3FF97]/10'}`}>
+                <span className={`material-symbols-outlined ${cat.disabled ? 'text-white/30' : 'text-[#F3FF97]'}`}>{cat.icon}</span>
               </div>
-              <p className="text-[#FFFFFC] font-medium text-sm">{cat.title}</p>
-              <p className="text-[#A89F91] text-xs mt-1">{cat.desc}</p>
-            </motion.button>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <p className={`font-medium text-sm ${cat.disabled ? 'text-white/40' : 'text-white'}`}>{cat.title}</p>
+                  {cat.disabled && <span className="text-[10px] text-white/30">Soon</span>}
+                </div>
+                <p className={`text-xs mt-0.5 ${cat.disabled ? 'text-white/20' : 'text-white/50'}`}>{cat.desc}</p>
+              </div>
+              <span className={`material-symbols-outlined ${cat.disabled ? 'text-white/20' : 'text-[#F3FF97]/50'}`}>
+                {cat.disabled ? 'lock' : 'chevron_right'}
+              </span>
+            </button>
           ))}
         </div>
       </div>
 
-      {/* Featured */}
+      {/* Ecosystem - Coming Soon */}
       <div className="px-4">
-        <h2 className="text-[#FFFFFC] font-bold mb-3">Featured</h2>
-        <div className="space-y-3">
-          {featured.map((item) => (
-            <motion.div
-              key={item.id}
-              className="p-4 rounded-2xl flex items-center gap-4 press-glow-purple"
-              style={{ background: "rgba(255, 255, 252, 0.03)", border: "1px solid rgba(255, 255, 252, 0.08)" }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ background: "rgba(135, 92, 255, 0.15)" }}>
-                <span className="material-symbols-outlined text-[#875CFF]">{item.icon}</span>
-              </div>
-              <div className="flex-1">
-                <p className="text-[#FFFFFC] font-medium">{item.title}</p>
-                <p className="text-[#A89F91] text-sm">{item.desc}</p>
-              </div>
-              <span className="text-xs px-2 py-1 rounded-lg text-[#A89F91]" style={{ background: "rgba(255, 255, 252, 0.05)" }}>{item.category}</span>
-            </motion.div>
-          ))}
+        <div className="flex items-center justify-between">
+          <h2 className="text-white/70 text-xs font-medium uppercase tracking-wide">Ecosystem</h2>
+          <span className="text-xs text-white/30">Coming Soon</span>
         </div>
       </div>
     </motion.div>
   );
 }
 
+// Task type for shared state
+type Task = {
+  id: string;
+  title: string;
+  desc: string;
+  icon: string;
+  status: string;
+  link?: string;
+  category: string;
+};
+
 // ==================== TASKS SCREEN ====================
-function TasksScreen({ onBack }: { onBack: () => void }) {
-  const [tasks, setTasks] = useState([
-    { id: "1", title: "Complete KYC verification", desc: "Verify your identity to unlock all features", status: "pending", priority: "high" },
-    { id: "2", title: "Set up 2FA authentication", desc: "Add extra security to your account", status: "completed", priority: "high" },
-    { id: "3", title: "Claim daily reward", desc: "Don't forget to claim your daily CC tokens", status: "pending", priority: "medium" },
-    { id: "4", title: "Stake CC tokens", desc: "Earn up to 12% APY by staking", status: "pending", priority: "low" },
-    { id: "5", title: "Register Canton Name", desc: "Get your unique @name.canton identity", status: "pending", priority: "medium" },
-  ]);
+function TasksScreen({ onBack, tasks, setTasks }: { onBack: () => void; tasks: Task[]; setTasks: React.Dispatch<React.SetStateAction<Task[]>> }) {
 
   const [filter, setFilter] = useState("all");
 
-  const toggleTask = (id: string) => {
+  const handleTaskClick = (task: Task) => {
+    if (task.link) {
+      window.open(task.link, '_blank');
+      try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light"); } catch {}
+    }
+  };
+
+  const completeTask = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     setTasks(tasks.map(task =>
-      task.id === id
-        ? { ...task, status: task.status === "completed" ? "pending" : "completed" }
-        : task
+      task.id === id ? { ...task, status: "completed" } : task
     ));
+    try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
   };
 
   const filteredTasks = filter === "all"
@@ -7643,103 +10589,157 @@ function TasksScreen({ onBack }: { onBack: () => void }) {
   const progress = (completedCount / tasks.length) * 100;
 
   return (
-    <motion.div
-      className="h-full flex flex-col overflow-y-auto pb-32"
-      initial={{ opacity: 0, x: 100 }}
-      animate={{ opacity: 1, x: 0 }}
-    >
-      <Header title="Tasks" onBack={onBack} />
+    <div className="h-full flex flex-col overflow-y-auto pb-32">
+      <Header title="Missions" onBack={onBack} />
 
       <div className="px-4">
         {/* Progress Card */}
-        <div className="bg-gradient-to-br from-purple/30 to-lilac/20 rounded-3xl p-6 mb-4 border border-purple/30">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <p className="text-taupe text-sm">Progress</p>
-              <p className="text-white text-2xl font-bold">{completedCount}/{tasks.length} Tasks</p>
+        <motion.div
+          className="rounded-3xl p-6 mb-4 relative overflow-hidden"
+          style={{
+            background: "linear-gradient(135deg, rgba(243, 255, 151, 0.2) 0%, rgba(135, 92, 255, 0.15) 100%)",
+            border: "1px solid rgba(243, 255, 151, 0.3)"
+          }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+        >
+          {/* Animated glow */}
+          <motion.div
+            className="absolute inset-0 opacity-30"
+            animate={{ backgroundPosition: ["0% 50%", "100% 50%", "0% 50%"] }}
+            transition={{ duration: 5, repeat: Infinity, ease: "linear" }}
+            style={{
+              background: "linear-gradient(90deg, transparent, rgba(243, 255, 151, 0.3), transparent)",
+              backgroundSize: "200% 100%"
+            }}
+          />
+          <div className="relative z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-[#F3FF97] text-sm font-medium">Progress</p>
+                <p className="text-white text-3xl font-bold">{completedCount} <span className="text-lg text-[#F3FF97]">/ {tasks.length}</span></p>
+              </div>
+              <motion.div
+                className="w-16 h-16 rounded-2xl flex items-center justify-center"
+                style={{ background: "rgba(243, 255, 151, 0.2)", border: "1px solid rgba(243, 255, 151, 0.3)" }}
+                animate={{
+                  boxShadow: ["0 0 20px rgba(243, 255, 151, 0.3)", "0 0 30px rgba(243, 255, 151, 0.5)", "0 0 20px rgba(243, 255, 151, 0.3)"]
+                }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                <span className="material-symbols-outlined text-3xl text-[#F3FF97]">redeem</span>
+              </motion.div>
             </div>
-            <div className="w-16 h-16 rounded-full bg-purple/20 flex items-center justify-center">
-              <span className="material-symbols-outlined text-3xl text-purple">task_alt</span>
+            <div className="w-full bg-white/10 rounded-full h-3 overflow-hidden">
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: "linear-gradient(90deg, #F3FF97, #875CFF)" }}
+                initial={{ width: 0 }}
+                animate={{ width: `${progress}%` }}
+                transition={{ duration: 0.8, ease: "easeOut" }}
+              />
             </div>
+            <p className="text-white/70 text-sm mt-2">{completedCount}/{tasks.length} missions completed</p>
           </div>
-          <div className="w-full bg-white/10 rounded-full h-3">
-            <motion.div
-              className="bg-gradient-to-r from-yellow to-purple h-full rounded-full"
-              initial={{ width: 0 }}
-              animate={{ width: `${progress}%` }}
-              transition={{ duration: 0.5 }}
-            />
-          </div>
-          <p className="text-taupe text-sm mt-2">{Math.round(progress)}% completed</p>
-        </div>
+        </motion.div>
 
         {/* Filter Tabs */}
-        <div className="flex gap-2 mb-4">
-          {["all", "pending", "completed"].map((f) => (
+        <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
+          {[
+            { key: "all", label: "All", icon: "list" },
+            { key: "pending", label: "Active", icon: "pending" },
+            { key: "completed", label: "Done", icon: "check_circle" }
+          ].map((f) => (
             <button
-              key={f}
-              className={`px-4 py-2 rounded-xl text-sm font-medium capitalize ${
-                filter === f ? "bg-purple text-white" : "bg-white/10 text-taupe"
+              key={f.key}
+              className={`px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 whitespace-nowrap transition-colors ${
+                filter === f.key ? "bg-[#F3FF97] text-[#030206]" : "bg-white/10 text-taupe"
               }`}
-              onClick={() => setFilter(f)}
+              onClick={() => {
+                setFilter(f.key);
+                try { window.Telegram?.WebApp?.HapticFeedback?.selectionChanged(); } catch {}
+              }}
             >
-              {f}
+              <span className="material-symbols-outlined text-sm">{f.icon}</span>
+              {f.label}
             </button>
           ))}
         </div>
 
         {/* Task List */}
         <div className="space-y-3">
-          {filteredTasks.map((task) => (
+          {filteredTasks.map((task, index) => (
             <motion.div
               key={task.id}
-              className={`bg-white/5 rounded-2xl p-4 flex items-start gap-4 border ${
-                task.status === "completed" ? "border-green-500/30" : "border-white/5"
-              }`}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => toggleTask(task.id)}
-            >
-              <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center mt-1 ${
+              className={`rounded-2xl p-4 flex items-center gap-4 cursor-pointer ${
                 task.status === "completed"
-                  ? "bg-green-500 border-green-500"
-                  : "border-taupe"
+                  ? "bg-green-500/10 border border-green-500/30"
+                  : "bg-white/5 border border-white/5 active:bg-white/10"
+              }`}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => handleTaskClick(task)}
+            >
+              {/* Icon */}
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                task.status === "completed"
+                  ? "bg-green-500/20"
+                  : "bg-[#F3FF97]/20"
               }`}>
-                {task.status === "completed" && (
-                  <span className="material-symbols-outlined text-sm text-white">check</span>
+                {task.status === "completed" ? (
+                  <span className="material-symbols-outlined text-xl text-green-400">check_circle</span>
+                ) : task.icon === "x" ? (
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#F3FF97]">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                  </svg>
+                ) : task.icon === "telegram" ? (
+                  <svg viewBox="0 0 24 24" className="w-5 h-5 fill-[#F3FF97]">
+                    <path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/>
+                  </svg>
+                ) : (
+                  <span className="material-symbols-outlined text-xl text-[#F3FF97]">{task.icon}</span>
                 )}
               </div>
-              <div className="flex-1">
-                <p className={`font-medium ${task.status === "completed" ? "text-taupe line-through" : "text-white"}`}>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <p className={`font-medium ${task.status === "completed" ? "text-green-400" : "text-white"}`}>
                   {task.title}
                 </p>
-                <p className="text-taupe text-sm mt-1">{task.desc}</p>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    task.priority === "high" ? "bg-red-500/20 text-red-400" :
-                    task.priority === "medium" ? "bg-yellow/20 text-yellow" :
-                    "bg-white/10 text-taupe"
-                  }`}>
-                    {task.priority}
-                  </span>
-                </div>
+                <p className="text-taupe text-sm truncate">{task.desc}</p>
               </div>
-              <span className="material-symbols-outlined text-taupe">
-                {task.status === "completed" ? "check_circle" : "radio_button_unchecked"}
-              </span>
+
+              {/* Action */}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {task.status === "completed" ? (
+                  <div className="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <span className="material-symbols-outlined text-sm text-green-400">check</span>
+                  </div>
+                ) : (
+                  <>
+                    {task.link && (
+                      <div className="w-8 h-8 rounded-full bg-[#F3FF97]/20 flex items-center justify-center">
+                        <span className="material-symbols-outlined text-sm text-[#F3FF97]">open_in_new</span>
+                      </div>
+                    )}
+                    {!task.link && (
+                      <button
+                        className="px-3 py-1.5 rounded-lg bg-[#F3FF97] text-[#030206] text-sm font-medium"
+                        onClick={(e) => completeTask(task.id, e)}
+                      >
+                        Go
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </motion.div>
           ))}
         </div>
-
-        {/* Add Task Button */}
-        <motion.button
-          className="w-full mt-6 py-4 bg-purple/20 border border-purple/30 rounded-2xl flex items-center justify-center gap-2"
-          whileTap={{ scale: 0.98 }}
-        >
-          <span className="material-symbols-outlined text-purple">add</span>
-          <span className="text-purple font-medium">Add New Task</span>
-        </motion.button>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -7748,7 +10748,7 @@ function TelegramAppContent() {
   const { isAuthLoading, hasWallet, isWalletLoading, wallet, createWallet, createWalletWithPasskeyCredential, recoveryCode, userShareHex, clearRecoveryCode, user } = useWalletContext();
   const security = useSecurity();
 
-  const [showSplash, setShowSplash] = useState(true);
+  const [showSplash, setShowSplash] = useState(process.env.NODE_ENV !== 'development');
   const [isOnboarded, setIsOnboarded] = useState(false);
   const [navigation, setNavigation] = useState<NavigationState>({ screen: "onboarding" });
   const [navHistory, setNavHistory] = useState<NavigationState[]>([]);
@@ -7770,6 +10770,18 @@ function TelegramAppContent() {
   const [forgotPinRecoveredShare, setForgotPinRecoveredShare] = useState<string | null>(null);
   // NEW: State to store passkey credential data (created BEFORE wallet)
   const [passkeyCredential, setPasskeyCredential] = useState<PasskeyCredentialData | null>(null);
+
+  // Tasks state (shared between Dashboard and TasksScreen)
+  const [tasks, setTasks] = useState([
+    { id: "1", title: "Follow Canton Network on X", desc: "Follow Canton Network official X account", icon: "x", status: "pending", link: "https://x.com/CantonNetwork", category: "social" },
+    { id: "2", title: "Join Canton Network TG", desc: "Join Canton Network Telegram community", icon: "telegram", status: "pending", link: "https://t.me/CantonNetwork1", category: "social" },
+    { id: "3", title: "Follow CC Bot on X", desc: "Follow CC Bot official X account", icon: "x", status: "pending", link: "https://x.com/ccbotio", category: "social" },
+    { id: "4", title: "Join CC Bot Announcements", desc: "Get latest CC Bot announcements", icon: "telegram", status: "pending", link: "https://t.me/ccbotwallet", category: "social" },
+    { id: "5", title: "Join CC Bot Chat", desc: "Connect with CC Bot community", icon: "telegram", status: "pending", link: "https://t.me/ccbotwalletchat", category: "social" },
+    { id: "6", title: "First Transaction", desc: "Send or receive your first CC tokens", icon: "swap_horiz", status: "pending", category: "onboarding" },
+    { id: "7", title: "Register Canton Name", desc: "Get your unique @name.canton identity", icon: "badge", status: "pending", category: "account" },
+  ]);
+  const hasPendingTasks = tasks.some(t => t.status === "pending");
 
   // Use security context for lock state
   const isLocked = security.isLocked;
@@ -7870,7 +10882,7 @@ function TelegramAppContent() {
       // Don't change onboarded state or navigate if we're in the middle of passkey/onboarding flow
       // The passkey setup component will handle navigation when complete
       const tabScreens = ["home", "discover", "ai-assistant", "rewards", "settings"];
-      const validSubScreens = ["send", "receive", "swap", "bridge", "wallet", "history", "transaction-detail", "staking", "nft", "dapps", "security", "profile", "pin", "backup", "notifications", "help", "cns", "tasks", "forgot-pin-email", "forgot-pin-code", "forgot-pin-passkey", "forgot-pin-new", "forgot-pin-confirm"];
+      const validSubScreens = ["send", "receive", "swap", "bridge", "wallet", "history", "transaction-detail", "staking", "nft", "dapps", "security", "profile", "pin", "backup", "notifications", "help", "cns", "tasks", "forgot-pin-email", "forgot-pin-code", "forgot-pin-passkey", "forgot-pin-new", "forgot-pin-confirm", "activity", "notification-settings"];
       const isOnTabScreen = tabScreens.includes(navigation.screen);
       const isOnValidSubScreen = validSubScreens.includes(navigation.screen);
       const isInOnboardingFlow = ["passkey-setup", "passkey-mandatory", "pin-setup", "pin-confirm", "wallet-creating", "wallet-ready", "passkey-recovery", "recovery-code-input", "email-setup", "email-verify", "recovery-email", "recovery-code", "recovery-passkey"].includes(navigation.screen);
@@ -7988,16 +11000,16 @@ function TelegramAppContent() {
       // Store encrypted check
       await storePinCheck(telegramId, encrypted.ciphertext, encrypted.iv, encrypted.salt);
 
-      // PIN is now set - security context will detect this on next check
-      // Clear any lock state since we just set up the PIN
-      clearLockState();
+      // PIN is now set - force unlock since user just completed setup
+      // This ensures they go directly to wallet, not the lock screen
+      security.forceUnlock();
       setIsOnboarded(true);
       setNavigation({ screen: "wallet-ready" });
     } catch (error) {
       console.error("Failed to complete wallet setup:", error);
       setIsCreatingWallet(false);
     }
-  }, [passkeyCredential, createWalletWithPasskeyCredential, createWallet]);
+  }, [passkeyCredential, createWalletWithPasskeyCredential, createWallet, security]);
 
   const navigate = useCallback((screen: Screen, params?: any) => {
     setNavHistory((prev) => [...prev, navigation]);
@@ -8033,9 +11045,30 @@ function TelegramAppContent() {
   const handleResendCode = useCallback(async () => {
     if (!userEmail) return;
     try {
+      console.log('[Resend] Sending verification code to:', userEmail);
+      try {
+        await api.sendEmailCode(userEmail);
+      } catch (authErr: any) {
+        // If token expired, re-authenticate and retry
+        if (authErr?.message?.includes('expired') || authErr?.message?.includes('Invalid') || authErr?.statusCode === 401) {
+          console.log('[Resend] Token expired, re-authenticating...');
+          const tg = window.Telegram?.WebApp;
+          const initData = tg?.initData || ((typeof window !== 'undefined' && window.location.hostname === 'localhost') ? 'dev_mode_555666777' : '');
+          if (initData) {
+            const authResult = await api.authenticate(initData);
+            api.setTokens(authResult.token, authResult.refreshToken);
             await api.sendEmailCode(userEmail);
+          } else {
+            throw authErr;
+          }
+        } else {
+          throw authErr;
+        }
+      }
+      try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
     } catch (err) {
       console.error("Failed to resend code:", err);
+      try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
     }
   }, [userEmail]);
 
@@ -8043,7 +11076,11 @@ function TelegramAppContent() {
     if (!isOnboarded) {
       switch (navigation.screen) {
         case "onboarding":
-          return <OnboardingScreen onContinue={() => navigate("email-setup")} onExisting={() => navigate("recovery-email")} />;
+          // Go to email setup for full onboarding flow
+          const handleContinue = () => {
+            navigate("email-setup");
+          };
+          return <OnboardingScreen onContinue={handleContinue} onExisting={() => navigate("recovery-email")} />;
         case "email-setup":
           return (
             <EmailSetupScreen
@@ -8193,8 +11230,8 @@ function TelegramAppContent() {
     }
 
     switch (navigation.screen) {
-      case "home": return <Dashboard onNavigate={navigate} />;
-      case "wallet": return <WalletScreen onNavigate={navigate} />;
+      case "home": return <Dashboard onNavigate={navigate} hasPendingTasks={hasPendingTasks} />;
+      case "wallet": return <WalletScreen onNavigate={navigate} onBack={goBack} />;
       case "send": return <SendScreen onBack={goBack} />;
       case "receive": return <ReceiveScreen onBack={goBack} />;
       case "swap": return <SwapScreen onBack={goBack} />;
@@ -8212,9 +11249,11 @@ function TelegramAppContent() {
       case "pin": return <PinChangeScreen onBack={goBack} />;
       case "backup": return <BackupScreen onBack={goBack} />;
       case "notifications": return <NotificationsScreen onBack={goBack} />;
+      case "activity": return <NotificationsScreen onBack={goBack} />;
+      case "notification-settings": return <NotificationSettingsScreen onBack={goBack} />;
       case "help": return <HelpScreen onBack={goBack} />;
       case "cns": return <CNSScreen onBack={goBack} />;
-      case "tasks": return <TasksScreen onBack={goBack} />;
+      case "tasks": return <TasksScreen onBack={goBack} tasks={tasks} setTasks={setTasks} />;
       case "discover": return <DiscoverScreen onNavigate={navigate} />;
       // Forgot PIN flow (when user is locked out and forgot PIN)
       case "forgot-pin-email":
@@ -8277,8 +11316,7 @@ function TelegramAppContent() {
               // PIN reset successful - clear forgot pin state and unlock
               setForgotPinRecoveredShare(null);
               setForgotPinNewPin("");
-              clearLockState();
-              security.resetActivityTimer();
+              security.forceUnlock();
               setNavigation({ screen: "home" });
             }}
             onBack={() => {
@@ -8402,8 +11440,8 @@ function TelegramAppContent() {
   );
 }
 
-// Allowed Telegram usernames (whitelist)
-const ALLOWED_USERS = ['bihruze', 'ferhat_n', 'martinedermi', 'serhateth', 'thehaneth'];
+// Allowed Telegram usernames (whitelist) - Empty = Coming Soon for everyone
+const ALLOWED_USERS: string[] = [];
 
 // Coming Soon screen for non-whitelisted users
 function ComingSoonScreen() {
@@ -8522,21 +11560,25 @@ export default function TelegramApp() {
 
     const username = tg?.initDataUnsafe?.user?.username?.toLowerCase();
 
+    // Development mode only - allow access for testing
+    if (process.env.NODE_ENV === 'development') {
+      setIsAllowed(true);
+      return;
+    }
+
+    // Production: strict whitelist check
     if (username && ALLOWED_USERS.includes(username)) {
       setIsAllowed(true);
-    } else if (tg?.initDataUnsafe?.user) {
-      // User exists but not in whitelist
-      setIsAllowed(false);
     } else {
-      // No Telegram context (development mode) - allow access
-      setIsAllowed(true);
+      // Not in whitelist or no user - block access
+      setIsAllowed(false);
     }
   }, []);
 
   // Loading state - keep background solid to prevent flash
   if (isAllowed === null) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-[#030206]">
+      <div className="loading-overlay">
         <div className="animate-spin w-8 h-8 border-2 border-[#875CFF] border-t-transparent rounded-full" />
       </div>
     );
