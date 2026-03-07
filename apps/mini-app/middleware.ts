@@ -27,6 +27,9 @@ export function middleware(request: NextRequest) {
   const isHealthCheck = url.pathname === '/health' || url.pathname === '/api/health';
   const isApiRoute = url.pathname.startsWith('/api/');
 
+  // Allow dApp approval page (CIP-103)
+  const isDappApprove = url.pathname === '/approve';
+
   // Allow static assets
   const isStaticAsset = url.pathname.startsWith('/_next/') ||
                         url.pathname.startsWith('/static/') ||
@@ -36,7 +39,7 @@ export function middleware(request: NextRequest) {
   const isDev = process.env.NODE_ENV === 'development';
 
   // If not from Telegram and not allowed path, show access denied
-  if (!isTelegramAccess && !isHealthCheck && !isApiRoute && !isStaticAsset && !isDev) {
+  if (!isTelegramAccess && !isHealthCheck && !isApiRoute && !isStaticAsset && !isDappApprove && !isDev) {
     // Redirect to access denied page
     return NextResponse.redirect(new URL('/passkey-access-denied', request.url));
   }
