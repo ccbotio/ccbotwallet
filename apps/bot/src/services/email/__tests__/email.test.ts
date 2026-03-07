@@ -1,5 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// Mock environment FIRST before other imports
+vi.mock('../../../config/env.js', () => ({
+  env: {
+    NODE_ENV: 'test',
+    APP_SECRET: '0'.repeat(128),
+    ENCRYPTION_KEY: '1'.repeat(64),
+    RESEND_API_KEY: 'test-resend-key',
+    RESEND_FROM_EMAIL: 'test@example.com',
+  },
+}));
+
 // Mock dependencies before importing the service
 vi.mock('resend', () => ({
   Resend: vi.fn().mockImplementation(() => ({
@@ -38,6 +49,25 @@ vi.mock('../../../lib/redis.js', () => ({
     get: vi.fn().mockResolvedValue(null),
     set: vi.fn().mockResolvedValue('OK'),
   },
+  getRedisClient: vi.fn(() => ({
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn().mockResolvedValue('OK'),
+    incr: vi.fn().mockResolvedValue(1),
+    expire: vi.fn().mockResolvedValue(1),
+  })),
+}));
+
+// Mock rate limit middleware - default allows all
+const mockRateLimitState = { blocked: false };
+vi.mock('../../../api/middleware/rate-limit.js', () => ({
+  checkEmailSendLimit: vi.fn().mockImplementation(() =>
+    Promise.resolve(mockRateLimitState.blocked
+      ? { allowed: false, remaining: 0, resetIn: 60 }
+      : { allowed: true, remaining: 3, resetIn: 0 })
+  ),
+  checkEmailDailyLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 5 }),
+  checkEmailIpLimit: vi.fn().mockResolvedValue({ allowed: true, remaining: 10 }),
+  checkEmailResendCooldown: vi.fn().mockResolvedValue({ allowed: true, waitSeconds: 0 }),
 }));
 
 vi.mock('../../../lib/logger.js', () => ({
@@ -48,11 +78,15 @@ vi.mock('../../../lib/logger.js', () => ({
   },
 }));
 
-vi.mock('../../../config/env.js', () => ({
-  env: {
-    RESEND_API_KEY: 'test-api-key',
-    EMAIL_FROM: 'test@example.com',
-  },
+// Mock auth service to prevent transitive env import issues
+vi.mock('../../../services/auth/index.js', () => ({
+  createTokens: vi.fn().mockResolvedValue({ accessToken: 'test', refreshToken: 'test' }),
+  verifyAccessToken: vi.fn().mockResolvedValue({ telegramId: 'test', sub: 'test' }),
+}));
+
+// Mock jwt-auth middleware
+vi.mock('../../../api/middleware/jwt-auth.js', () => ({
+  jwtAuth: vi.fn().mockImplementation((_req, _reply, done) => done()),
 }));
 
 describe('EmailService', () => {
@@ -87,13 +121,17 @@ describe('EmailService', () => {
     });
 
     it('should respect rate limiting', async () => {
-      const { redis } = await import('../../../lib/redis.js');
-      vi.mocked(redis.get).mockResolvedValueOnce('1');
+      const { checkEmailSendLimit } = await import('../../../api/middleware/rate-limit.js');
+      vi.mocked(checkEmailSendLimit).mockResolvedValueOnce({
+        allowed: false,
+        remaining: 0,
+        resetIn: 60,
+      });
 
       const result = await emailService.sendCode('user-123', 'test@example.com');
 
       expect(result.success).toBe(false);
-      expect(result.message).toBe('Please wait before requesting another code');
+      expect(result.message).toContain('Too many requests');
     });
   });
 

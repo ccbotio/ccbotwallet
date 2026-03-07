@@ -9,24 +9,14 @@ import {
 } from '../../crypto/passkey';
 import api from '../../lib/api';
 import { config } from '../../lib/config';
+import {
+  detectBrowser,
+  getPasskeyInstructions,
+  getRecommendedBrowser,
+  type BrowserInfo,
+} from '../../lib/browser-detect';
 
 type SetupPhase = 'loading' | 'ready' | 'registering' | 'success' | 'closing' | 'error' | 'unsupported' | 'expired' | 'webview-blocked';
-
-// Check if running in Telegram WebView (iOS WKWebView blocks WebAuthn)
-function isInTelegramWebView(): boolean {
-  if (typeof window === 'undefined') return false;
-  const ua = navigator.userAgent.toLowerCase();
-  // Check for Telegram WebView indicators
-  return (
-    ua.includes('telegram') ||
-    // Telegram iOS uses custom user agent
-    (ua.includes('iphone') && (window as any).TelegramWebviewProxy !== undefined) ||
-    // Check if we're in an iframe
-    window.self !== window.top ||
-    // Check for Telegram WebApp object with specific platform
-    (window.Telegram?.WebApp !== undefined && window.Telegram.WebApp.platform !== 'tdesktop')
-  );
-}
 
 function getDeviceName(): string {
   const ua = navigator.userAgent;
@@ -58,6 +48,12 @@ function PasskeyCreateContent() {
     challenge: string;
   } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [browser, setBrowser] = useState<BrowserInfo | null>(null);
+
+  // Detect browser on mount
+  useEffect(() => {
+    setBrowser(detectBrowser());
+  }, []);
 
   // Get session ID from URL
   const sessionId = searchParams.get('session');
@@ -82,14 +78,25 @@ function PasskeyCreateContent() {
         return;
       }
 
+      // Wait for browser detection
+      const detectedBrowser = detectBrowser();
+      setBrowser(detectedBrowser);
+
       // Check if we're in Telegram WebView - WebAuthn won't work
-      if (isInTelegramWebView()) {
+      if (detectedBrowser.isTelegramWebView) {
         console.log('[Passkey] Detected Telegram WebView - showing manual instructions');
         setPhase('webview-blocked');
         return;
       }
 
-      // Check WebAuthn support first
+      // Check if browser supports passkeys
+      if (!detectedBrowser.supportsPasskey) {
+        console.log('[Passkey] Browser does not support passkeys:', detectedBrowser.name, detectedBrowser.version);
+        setPhase('unsupported');
+        return;
+      }
+
+      // Check WebAuthn support as final check
       if (!isWebAuthnSupported()) {
         setPhase('unsupported');
         return;
@@ -207,10 +214,24 @@ function PasskeyCreateContent() {
             <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center bg-yellow-500/20">
               <span className="material-symbols-outlined text-5xl text-yellow-400">warning</span>
             </div>
-            <h2 className="text-xl font-bold mb-2 text-yellow-400">Not Supported</h2>
+            <h2 className="text-xl font-bold mb-2 text-yellow-400">Desteklenmiyor</h2>
             <p className="text-[#FFFFFC]/60 mb-6 text-sm max-w-xs mx-auto">
-              This browser doesn't support passkeys. Please try opening in Safari or Chrome.
+              {browser ? getPasskeyInstructions(browser) : 'Bu tarayıcı passkey desteklemiyor. Chrome veya Safari kullanın.'}
             </p>
+            {browser && browser.os === 'android' && (
+              <div className="p-4 rounded-xl bg-[#FFFFFC]/5 border border-[#FFFFFC]/10">
+                <p className="text-sm text-[#FFFFFC]/80">
+                  {getRecommendedBrowser(browser.os)} kullanmak için Menu → Tarayıcıda Aç seçin.
+                </p>
+              </div>
+            )}
+            {browser && browser.os === 'ios' && (
+              <div className="p-4 rounded-xl bg-[#FFFFFC]/5 border border-[#FFFFFC]/10">
+                <p className="text-sm text-[#FFFFFC]/80">
+                  Safari'yi açmak için linki kopyalayın ve Safari'ye yapıştırın.
+                </p>
+              </div>
+            )}
           </motion.div>
         )}
 
@@ -244,9 +265,11 @@ function PasskeyCreateContent() {
             <div className="w-24 h-24 mx-auto mb-6 rounded-full flex items-center justify-center bg-blue-500/20">
               <span className="material-symbols-outlined text-5xl text-blue-400">open_in_browser</span>
             </div>
-            <h2 className="text-xl font-bold mb-2 text-blue-400">Open in Safari</h2>
+            <h2 className="text-xl font-bold mb-2 text-blue-400">
+              {browser?.os === 'ios' ? 'Safari\'de Açın' : 'Chrome\'da Açın'}
+            </h2>
             <p className="text-[#FFFFFC]/60 mb-6 text-sm max-w-xs mx-auto">
-              Passkeys require Safari on iOS. Copy the link below and paste it in Safari to continue.
+              {browser ? getPasskeyInstructions(browser) : 'Telegram içinden passkey oluşturulamıyor. Linki tarayıcıda açın.'}
             </p>
 
             {/* URL Display */}
@@ -272,7 +295,9 @@ function PasskeyCreateContent() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              {copied ? 'Copied! Now paste in Safari' : 'Copy Link'}
+              {copied
+                ? (browser?.os === 'ios' ? 'Kopyalandı! Safari\'ye yapıştırın' : 'Kopyalandı! Chrome\'a yapıştırın')
+                : 'Linki Kopyala'}
             </motion.button>
 
             {/* Instructions */}
@@ -281,25 +306,29 @@ function PasskeyCreateContent() {
                 <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-xs text-blue-400 font-bold">1</span>
                 </div>
-                <span className="text-sm text-[#FFFFFC]/70">Tap "Copy Link" above</span>
+                <span className="text-sm text-[#FFFFFC]/70">"Linki Kopyala" butonuna tıklayın</span>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-xs text-blue-400 font-bold">2</span>
                 </div>
-                <span className="text-sm text-[#FFFFFC]/70">Open Safari browser</span>
+                <span className="text-sm text-[#FFFFFC]/70">
+                  {browser?.os === 'ios' ? 'Safari tarayıcıyı açın' : 'Chrome tarayıcıyı açın'}
+                </span>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-xs text-blue-400 font-bold">3</span>
                 </div>
-                <span className="text-sm text-[#FFFFFC]/70">Paste link in address bar and go</span>
+                <span className="text-sm text-[#FFFFFC]/70">Linki adres çubuğuna yapıştırın</span>
               </div>
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <span className="text-xs text-blue-400 font-bold">4</span>
                 </div>
-                <span className="text-sm text-[#FFFFFC]/70">Create your passkey in Safari</span>
+                <span className="text-sm text-[#FFFFFC]/70">
+                  {browser?.os === 'ios' ? 'Safari\'de passkey oluşturun' : 'Chrome\'da passkey oluşturun'}
+                </span>
               </div>
             </div>
           </motion.div>

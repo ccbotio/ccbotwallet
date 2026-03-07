@@ -24,6 +24,13 @@ export default function TelegramGuard({ children }: TelegramGuardProps) {
   );
 
   useEffect(() => {
+    // Development mode bypass
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[TelegramGuard] Development mode - bypassing');
+      setStatus('allowed');
+      return;
+    }
+
     let attempts = 0;
     const maxAttempts = 20; // Try for 2 seconds (20 x 100ms)
 

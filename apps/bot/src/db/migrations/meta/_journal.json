@@ -43,6 +43,13 @@
       "when": 1771775025309,
       "tag": "0005_friendly_ares",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1772759861215,
+      "tag": "0013_swap_bridge_tables",
+      "breakpoints": true
     }
   ]
 }

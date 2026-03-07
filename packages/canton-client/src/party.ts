@@ -1,5 +1,7 @@
 import type { CantonConfig, ExternalPartyResult } from './types/index.js';
 import { AuthTokenProvider } from './auth.js';
+import { fetchWithRetry, fetchWithTimeout } from './utils/fetch-with-retry.js';
+import { CANTON_TIMEOUTS, RETRY_CONFIG } from '@repo/shared/constants';
 
 interface TopologyTx {
   topology_tx: string;
@@ -43,7 +45,8 @@ export class PartyManager {
     const headers = await this.auth.getHeaders();
     const validatorUrl = this.config.validatorUrl || this.config.ledgerApiUrl;
 
-    const response = await fetch(
+    // Safe to retry topology generation
+    const response = await fetchWithRetry(
       `${validatorUrl}/api/validator/v0/admin/external-party/topology/generate`,
       {
         method: 'POST',
@@ -52,6 +55,11 @@ export class PartyManager {
           public_key: publicKeyHex,
           party_hint: partyHint,
         }),
+        timeout: CANTON_TIMEOUTS.party,
+        retries: RETRY_CONFIG.maxRetries,
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       }
     );
 
@@ -78,7 +86,8 @@ export class PartyManager {
     const headers = await this.auth.getHeaders();
     const validatorUrl = this.config.validatorUrl || this.config.ledgerApiUrl;
 
-    const response = await fetch(
+    // CRITICAL: NO RETRY - duplicate party allocation risk!
+    const response = await fetchWithTimeout(
       `${validatorUrl}/api/validator/v0/admin/external-party/topology/submit`,
       {
         method: 'POST',
@@ -87,6 +96,7 @@ export class PartyManager {
           public_key: publicKeyHex,
           signed_topology_txs: signedTxs,
         }),
+        timeout: CANTON_TIMEOUTS.party,
       }
     );
 
@@ -194,13 +204,18 @@ export class SetupProposalManager {
     const validatorUrl = this.config.validatorUrl || this.config.ledgerApiUrl;
     const headers = await this.auth.getHeaders();
 
-    // Step 1: Create setup proposal
-    const createResponse = await fetch(
+    // Step 1: Create setup proposal (safe to retry - idempotent)
+    const createResponse = await fetchWithRetry(
       `${validatorUrl}/api/validator/v0/admin/external-party/setup-proposal`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({ user_party_id: partyId }),
+        timeout: CANTON_TIMEOUTS.party,
+        retries: 2,
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       }
     );
 
@@ -219,8 +234,8 @@ export class SetupProposalManager {
       }
     }
 
-    // Step 2: Prepare acceptance
-    const prepareResponse = await fetch(
+    // Step 2: Prepare acceptance (safe to retry)
+    const prepareResponse = await fetchWithRetry(
       `${validatorUrl}/api/validator/v0/admin/external-party/setup-proposal/prepare-accept`,
       {
         method: 'POST',
@@ -229,6 +244,11 @@ export class SetupProposalManager {
           contract_id: contractId,
           user_party_id: partyId,
         }),
+        timeout: CANTON_TIMEOUTS.party,
+        retries: 2,
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       }
     );
 
@@ -247,7 +267,8 @@ export class SetupProposalManager {
     const signatureBytes = signHash(hashBytes);
 
     // Step 4: Submit acceptance
-    const submitResponse = await fetch(
+    // CRITICAL: NO RETRY - duplicate contract creation risk!
+    const submitResponse = await fetchWithTimeout(
       `${validatorUrl}/api/validator/v0/admin/external-party/setup-proposal/submit-accept`,
       {
         method: 'POST',
@@ -261,6 +282,7 @@ export class SetupProposalManager {
             signed_tx_hash: bytesToHex(signatureBytes),
           },
         }),
+        timeout: CANTON_TIMEOUTS.party,
       }
     );
 

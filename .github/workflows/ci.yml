@@ -6,6 +6,10 @@ on:
   pull_request:
     branches: [main, develop]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest
@@ -80,14 +84,47 @@ jobs:
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test
+
+      - name: Run tests with coverage
+        run: pnpm test -- --coverage
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/test
           REDIS_URL: redis://localhost:6379
+          NODE_ENV: test
+          APP_SECRET: ${{ secrets.APP_SECRET || '0000000000000000000000000000000000000000000000000000000000000000' }}
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY || '1111111111111111111111111111111111111111111111111111111111111111' }}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: github.event_name == 'push'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results.sarif'
 
   build:
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test]
+    needs: [lint, typecheck, test, security]
     steps:
       - uses: actions/checkout@v4
 
@@ -102,3 +139,22 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+      - name: Build Docker images (test)
+        run: |
+          docker build -f apps/bot/Dockerfile -t ccbot-bot:test .
+          docker build -f apps/mini-app/Dockerfile -t ccbot-mini-app:test .
+
+      - name: Scan Bot Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ccbot-bot:test'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'
+
+      - name: Scan Mini App Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'ccbot-mini-app:test'
+          severity: 'CRITICAL,HIGH'
+          exit-code: '0'

@@ -1,5 +1,7 @@
 import type { CantonConfig, Contract, LedgerEvent, Party } from '../types/index.js';
 import { AuthTokenProvider } from '../auth.js';
+import { fetchWithRetry, fetchWithTimeout } from '../utils/fetch-with-retry.js';
+import { CANTON_TIMEOUTS, RETRY_CONFIG } from '@repo/shared/constants';
 
 export class LedgerApi {
   private config: CantonConfig;
@@ -16,8 +18,14 @@ export class LedgerApi {
 
     try {
       const headers = await this.auth.getHeaders();
-      const response = await fetch(`${jsonApiUrl}/v2/parties/${encodeURIComponent(partyId)}`, {
+      // Safe to retry GET requests
+      const response = await fetchWithRetry(`${jsonApiUrl}/v2/parties/${encodeURIComponent(partyId)}`, {
         headers,
+        timeout: CANTON_TIMEOUTS.ledger,
+        retries: 2,
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       });
 
       if (!response.ok) return null;
@@ -38,12 +46,14 @@ export class LedgerApi {
     }
 
     const headers = await this.auth.getHeaders();
-    const response = await fetch(`${jsonApiUrl}/v2/commands`, {
+    // CRITICAL: NO RETRY - duplicate contract creation risk!
+    const response = await fetchWithTimeout(`${jsonApiUrl}/v2/commands`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
         commands: [{ create: { template_id: templateId, payload } }],
       }),
+      timeout: CANTON_TIMEOUTS.preapproval,
     });
 
     if (!response.ok) {
@@ -69,7 +79,8 @@ export class LedgerApi {
     if (!jsonApiUrl) return [];
 
     const headers = await this.auth.getHeaders();
-    const response = await fetch(`${jsonApiUrl}/v2/commands`, {
+    // CRITICAL: NO RETRY - duplicate choice exercise risk!
+    const response = await fetchWithTimeout(`${jsonApiUrl}/v2/commands`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -83,6 +94,7 @@ export class LedgerApi {
           },
         ],
       }),
+      timeout: CANTON_TIMEOUTS.preapproval,
     });
 
     if (!response.ok) {
@@ -115,7 +127,8 @@ export class LedgerApi {
     if (!jsonApiUrl) return [];
 
     const headers = await this.auth.getHeaders();
-    const response = await fetch(`${jsonApiUrl}/v2/state/active-contracts`, {
+    // Safe to retry query requests
+    const response = await fetchWithRetry(`${jsonApiUrl}/v2/state/active-contracts`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -124,6 +137,11 @@ export class LedgerApi {
           ...filter,
         },
       }),
+      timeout: CANTON_TIMEOUTS.ledger,
+      retries: 2,
+      backoffBase: RETRY_CONFIG.backoffBase,
+      backoffMax: RETRY_CONFIG.backoffMax,
+      retryOnStatus: RETRY_CONFIG.retryableStatus,
     });
 
     if (!response.ok) return [];

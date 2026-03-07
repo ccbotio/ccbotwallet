@@ -364,4 +364,133 @@ export class WalletService {
       secureZero(privateKey);
     }
   }
+
+  /**
+   * Create a TransferPreapproval for a wallet to receive Token Standard transfers.
+   */
+  async createPreapproval(
+    telegramId: string,
+    partyId: string
+  ): Promise<{ contractId: string }> {
+    // Derive the private key for signing
+    const privateKey = deriveEd25519PrivateKey(telegramId, env.APP_SECRET);
+    const privateKeyHex = bytesToHex(privateKey);
+
+    try {
+      logger.info({ partyId }, 'Creating TransferPreapproval');
+      const result = await this.sdk.createPreapproval(partyId, privateKeyHex);
+      logger.info({ partyId, contractId: result.contractId }, 'TransferPreapproval created');
+      return result;
+    } finally {
+      // Zero private key memory
+      secureZero(privateKey);
+    }
+  }
+
+  /**
+   * List pending incoming transfers (Token Standard 2-step transfers awaiting acceptance).
+   */
+  async listPendingTransfers(partyId: string): Promise<Array<{
+    contractId: string;
+    sender: string;
+    receiver: string;
+    amount: string;
+  }>> {
+    return this.sdk.listPendingTransfers(partyId);
+  }
+
+  /**
+   * Accept all pending incoming transfers for a wallet.
+   * This converts TransferInstruction contracts into Holding contracts.
+   */
+  async acceptPendingTransfers(
+    telegramId: string,
+    partyId: string
+  ): Promise<{ accepted: number; failed: number; errors: string[] }> {
+    // Derive the private key for signing
+    const privateKey = deriveEd25519PrivateKey(telegramId, env.APP_SECRET);
+    const privateKeyHex = bytesToHex(privateKey);
+
+    try {
+      logger.info({ partyId }, 'Accepting pending transfers');
+      const result = await this.sdk.acceptAllPendingTransfers(partyId, privateKeyHex);
+      logger.info(
+        { partyId, accepted: result.accepted, failed: result.failed },
+        'Pending transfers processed'
+      );
+      return result;
+    } finally {
+      // Zero private key memory
+      secureZero(privateKey);
+    }
+  }
+
+  /**
+   * Reject a specific pending incoming transfer.
+   * This declines the TransferInstruction, returning funds to sender.
+   */
+  async rejectPendingTransfer(
+    walletId: string,
+    transferInstructionCid: string,
+    userShareHex: string
+  ): Promise<{ success: boolean; error?: string }> {
+    // Find the wallet
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.id, walletId)).limit(1);
+    if (!wallet) {
+      return { success: false, error: 'Wallet not found' };
+    }
+
+    try {
+      // Get server share (decrypted)
+      const serverShare = await this.getServerShare(walletId);
+
+      // Parse user share
+      const userShare: Share = shareFromHex(userShareHex);
+
+      logger.info({ walletId, transferInstructionCid }, 'Rejecting pending transfer');
+
+      // Use withReconstructedKey for automatic memory cleanup
+      const result = await withReconstructedKey([userShare, serverShare], async (privateKeyHex) => {
+        return this.sdk.rejectTransferInstruction(
+          wallet.partyId,
+          transferInstructionCid,
+          privateKeyHex
+        );
+      });
+
+      if (result.success) {
+        logger.info({ walletId, transferInstructionCid }, 'Pending transfer rejected');
+      } else {
+        logger.warn({ walletId, transferInstructionCid, error: result.error }, 'Failed to reject transfer');
+      }
+
+      return result;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error({ walletId, transferInstructionCid, error: errorMessage }, 'Error rejecting pending transfer');
+      return { success: false, error: errorMessage };
+    }
+  }
+
+  /**
+   * Reconstruct the private key from user share and server share.
+   *
+   * SECURITY WARNING: The returned private key must be securely zeroed after use.
+   * Prefer using withReconstructedKey() when possible for automatic cleanup.
+   *
+   * This method is provided for cases where the operation needs to be performed
+   * outside of this service (e.g., swap service).
+   */
+  async reconstructPrivateKey(walletId: string, userShareHex: string): Promise<string> {
+    const serverShare = await this.getServerShare(walletId);
+    const userShare = shareFromHex(userShareHex);
+
+    const privateKey = reconstructEd25519Key([userShare, serverShare]);
+    const privateKeyHex = bytesToHex(privateKey);
+
+    // Zero the raw key bytes (the hex string caller gets is their responsibility)
+    secureZero(privateKey);
+
+    return privateKeyHex;
+  }
 }

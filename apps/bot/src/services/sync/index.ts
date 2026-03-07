@@ -4,6 +4,7 @@ import type { OfficialSDKClient } from '@repo/canton-client';
 import { logger } from '../../lib/logger.js';
 import { redis } from '../../lib/redis.js';
 import { notifyIncomingTransfer } from '../notification/index.js';
+import { WalletService } from '../wallet/index.js';
 
 const SYNC_CURSOR_PREFIX = 'canton:sync:cursor:';
 
@@ -36,6 +37,7 @@ export class TransactionSyncService {
   async syncWallet(walletId: string): Promise<{
     synced: number;
     updated: number;
+    accepted: number;
   }> {
     const [wallet] = await db.select().from(wallets).where(eq(wallets.id, walletId)).limit(1);
 
@@ -50,6 +52,7 @@ export class TransactionSyncService {
    * Sync transactions for a specific party from Canton ledger.
    * Uses idempotent upserts (ON CONFLICT) to prevent duplicates and
    * properly track transaction status (pending -> confirmed/failed).
+   * Also auto-accepts any pending incoming transfers (Token Standard 2-step).
    */
   async syncByPartyId(
     partyId: string,
@@ -57,11 +60,16 @@ export class TransactionSyncService {
   ): Promise<{
     synced: number;
     updated: number;
+    accepted: number;
   }> {
     let synced = 0;
     let updated = 0;
+    let accepted = 0;
 
     try {
+      // Auto-accept pending incoming transfers first
+      accepted = await this.acceptPendingTransfersForWallet(walletId, partyId);
+
       // Get last sync cursor
       const lastCursor = await this.getLastSyncCursor(walletId);
 
@@ -145,12 +153,46 @@ export class TransactionSyncService {
       // Mark stale pending transactions as failed
       updated += await this.markStalePendingTransactions(walletId);
 
-      logger.info({ partyId, synced, updated }, 'Transaction sync completed for wallet');
+      logger.info({ partyId, synced, updated, accepted }, 'Transaction sync completed for wallet');
 
-      return { synced, updated };
+      return { synced, updated, accepted };
     } catch (error) {
       logger.error({ err: error, partyId }, 'Failed to sync transactions from Canton');
-      return { synced, updated };
+      return { synced, updated, accepted };
+    }
+  }
+
+  /**
+   * Accept pending incoming transfers for a wallet.
+   * This converts TransferInstruction contracts into Holding contracts.
+   */
+  private async acceptPendingTransfersForWallet(
+    walletId: string,
+    partyId: string
+  ): Promise<number> {
+    try {
+      // Get wallet and user to find telegramId (needed for key derivation)
+      const [wallet] = await db.select().from(wallets).where(eq(wallets.id, walletId)).limit(1);
+      if (!wallet) return 0;
+
+      const [user] = await db.select().from(users).where(eq(users.id, wallet.userId)).limit(1);
+      if (!user) return 0;
+
+      // Use WalletService to accept pending transfers
+      const walletService = new WalletService(this.sdk);
+      const result = await walletService.acceptPendingTransfers(user.telegramId, partyId);
+
+      if (result.accepted > 0) {
+        logger.info(
+          { walletId, partyId, accepted: result.accepted },
+          'Auto-accepted pending transfers during sync'
+        );
+      }
+
+      return result.accepted;
+    } catch (error) {
+      logger.error({ err: error, walletId }, 'Failed to auto-accept pending transfers');
+      return 0;
     }
   }
 
@@ -241,17 +283,20 @@ export class TransactionSyncService {
     walletsProcessed: number;
     totalSynced: number;
     totalUpdated: number;
+    totalAccepted: number;
   }> {
     const allWallets = await db.select().from(wallets);
 
     let totalSynced = 0;
     let totalUpdated = 0;
+    let totalAccepted = 0;
 
     for (const wallet of allWallets) {
       try {
         const result = await this.syncByPartyId(wallet.partyId, wallet.id);
         totalSynced += result.synced;
         totalUpdated += result.updated;
+        totalAccepted += result.accepted;
       } catch (error) {
         logger.error({ err: error, walletId: wallet.id }, 'Failed to sync wallet');
       }
@@ -262,6 +307,7 @@ export class TransactionSyncService {
         walletsProcessed: allWallets.length,
         totalSynced,
         totalUpdated,
+        totalAccepted,
       },
       'Transaction sync completed for all wallets'
     );
@@ -270,6 +316,7 @@ export class TransactionSyncService {
       walletsProcessed: allWallets.length,
       totalSynced,
       totalUpdated,
+      totalAccepted,
     };
   }
 }

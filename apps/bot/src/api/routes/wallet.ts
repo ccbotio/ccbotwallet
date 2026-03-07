@@ -17,4 +17,12 @@ export const walletRoutes: FastifyPluginAsync = async (fastify) => {
   fastify.post('/sync', walletHandlers.syncTransactions);
   fastify.post('/faucet', walletHandlers.requestFaucet);
   fastify.post('/recover', walletHandlers.recoverWallet);
+  fastify.post('/preapproval', walletHandlers.createPreapproval);
+  fastify.get('/pending-transfers', walletHandlers.listPendingTransfers);
+  fastify.post('/accept-transfers', walletHandlers.acceptPendingTransfers);
+  fastify.post('/reject-transfer', walletHandlers.rejectPendingTransfer);
+
+  // Preferences
+  fastify.get('/preferences', walletHandlers.getPreferences);
+  fastify.put('/preferences', walletHandlers.updatePreferences);
 };

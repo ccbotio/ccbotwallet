@@ -203,6 +203,11 @@ export * from './types/index.js';
 export {
   OfficialSDKClient,
   type OfficialSDKConfig,
+  type TokenSymbol,
+  type InstrumentConfig,
+  INSTRUMENT_CONFIGS,
+  TESTNET_INSTRUMENT_CONFIGS,
+  getInstrumentConfig,
   WalletSDKImpl,
   UnsafeAuthController,
   AuthTokenProvider as SDKAuthTokenProvider,

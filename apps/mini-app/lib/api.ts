@@ -303,14 +303,32 @@ class ApiClient {
     return { balance: ccBalance.amount, locked: ccBalance.locked };
   }
 
-  // Transfer
-  async sendTransfer(receiverPartyId: string, amount: string, userShareHex: string, memo?: string, signal?: AbortSignal) {
+  /**
+   * Get all token balances (multi-token support)
+   */
+  async getAllBalances(signal?: AbortSignal): Promise<BalanceItem[]> {
     const result = await this.request<{
       success: boolean;
-      data: { transactionId: string; txHash: string; status: string };
+      data: Array<{ token: string; amount: string; locked: string }>;
+    }>('/api/wallet/balance', { signal });
+    return result.data;
+  }
+
+  // Transfer
+  async sendTransfer(
+    receiverPartyId: string,
+    amount: string,
+    userShareHex: string,
+    memo?: string,
+    token: 'CC' | 'USDCx' = 'CC',
+    signal?: AbortSignal
+  ) {
+    const result = await this.request<{
+      success: boolean;
+      data: { transactionId: string; txHash: string; status: string; token: string };
     }>(
       '/api/transfer/send',
-      { method: 'POST', body: { receiverPartyId, amount, userShareHex, memo }, signal }
+      { method: 'POST', body: { receiverPartyId, amount, userShareHex, memo, token }, signal }
     );
     return result.data;
   }
@@ -391,6 +409,168 @@ class ApiClient {
     return result.data;
   }
 
+  // Pending Transfers (Canton offer/accept flow)
+  async getPendingTransfers(signal?: AbortSignal) {
+    const result = await this.request<{
+      success: boolean;
+      data: Array<{
+        contractId: string;
+        sender: string;
+        receiver: string;
+        amount: string;
+        createdAt?: string;
+      }>;
+    }>('/api/wallet/pending-transfers', { signal });
+    return result.data;
+  }
+
+  async acceptPendingTransfers(signal?: AbortSignal) {
+    const result = await this.request<{
+      success: boolean;
+      data: { accepted: number; failed: number; errors: string[] };
+    }>(
+      '/api/wallet/accept-transfers',
+      { method: 'POST', body: {}, signal }
+    );
+    return result.data;
+  }
+
+  async rejectPendingTransfer(transferInstructionCid: string, userShareHex: string, signal?: AbortSignal) {
+    const result = await this.request<{
+      success: boolean;
+      data: { message: string };
+    }>(
+      '/api/wallet/reject-transfer',
+      { method: 'POST', body: { transferInstructionCid, userShareHex }, signal }
+    );
+    return result.data;
+  }
+
+  // ==================== Swap API ====================
+
+  /**
+   * Get swap quote
+   */
+  async getSwapQuote(
+    fromToken: 'CC' | 'USDCx',
+    toToken: 'CC' | 'USDCx',
+    amount: string,
+    direction: 'exactIn' | 'exactOut' = 'exactIn',
+    signal?: AbortSignal
+  ) {
+    const params = new URLSearchParams({
+      fromToken,
+      toToken,
+      amount,
+      direction,
+    });
+    const result = await this.request<{
+      quoteId: string;
+      fromToken: string;
+      toToken: string;
+      fromAmount: string;
+      toAmount: string;
+      exchangeRate: string;
+      fee: string;
+      feePercentage: number;
+      expiresAt: string;
+      priceImpact: number;
+    }>(`/api/swap/quote?${params.toString()}`, { signal });
+    return result;
+  }
+
+  /**
+   * Execute swap
+   */
+  async executeSwap(
+    quoteId: string,
+    userShareHex: string,
+    signal?: AbortSignal
+  ) {
+    const result = await this.request<{
+      success: boolean;
+      swapId: string;
+      txHash?: string;
+      fromAmount: string;
+      toAmount: string;
+      error?: string;
+    }>('/api/swap/execute', {
+      method: 'POST',
+      body: { quoteId, userShareHex },
+      signal,
+    });
+    return result;
+  }
+
+  /**
+   * Get swap history
+   */
+  async getSwapHistory(limit = 20, offset = 0, signal?: AbortSignal) {
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      offset: offset.toString(),
+    });
+    const result = await this.request<{
+      swaps: Array<{
+        id: string;
+        fromToken: string;
+        toToken: string;
+        fromAmount: string;
+        toAmount: string;
+        fee: string;
+        status: 'pending' | 'user_sent' | 'completed' | 'failed' | 'refund_pending' | 'refunded' | 'refund_failed';
+        createdAt: string;
+        completedAt?: string;
+        userToTreasuryTxHash?: string;
+        treasuryToUserTxHash?: string;
+        failureReason?: string;
+      }>;
+      total: number;
+    }>(`/api/swap/history?${params.toString()}`, { signal });
+    return result;
+  }
+
+  /**
+   * Get swap service status
+   */
+  async getSwapStatus(signal?: AbortSignal) {
+    const result = await this.request<{
+      isActive: boolean;
+      configured: boolean;
+      ccPriceUsd?: number;
+      feePercentage?: number;
+      limits?: {
+        maxSwapAmountCc: number;
+        maxSwapAmountUsdcx: number;
+        minSwapAmountCc: number;
+        minSwapAmountUsdcx: number;
+      };
+      quoteExpirySeconds?: number;
+      message?: string;
+    }>('/api/swap/status', { signal });
+    return result;
+  }
+
+  // Wallet Preferences
+  async getPreferences(signal?: AbortSignal) {
+    const result = await this.request<{
+      success: boolean;
+      data: { autoMergeUtxo: boolean; oneStepTransfers: boolean };
+    }>('/api/wallet/preferences', { signal });
+    return result.data;
+  }
+
+  async updatePreferences(preferences: { autoMergeUtxo?: boolean; oneStepTransfers?: boolean }, signal?: AbortSignal) {
+    const result = await this.request<{
+      success: boolean;
+      data: { autoMergeUtxo: boolean; oneStepTransfers: boolean };
+    }>(
+      '/api/wallet/preferences',
+      { method: 'PUT', body: preferences, signal }
+    );
+    return result.data;
+  }
+
   // Price
   async getCCPrice() {
     const result = await this.request<{
@@ -405,6 +585,21 @@ class ApiClient {
         rewardRate?: string; // String for precision
       };
     }>('/api/price/cc');
+    return result.data;
+  }
+
+  async getBTCPrice() {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        price: string; // String for precision
+        change24h: string;
+        currency: string;
+        symbol: string;
+        cached?: boolean;
+        fallback?: boolean;
+      };
+    }>('/api/price/btc');
     return result.data;
   }
 
@@ -854,6 +1049,259 @@ class ApiClient {
         walletId: string;
       };
     }>('/api/pin/reset', { method: 'POST', body: { sessionId } });
+    return result.data;
+  }
+
+  // ==================== ANS (Amulet Name Service) ====================
+
+  /**
+   * Get ANS configuration, pricing, and rules
+   */
+  async getAnsConfig() {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        nameSuffix: string;
+        isDevnet: boolean;
+        validation: {
+          minLength: number;
+          maxLength: number;
+          maxUrlLength: number;
+          maxDescriptionLength: number;
+        };
+        pricing: {
+          entryFee: string;
+          entryFeeCC: number;
+          lifetimeDays: number;
+          renewalDays: number;
+        };
+        rules: {
+          contractId: string;
+          entryFee: string;
+          entryLifetime: { microseconds: string };
+          renewalDuration: { microseconds: string };
+        } | null;
+      };
+    }>('/api/ans/config');
+    return result.data;
+  }
+
+  /**
+   * Check if a Canton Name is available
+   */
+  async checkAnsName(name: string) {
+    const result = await this.request<{
+      success: boolean;
+      name: string;
+      fullName: string | null;
+      available: boolean;
+      error?: string;
+    }>(`/api/ans/check/${encodeURIComponent(name)}`);
+    return result;
+  }
+
+  /**
+   * Validate a Canton Name format without checking availability
+   */
+  async validateAnsName(name: string) {
+    const result = await this.request<{
+      success: boolean;
+      name: string;
+      fullName: string | null;
+      valid: boolean;
+      error?: string;
+    }>(`/api/ans/validate/${encodeURIComponent(name)}`);
+    return result;
+  }
+
+  /**
+   * Lookup a Canton Name and get party details
+   */
+  async lookupAnsName(name: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        name: string;
+        baseName: string;
+        partyId: string;
+        url: string;
+        description: string;
+        expiresAt: string;
+        contractId: string;
+      };
+    }>(`/api/ans/lookup/${encodeURIComponent(name)}`);
+    return result.data;
+  }
+
+  /**
+   * Reverse lookup - get names for a party ID
+   */
+  async reverseLookupAns(partyId: string) {
+    const result = await this.request<{
+      success: boolean;
+      partyId: string;
+      found: boolean;
+      names: string[];
+      primaryName: string | null;
+    }>(`/api/ans/reverse/${encodeURIComponent(partyId)}`);
+    return result;
+  }
+
+  /**
+   * Search Canton Names by prefix
+   */
+  async searchAnsNames(prefix: string, limit = 10) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        prefix: string;
+        entries: Array<{
+          name: string;
+          baseName: string;
+          partyId: string;
+          url: string;
+          description: string;
+        }>;
+        count: number;
+        hasMore: boolean;
+      };
+    }>(`/api/ans/search?prefix=${encodeURIComponent(prefix)}&limit=${limit}`);
+    return result.data;
+  }
+
+  /**
+   * Register a new Canton Name
+   * Returns contract IDs for wallet payment confirmation
+   */
+  async registerAnsName(name: string, url = '', description = '') {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        name: string;
+        baseName: string;
+        fullName: string;
+        url: string;
+        description: string;
+        entryContextCid: string;
+        subscriptionRequestCid: string;
+        message: string;
+        nextStep: string;
+      };
+    }>('/api/ans/register', {
+      method: 'POST',
+      body: { name, url, description },
+    });
+    return result.data;
+  }
+
+  /**
+   * List user's registered Canton Names
+   */
+  async getMyAnsNames() {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        entries: Array<{
+          name: string;
+          baseName: string;
+          contractId: string;
+          amount: string;
+          unit: string;
+          expiresAt: string;
+          paymentInterval: string;
+          paymentDuration: string;
+        }>;
+        count: number;
+      };
+    }>('/api/ans/my-names');
+    return result.data;
+  }
+
+  // ==================== AI Agent ====================
+
+  /**
+   * Send a message to the AI agent
+   */
+  async agentChat(message: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        message: string;
+        pendingAction?: {
+          id: string;
+          type: 'send' | 'swap';
+          params: Record<string, string>;
+          expiresAt: number;
+        };
+        txResult?: {
+          txHash: string;
+          explorerUrl: string;
+          amount: string;
+          recipient: string;
+          status: string;
+        };
+        balance?: {
+          token: string;
+          amount: string;
+          usdValue?: string;
+        };
+      };
+    }>('/api/agent/chat', {
+      method: 'POST',
+      body: { message },
+    });
+    return result.data;
+  }
+
+  /**
+   * Confirm a pending agent action with PIN
+   */
+  async agentConfirm(actionId: string, userShareHex: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        message: string;
+        txResult?: {
+          txHash: string;
+          explorerUrl: string;
+          amount: string;
+          recipient: string;
+          status: string;
+        };
+      };
+    }>('/api/agent/confirm', {
+      method: 'POST',
+      body: { actionId, userShareHex },
+    });
+    return result.data;
+  }
+
+  /**
+   * Get pending agent action
+   */
+  async agentGetPending() {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        pendingAction: {
+          id: string;
+          type: 'send' | 'swap';
+          params: Record<string, string>;
+          expiresAt: number;
+        } | null;
+      };
+    }>('/api/agent/pending');
+    return result.data;
+  }
+
+  /**
+   * Clear agent conversation context
+   */
+  async agentClear() {
+    const result = await this.request<{
+      success: boolean;
+      data: { message: string };
+    }>('/api/agent/clear', { method: 'POST' });
     return result.data;
   }
 }

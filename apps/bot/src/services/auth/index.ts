@@ -140,7 +140,7 @@ export async function authenticateTelegram(initData: string): Promise<AuthResult
   let username: string | undefined;
 
   // Dev mode bypass - accept "dev_mode_TELEGRAM_ID" format
-  if (env.NODE_ENV === 'development' && initData.startsWith('dev_mode_')) {
+  if ((env.NODE_ENV === 'development' || env.DEV_AUTH_BYPASS) && initData.startsWith('dev_mode_')) {
     telegramId = initData.replace('dev_mode_', '');
     username = 'dev_user';
   } else {

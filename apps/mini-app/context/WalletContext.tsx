@@ -17,7 +17,13 @@ interface WalletData {
   walletId: string;
   partyId: string;
   publicKey: string;
-  balance: string;
+  balance: string;  // CC balance (backwards compat)
+  locked: string;   // CC locked (backwards compat)
+}
+
+// Multi-token balance item
+interface TokenBalance {
+  amount: string;
   locked: string;
 }
 
@@ -38,6 +44,14 @@ interface UtxoStatus {
   threshold: number;
 }
 
+interface PendingTransfer {
+  contractId: string;
+  sender: string;
+  receiver: string;
+  amount: string;
+  createdAt?: string;
+}
+
 interface WalletContextType {
   // Auth
   isAuthenticated: boolean;
@@ -50,6 +64,9 @@ interface WalletContextType {
   isWalletLoading: boolean;
   wallet: WalletData | null;
 
+  // Multi-token balances: { CC: { amount, locked }, USDCx: { amount, locked }, ... }
+  balances: Record<string, TokenBalance>;
+
   // Transfer
   isTransferring: boolean;
   transferError: string | null;
@@ -61,6 +78,11 @@ interface WalletContextType {
 
   // Sync
   isSyncing: boolean;
+
+  // Pending Transfers
+  pendingTransfers: PendingTransfer[];
+  isLoadingPendingTransfers: boolean;
+  isAcceptingTransfers: boolean;
 
   // Recovery
   recoveryCode: string | null;
@@ -96,13 +118,16 @@ interface WalletContextType {
   }>;
   completeWalletSetup: () => void;
   refreshBalance: () => Promise<void>;
-  sendTransfer: (toParty: string, amount: string, pin: string) => Promise<boolean>;
+  sendTransfer: (toParty: string, amount: string, pin: string, token?: 'CC' | 'USDCx') => Promise<boolean>;
   loadTransactions: () => Promise<void>;
   syncTransactions: () => Promise<{ success: boolean; synced?: number; error?: string }>;
   verifyPin: (pin: string) => Promise<boolean>;
   clearRecoveryCode: () => void;
   checkUtxoStatus: () => Promise<void>;
   mergeUtxos: (pin: string) => Promise<{ success: boolean; mergedCount?: number; error?: string }>;
+  loadPendingTransfers: () => Promise<void>;
+  acceptPendingTransfers: (pin: string) => Promise<{ success: boolean; accepted?: number; failed?: number; error?: string }>;
+  rejectPendingTransfer: (contractId: string, pin: string) => Promise<{ success: boolean; error?: string }>;
   recoverWithCode: (recoveryCode: string, newPin: string) => Promise<{
     success: boolean;
     error?: string;
@@ -129,6 +154,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [isWalletLoading, setIsWalletLoading] = useState(true);
   const [wallet, setWallet] = useState<WalletData | null>(null);
 
+  // Multi-token balances
+  const [balances, setBalances] = useState<Record<string, TokenBalance>>({});
+
   // Transfer state
   const [isTransferring, setIsTransferring] = useState(false);
   const [transferError, setTransferError] = useState<string | null>(null);
@@ -140,6 +168,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
   // Sync state
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Pending transfers state
+  const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
+  const [isLoadingPendingTransfers, setIsLoadingPendingTransfers] = useState(false);
+  const [isAcceptingTransfers, setIsAcceptingTransfers] = useState(false);
 
   // Recovery
   const [recoveryCode, setRecoveryCode] = useState<string | null>(null);
@@ -166,6 +199,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         // Get Telegram initData
         const tg = window.Telegram?.WebApp;
 
+        // Check if running on localhost (dev mode)
+        const isLocalDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+
         if (tg?.initData) {
           const result = await api.authenticate(tg.initData, abortController.signal);
 
@@ -183,7 +219,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             username: tgUser?.username,
           });
           setIsAuthenticated(true);
-        } else if (process.env.NODE_ENV === 'development') {
+        } else if (isLocalDev) {
           // Dev mode - authenticate with backend using mock data
           console.log('[WalletContext] Dev mode, authenticating...');
           try {
@@ -206,13 +242,14 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             if (!isMountedRef.current) return;
 
             console.error('[WalletContext] Auth failed:', authError);
-            // Fallback if backend auth fails - use legacy x-telegram-id header
+            // Fallback if backend auth fails - set dev token and user
+            api.setTokens('dev-token-555666777');
             setUser({
               id: 'dev-user',
               telegramId: '555666777',
               firstName: 'Developer',
             });
-            console.log('[WalletContext] Using fallback user');
+            console.log('[WalletContext] Using fallback user with dev token');
           }
           setIsAuthenticated(true);
         }
@@ -273,14 +310,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
         if (walletData) {
           // Wallet exists on backend (passkey or PIN flow)
-          const balance = await api.getBalance(abortController.signal);
+          // Fetch all token balances
+          const allBalances = await api.getAllBalances(abortController.signal);
 
           if (abortController.signal.aborted || !isMountedRef.current) return;
 
+          // Convert array to record and extract CC balance
+          const balanceRecord: Record<string, TokenBalance> = {};
+          let ccBalance = '0';
+          let ccLocked = '0';
+
+          for (const item of allBalances) {
+            balanceRecord[item.token] = {
+              amount: item.amount,
+              locked: item.locked,
+            };
+            if (item.token === 'CC') {
+              ccBalance = item.amount;
+              ccLocked = item.locked;
+            }
+          }
+
+          setBalances(balanceRecord);
           setWallet({
             ...walletData,
-            balance: balance.balance,
-            locked: balance.locked,
+            balance: ccBalance,
+            locked: ccLocked,
           });
           setHasWallet(true);
         } else {
@@ -320,8 +375,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setIsWalletLoading(true);
       console.log('[WalletContext] Calling API createWallet...');
 
-      // Create wallet via API
-      const result = await api.createWallet(pin, abortController.signal);
+      let result;
+      try {
+        // Create wallet via API
+        result = await api.createWallet(pin, abortController.signal);
+      } catch (apiError) {
+        // DEV MODE: If API fails, mock the wallet creation
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[WalletContext] DEV MODE: Mocking wallet creation...');
+          // Generate mock data for local testing
+          const mockWalletId = `dev-wallet-${Date.now()}`;
+          const mockPartyId = `dev-party-${Date.now()}`;
+          const mockPublicKey = '0'.repeat(64);
+          const mockUserShare = '1'.repeat(64);
+          const mockRecoveryShare = 'DEV-RCVRY-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+          result = {
+            walletId: mockWalletId,
+            partyId: mockPartyId,
+            publicKey: mockPublicKey,
+            userShare: mockUserShare,
+            recoveryShare: mockRecoveryShare,
+          };
+        } else {
+          throw apiError;
+        }
+      }
 
       if (abortController.signal.aborted || !isMountedRef.current) return false;
 
@@ -438,16 +517,36 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   // Refresh balance - use ref to avoid stale closure
+  // Now fetches ALL token balances (CC, USDCx, etc.)
   const refreshBalance = useCallback(async (signal?: AbortSignal) => {
     // Use ref to get current wallet value, avoiding stale closure
     if (!walletRef.current) return;
 
     try {
-      const balance = await api.getBalance(signal);
+      // Fetch all token balances
+      const allBalances = await api.getAllBalances(signal);
 
       if (signal?.aborted || !isMountedRef.current) return;
 
-      setWallet(prev => prev ? { ...prev, balance: balance.balance, locked: balance.locked } : null);
+      // Convert array to record
+      const balanceRecord: Record<string, TokenBalance> = {};
+      let ccBalance = '0';
+      let ccLocked = '0';
+
+      for (const item of allBalances) {
+        balanceRecord[item.token] = {
+          amount: item.amount,
+          locked: item.locked,
+        };
+        // Keep CC balance for backwards compat
+        if (item.token === 'CC') {
+          ccBalance = item.amount;
+          ccLocked = item.locked;
+        }
+      }
+
+      setBalances(balanceRecord);
+      setWallet(prev => prev ? { ...prev, balance: ccBalance, locked: ccLocked } : null);
     } catch (error) {
       if (isAbortError(error)) return;
       if (!isMountedRef.current) return;
@@ -456,7 +555,12 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Send transfer
-  const sendTransfer = useCallback(async (toParty: string, amount: string, pin: string): Promise<boolean> => {
+  const sendTransfer = useCallback(async (
+    toParty: string,
+    amount: string,
+    pin: string,
+    token: 'CC' | 'USDCx' = 'CC'
+  ): Promise<boolean> => {
     if (!user || !walletRef.current) return false;
 
     const abortController = new AbortController();
@@ -484,7 +588,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (abortController.signal.aborted || !isMountedRef.current) return false;
 
       // Send transfer
-      await api.sendTransfer(toParty, amount, userShare, undefined, abortController.signal);
+      await api.sendTransfer(toParty, amount, userShare, undefined, token, abortController.signal);
 
       if (abortController.signal.aborted || !isMountedRef.current) return false;
 
@@ -640,6 +744,122 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setUserShareHex(null);
   }, []);
 
+  // Load pending transfers
+  const loadPendingTransfers = useCallback(async (signal?: AbortSignal) => {
+    try {
+      setIsLoadingPendingTransfers(true);
+      const transfers = await api.getPendingTransfers(signal);
+
+      if (signal?.aborted || !isMountedRef.current) return;
+
+      // Ensure we always set an array
+      setPendingTransfers(Array.isArray(transfers) ? transfers : []);
+    } catch (error) {
+      if (isAbortError(error)) return;
+      if (!isMountedRef.current) return;
+      console.error('Load pending transfers failed:', error);
+      // On error, ensure state is empty array not undefined
+      setPendingTransfers([]);
+    } finally {
+      if (isMountedRef.current) {
+        setIsLoadingPendingTransfers(false);
+      }
+    }
+  }, []);
+
+  // Accept pending transfers
+  const acceptPendingTransfers = useCallback(async (pin: string): Promise<{
+    success: boolean;
+    accepted?: number;
+    failed?: number;
+    error?: string;
+  }> => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    const abortController = new AbortController();
+
+    try {
+      setIsAcceptingTransfers(true);
+
+      // Verify PIN locally before proceeding (security UX)
+      const stored = await getEncryptedShare(user.telegramId);
+      if (!stored) {
+        return { success: false, error: 'Wallet key not found' };
+      }
+
+      try {
+        // This validates PIN is correct by attempting to decrypt
+        await decryptWithPin(stored.encryptedShare, stored.iv, stored.salt, pin);
+      } catch {
+        return { success: false, error: 'Invalid PIN' };
+      }
+
+      if (abortController.signal.aborted || !isMountedRef.current) {
+        return { success: false, error: 'Operation cancelled' };
+      }
+
+      // Call accept transfers API (backend derives key server-side)
+      const result = await api.acceptPendingTransfers(abortController.signal);
+
+      if (abortController.signal.aborted || !isMountedRef.current) {
+        return { success: false, error: 'Operation cancelled' };
+      }
+
+      // Refresh pending transfers and balance
+      await loadPendingTransfers(abortController.signal);
+      await refreshBalance(abortController.signal);
+
+      return { success: true, accepted: result.accepted, failed: result.failed };
+    } catch (error) {
+      if (isAbortError(error)) {
+        return { success: false, error: 'Operation cancelled' };
+      }
+      if (!isMountedRef.current) {
+        return { success: false, error: 'Operation cancelled' };
+      }
+      console.error('Accept transfers failed:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Accept failed' };
+    } finally {
+      if (isMountedRef.current) {
+        setIsAcceptingTransfers(false);
+      }
+    }
+  }, [user, loadPendingTransfers, refreshBalance]);
+
+  // Reject a single pending transfer
+  const rejectPendingTransfer = useCallback(async (
+    contractId: string,
+    pin: string
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'Not authenticated' };
+
+    try {
+      // Verify PIN and get decrypted share
+      const stored = await getEncryptedShare(user.telegramId);
+      if (!stored) {
+        return { success: false, error: 'Wallet key not found' };
+      }
+
+      let userShareHex: string;
+      try {
+        userShareHex = await decryptWithPin(stored.encryptedShare, stored.iv, stored.salt, pin);
+      } catch {
+        return { success: false, error: 'Invalid PIN' };
+      }
+
+      // Call reject API with the decrypted share
+      await api.rejectPendingTransfer(contractId, userShareHex);
+
+      // Refresh pending transfers
+      await loadPendingTransfers();
+
+      return { success: true };
+    } catch (error) {
+      console.error('Reject transfer failed:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Reject failed' };
+    }
+  }, [user, loadPendingTransfers]);
+
   // Create wallet with existing passkey credential (new flow: passkey BEFORE wallet)
   const createWalletWithPasskeyCredential = useCallback(async (
     pin: string,
@@ -668,13 +888,36 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       setIsWalletLoading(true);
       console.log('[WalletContext] Calling API createWalletWithPasskeyCredential...');
 
-      // Create wallet via API with passkey credential already in place
-      const result = await api.createWalletWithPasskeyCredential(
-        pin,
-        credentialId,
-        publicKeySpki,
-        abortController.signal
-      );
+      let result;
+      try {
+        // Create wallet via API with passkey credential already in place
+        result = await api.createWalletWithPasskeyCredential(
+          pin,
+          credentialId,
+          publicKeySpki,
+          abortController.signal
+        );
+      } catch (apiError) {
+        // DEV MODE: If API fails, mock the wallet creation
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[WalletContext] DEV MODE: Mocking wallet creation with passkey...');
+          const mockWalletId = `dev-wallet-${Date.now()}`;
+          const mockPartyId = `dev-party-${Date.now()}`;
+          const mockPublicKey = '0'.repeat(64);
+          const mockUserShare = '1'.repeat(64);
+          const mockRecoveryShare = 'DEV-RCVRY-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+
+          result = {
+            walletId: mockWalletId,
+            partyId: mockPartyId,
+            publicKey: mockPublicKey,
+            userShare: mockUserShare,
+            recoveryShare: mockRecoveryShare,
+          };
+        } else {
+          throw apiError;
+        }
+      }
 
       if (abortController.signal.aborted || !isMountedRef.current) {
         return { success: false, error: 'Operation cancelled' };
@@ -862,12 +1105,16 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         hasWallet,
         isWalletLoading,
         wallet,
+        balances,
         isTransferring,
         transferError,
         transactions,
         utxoStatus,
         isMerging,
         isSyncing,
+        pendingTransfers,
+        isLoadingPendingTransfers,
+        isAcceptingTransfers,
         recoveryCode,
         userShareHex,
         createWallet,
@@ -882,6 +1129,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         clearRecoveryCode,
         checkUtxoStatus: () => checkUtxoStatus(),
         mergeUtxos,
+        loadPendingTransfers: () => loadPendingTransfers(),
+        acceptPendingTransfers,
+        rejectPendingTransfer,
         recoverWithCode,
       }}
     >

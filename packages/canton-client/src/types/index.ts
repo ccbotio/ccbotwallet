@@ -36,6 +36,42 @@ export interface HoldingUtxo {
   provider: string;
 }
 
+/**
+ * SDK HoldingUtxo response - complex nested structure from Canton SDK
+ * The SDK returns various nested formats depending on the operation
+ */
+export interface SDKHoldingUtxo {
+  cid?: string;
+  contractId?: string;
+  view?: {
+    amount: string;
+    lock?: unknown;
+    owner: string;
+    account?: { custodian: string };
+  };
+  amount?: string;
+  owner?: string;
+  // Top-level interfaceViewValue (simpler path)
+  interfaceViewValue?: {
+    amount?: string;
+    lock?: unknown;
+    owner?: string;
+    account?: { custodian?: string };
+  };
+  activeContract?: {
+    createdEvent?: {
+      interfaceViews?: Array<{
+        viewValue?: {
+          amount?: string;
+          lock?: unknown;
+          owner?: string;
+          account?: { custodian?: string };
+        };
+      }>;
+    };
+  };
+}
+
 export interface TransferRequest {
   fromParty: string;
   toParty: string;

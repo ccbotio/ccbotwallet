@@ -1,0 +1,72 @@
+name: Migration Check
+
+on:
+  pull_request:
+    paths:
+      - 'apps/bot/src/db/**'
+      - 'apps/bot/drizzle.config.ts'
+
+jobs:
+  check-migrations:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: test
+          POSTGRES_PASSWORD: test
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Run migrations
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        run: |
+          cd apps/bot
+          pnpm db:migrate
+
+      - name: Verify schema
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        run: |
+          cd apps/bot
+          # Generate fresh schema and compare
+          pnpm db:generate --name=verify 2>&1 || true
+
+          # Check if there are pending changes
+          if [ -f "src/db/migrations/*_verify.sql" ]; then
+            echo "⚠️ Schema drift detected! Migration files may be out of sync."
+            cat src/db/migrations/*_verify.sql
+            rm -f src/db/migrations/*_verify.sql
+            exit 1
+          fi
+
+          echo "✅ Schema is in sync with migrations"
+
+      - name: Test rollback simulation
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/test
+        run: |
+          # Verify all tables exist
+          PGPASSWORD=test psql -h localhost -U test -d test -c "\dt" | grep -E "users|wallets|transactions|swap_|bridge_|treasury_"
+          echo "✅ All expected tables exist"

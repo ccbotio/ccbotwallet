@@ -104,6 +104,7 @@ body {
   }
 
   #app-root {
+    width: 100%;
     max-width: 420px;
     left: 50%;
     transform: translateX(-50%);

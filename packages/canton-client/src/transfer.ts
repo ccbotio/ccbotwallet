@@ -5,6 +5,8 @@ import type {
   SignatureEntry,
 } from './types/index.js';
 import { AuthTokenProvider } from './auth.js';
+import { fetchWithRetry, fetchWithTimeout } from './utils/fetch-with-retry.js';
+import { CANTON_TIMEOUTS, RETRY_CONFIG } from '@repo/shared/constants';
 
 /**
  * Transfer management for Canton Network.
@@ -66,8 +68,8 @@ export class TransferManager {
     // Use provided nonce or try to get from API
     const nonce = providedNonce ?? (await this.getTransferNonce(request.fromParty));
 
-    // Step 1: Prepare transfer using transfer-preapproval API
-    const prepareResponse = await fetch(
+    // Step 1: Prepare transfer using transfer-preapproval API (safe to retry)
+    const prepareResponse = await fetchWithRetry(
       `${validatorUrl}/api/validator/v0/admin/external-party/transfer-preapproval/prepare-send`,
       {
         method: 'POST',
@@ -79,6 +81,11 @@ export class TransferManager {
           expires_at: expiresAt,
           nonce: nonce,
         }),
+        timeout: CANTON_TIMEOUTS.transfer,
+        retries: 2, // Safe to retry prepare
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       }
     );
 
@@ -97,7 +104,8 @@ export class TransferManager {
     const signatureBytes = signHash(hashBytes);
 
     // Step 3: Submit transfer with signature using submit-send
-    const submitResponse = await fetch(
+    // CRITICAL: NO RETRY - double-spend risk!
+    const submitResponse = await fetchWithTimeout(
       `${validatorUrl}/api/validator/v0/admin/external-party/transfer-preapproval/submit-send`,
       {
         method: 'POST',
@@ -110,6 +118,7 @@ export class TransferManager {
             signed_tx_hash: bytesToHex(signatureBytes),
           },
         }),
+        timeout: CANTON_TIMEOUTS.transfer,
       }
     );
 
@@ -166,7 +175,8 @@ export class TransferManager {
     const jsonApiUrl = this.config.jsonApiUrl || this.config.ledgerApiUrl;
     const headers = await this.auth.getHeaders();
 
-    const response = await fetch(`${jsonApiUrl}/api/validator/v0/wallet/transfer/prepare`, {
+    // Safe to retry prepare
+    const response = await fetchWithRetry(`${jsonApiUrl}/api/validator/v0/wallet/transfer/prepare`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -175,6 +185,11 @@ export class TransferManager {
         amount: request.amount,
         memo: request.memo,
       }),
+      timeout: CANTON_TIMEOUTS.transfer,
+      retries: 2,
+      backoffBase: RETRY_CONFIG.backoffBase,
+      backoffMax: RETRY_CONFIG.backoffMax,
+      retryOnStatus: RETRY_CONFIG.retryableStatus,
     });
 
     if (!response.ok) {
@@ -206,7 +221,8 @@ export class TransferManager {
     const jsonApiUrl = this.config.jsonApiUrl || this.config.ledgerApiUrl;
     const headers = await this.auth.getHeaders();
 
-    const response = await fetch(`${jsonApiUrl}/api/validator/v0/wallet/transfer/execute`, {
+    // CRITICAL: NO RETRY - idempotency not guaranteed, double-spend risk!
+    const response = await fetchWithTimeout(`${jsonApiUrl}/api/validator/v0/wallet/transfer/execute`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -217,6 +233,7 @@ export class TransferManager {
           format: signature.format,
         },
       }),
+      timeout: CANTON_TIMEOUTS.transfer,
     });
 
     if (!response.ok) {
@@ -245,10 +262,17 @@ export class TransferManager {
     const headers = await this.auth.getHeaders();
 
     try {
-      // Query the TransferCommandCounter for this party
-      const response = await fetch(
+      // Query the TransferCommandCounter for this party (safe to retry)
+      const response = await fetchWithRetry(
         `${validatorUrl}/api/validator/v0/admin/external-party/transfer-command-counter?party_id=${encodeURIComponent(partyId)}`,
-        { headers }
+        {
+          headers,
+          timeout: CANTON_TIMEOUTS.balance,
+          retries: 2,
+          backoffBase: RETRY_CONFIG.backoffBase,
+          backoffMax: RETRY_CONFIG.backoffMax,
+          retryOnStatus: RETRY_CONFIG.retryableStatus,
+        }
       );
 
       if (!response.ok) {
@@ -295,10 +319,16 @@ export class TransferManager {
         body.after = after;
       }
 
-      const response = await fetch(`${jsonApiUrl}/v2/updates/flats`, {
+      // Safe to retry history queries
+      const response = await fetchWithRetry(`${jsonApiUrl}/v2/updates/flats`, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),
+        timeout: CANTON_TIMEOUTS.history,
+        retries: 2,
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       });
 
       if (!response.ok) return [];

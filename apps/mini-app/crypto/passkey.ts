@@ -8,19 +8,56 @@
  * - Recovery share encryption/decryption
  */
 
+import { detectBrowser, getPasskeyInstructions, type BrowserInfo } from '../lib/browser-detect';
+
 // Relying Party configuration
 const RP_NAME = 'CC Bot Wallet';
 const RP_ID = typeof window !== 'undefined' ? window.location.hostname : 'ccbot.app';
 
 /**
  * Check if WebAuthn is supported in this environment.
+ * Uses browser detection to provide accurate support information.
  */
 export function isWebAuthnSupported(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    window.PublicKeyCredential !== undefined &&
-    typeof window.PublicKeyCredential === 'function'
-  );
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  // Basic WebAuthn API check
+  if (!window.PublicKeyCredential || typeof window.PublicKeyCredential !== 'function') {
+    return false;
+  }
+
+  // Browser-specific support check
+  const browser = detectBrowser();
+
+  // Telegram WebView doesn't support WebAuthn
+  if (browser.isTelegramWebView) {
+    console.warn('[Passkey] Telegram WebView detected - WebAuthn not supported');
+    return false;
+  }
+
+  // Check browser version support
+  if (!browser.supportsPasskey) {
+    console.warn('[Passkey] Browser does not support passkeys:', browser.name, browser.version);
+    return false;
+  }
+
+  return true;
+}
+
+/**
+ * Get detailed browser support information.
+ */
+export function getBrowserSupport(): { supported: boolean; browser: BrowserInfo; message: string } {
+  const browser = detectBrowser();
+  const message = getPasskeyInstructions(browser);
+
+  return {
+    supported: browser.supportsPasskey && !browser.isTelegramWebView,
+    browser,
+    message,
+  };
 }
 
 /**
@@ -77,8 +114,16 @@ export async function registerPasskey(
   challenge: string,
   displayName: string = 'CC Bot Wallet'
 ): Promise<PasskeyCredential> {
-  if (!isWebAuthnSupported()) {
-    throw new Error('WebAuthn is not supported in this browser');
+  // Get browser support details for better error messages
+  const { supported, browser, message } = getBrowserSupport();
+
+  if (!supported) {
+    throw new Error(message);
+  }
+
+  // Log browser capabilities for debugging
+  if (!browser.supportsPRF) {
+    console.info('[Passkey] Browser does not support PRF extension, using fallback key derivation');
   }
 
   const challengeBytes = base64ToBytes(challenge);
@@ -150,8 +195,11 @@ export async function authenticateWithPasskey(
   challenge: string,
   allowCredentials?: Array<{ credentialId: string }>
 ): Promise<PasskeyAssertion> {
-  if (!isWebAuthnSupported()) {
-    throw new Error('WebAuthn is not supported in this browser');
+  // Get browser support details for better error messages
+  const { supported, message } = getBrowserSupport();
+
+  if (!supported) {
+    throw new Error(message);
   }
 
   const challengeBytes = base64ToBytes(challenge);

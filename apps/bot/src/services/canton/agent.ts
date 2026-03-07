@@ -14,6 +14,7 @@ import { env } from '../../config/env.js';
 import { logger } from '../../lib/logger.js';
 import { redis } from '../../lib/redis.js';
 import { simulationService } from './simulation.js';
+import { cantonHealthy, cantonLatency, cantonTransfersTotal } from '../../lib/metrics.js';
 
 // Retry configuration
 const RETRY_CONFIG = {
@@ -98,16 +99,23 @@ export class CantonAgentService {
   constructor() {
     this.simulationMode = env.CANTON_SIMULATION_MODE;
 
+    // Determine if using unsafe auth (devnet/localnet or explicit CANTON_UNSAFE_SECRET)
+    const hasUnsafeSecret = !!env.CANTON_UNSAFE_SECRET;
+    const isDevnet = env.CANTON_NETWORK === 'devnet' || env.NODE_ENV !== 'production';
+    const useUnsafeAuth = isDevnet || hasUnsafeSecret;
+
     this.config = {
       network: env.CANTON_NETWORK,
       ledgerApiUrl: env.CANTON_LEDGER_API_URL ?? '',
       jsonApiUrl: env.CANTON_LEDGER_API_URL ?? '',
       participantId: env.CANTON_PARTICIPANT_ID ?? '',
       validatorUrl: env.CANTON_VALIDATOR_API_URL ?? env.CANTON_LEDGER_API_URL ?? '',
+      scanUrl: env.CANTON_SCAN_URL,
       ledgerApiUser: env.CANTON_LEDGER_API_USER ?? 'ledger-api-user',
       validatorAudience: env.CANTON_VALIDATOR_AUDIENCE ?? 'https://validator.example.com',
-      useUnsafeAuth: env.CANTON_NETWORK === 'devnet' || env.NODE_ENV !== 'production',
-      unsafeSecret: env.APP_SECRET,
+      useUnsafeAuth,
+      // Use CANTON_UNSAFE_SECRET if set, otherwise 'unsafe' for devnet or APP_SECRET for production
+      unsafeSecret: env.CANTON_UNSAFE_SECRET || (isDevnet ? 'unsafe' : env.APP_SECRET),
       ...(env.CANTON_DSO_PARTY_ID && { dsoPartyId: env.CANTON_DSO_PARTY_ID }),
       ...(env.CANTON_PROVIDER_PARTY_ID && { providerPartyId: env.CANTON_PROVIDER_PARTY_ID }),
     };
@@ -269,6 +277,12 @@ export class CantonAgentService {
       consecutiveFailures: this.consecutiveFailures,
       latencyMs: ledgerConnected ? latencyMs : null,
     };
+
+    // Update Prometheus metrics
+    cantonHealthy.set(this.isHealthy ? 1 : 0);
+    if (ledgerConnected) {
+      cantonLatency.observe({ operation: 'healthCheck' }, latencyMs / 1000);
+    }
 
     // Store health status in Redis
     await redis.set(
@@ -819,7 +833,18 @@ export class CantonAgentService {
     success: boolean
   ): Promise<void> {
     try {
-      // Increment operation count
+      // Record to Prometheus
+      cantonLatency.observe({ operation: operationType }, latencyMs / 1000);
+
+      // Track transfers specifically
+      if (operationType === 'sendTransfer') {
+        cantonTransfersTotal.inc({
+          token: 'CC',
+          status: success ? 'success' : 'failed',
+        });
+      }
+
+      // Increment operation count (Redis for historical tracking)
       await redis.hincrby(METRICS_KEYS.operationCount, operationType, 1);
 
       // Record latency (rolling average)

@@ -18,6 +18,7 @@ import TelegramGuard from "../components/TelegramGuard";
 import { isProduction } from "../lib/config";
 import { readClipboard, extractDigits, hapticSuccess, hapticLight, hapticError } from "../lib/clipboard";
 import { setupKeyboardListeners } from "../lib/keyboard";
+import { NETWORK_FEES } from "@repo/shared/constants";
 
 // ==================== STARS (pre-computed space/sky effect) ====================
 // Tiny twinkling stars
@@ -3921,36 +3922,155 @@ function Header({ title, onBack, rightAction }: { title: string; onBack?: () => 
   );
 }
 
+// ==================== PENDING TRANSFERS PIN MODAL ====================
+function PendingTransfersPinModal({
+  pendingCount,
+  totalAmount,
+  isLoading,
+  error,
+  onSubmit,
+  onClose,
+}: {
+  pendingCount: number;
+  totalAmount: string;
+  isLoading: boolean;
+  error: string | null;
+  onSubmit: (pin: string) => Promise<boolean>;
+  onClose: () => void;
+}) {
+  const [pin, setPin] = useState('');
+  const [localError, setLocalError] = useState<string | null>(null);
+
+  const handleKeyPress = async (key: string | number) => {
+    if (isLoading) return;
+
+    if (key === 'del') {
+      setPin(p => p.slice(0, -1));
+      setLocalError(null);
+    } else if (key !== '' && pin.length < 6) {
+      const newPin = pin + key;
+      setPin(newPin);
+      if (newPin.length === 6) {
+        const success = await onSubmit(newPin);
+        if (!success) {
+          setPin('');
+        }
+      }
+    }
+  };
+
+  const displayError = error || localError;
+
+  return (
+    <motion.div
+      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <motion.div
+        className="bg-[#0a0812] rounded-3xl p-6 mx-4 w-full max-w-sm border border-[#F3FF97]/30"
+        initial={{ scale: 0.9 }}
+        animate={{ scale: 1 }}
+      >
+        <h3 className="text-white text-xl font-bold mb-2 text-center">Confirm Claim</h3>
+        <p className="text-[#A89F91] text-sm text-center mb-6">
+          Accept {pendingCount} pending transfer{pendingCount > 1 ? 's' : ''} (+{totalAmount} CC)
+        </p>
+
+        <div className="flex justify-center gap-3 mb-6">
+          {[0,1,2,3,4,5].map((i) => (
+            <div
+              key={i}
+              className={`w-4 h-4 rounded-full transition-colors ${
+                pin.length > i ? 'bg-[#F3FF97]' : 'bg-white/20'
+              }`}
+            />
+          ))}
+        </div>
+
+        {displayError && (
+          <p className="text-red-500 text-sm text-center mb-4">{displayError}</p>
+        )}
+
+        {isLoading && (
+          <div className="flex items-center justify-center mb-4 gap-2">
+            <motion.div
+              className="w-4 h-4 border-2 border-[#F3FF97] border-t-transparent rounded-full"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            />
+            <span className="text-[#A89F91] text-sm">Claiming transfers...</span>
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-3">
+          {[1,2,3,4,5,6,7,8,9,'',0,'del'].map((key, i) => (
+            <button
+              key={i}
+              disabled={isLoading}
+              className={`py-4 rounded-xl text-xl font-bold transition-colors ${
+                key === '' ? 'invisible' :
+                isLoading ? 'bg-white/5 text-white/30' : 'bg-white/10 text-white hover:bg-white/20'
+              }`}
+              onClick={() => handleKeyPress(key)}
+            >
+              {key === 'del' ? 'DEL' : key}
+            </button>
+          ))}
+        </div>
+
+        <button
+          className="w-full mt-4 py-3 text-[#A89F91]"
+          onClick={onClose}
+          disabled={isLoading}
+        >
+          Cancel
+        </button>
+      </motion.div>
+    </motion.div>
+  );
+}
+
 // ==================== DASHBOARD ====================
 function Dashboard({ onNavigate, hasPendingTasks = true }: { onNavigate: (screen: Screen, params?: any) => void; hasPendingTasks?: boolean }) {
-  const { user, wallet, transactions, loadTransactions, refreshBalance } = useWalletContext();
+  const { user, wallet, balances, transactions, loadTransactions, refreshBalance, pendingTransfers, loadPendingTransfers, acceptPendingTransfers, isAcceptingTransfers } = useWalletContext();
   const { price, getUsdValue, getPortfolioChange } = usePrice(30000); // Update every 30s
   const tgUser = window.Telegram?.WebApp.initDataUnsafe?.user;
   const [isBalanceHidden, setIsBalanceHidden] = useState(false);
+  const [showPendingPinModal, setShowPendingPinModal] = useState(false);
+  const [pendingAcceptError, setPendingAcceptError] = useState<string | null>(null);
 
   useEffect(() => {
     loadTransactions();
-  }, [loadTransactions]);
+    loadPendingTransfers();
+  }, [loadTransactions, loadPendingTransfers]);
 
-  // Format balance for display
+  // Format balance for display (multi-token)
   const ccBalance = wallet?.balance ? parseFloat(wallet.balance).toFixed(2) : "0.00";
+  const usdcxBalance = balances.USDCx ? parseFloat(balances.USDCx.amount).toFixed(2) : "0.00";
+  const cbtcBalance = balances.cBTC ? parseFloat(balances.cBTC.amount).toFixed(6) : "0.000000";
   const totalBalance = `${ccBalance} CC`;
 
   // Calculate USD value and 24h change
   const usdValue = getUsdValue(ccBalance);
   const portfolioChange = getPortfolioChange(ccBalance);
 
+  // USDCx is 1:1 with USD, cBTC uses BTC price (placeholder for now)
+  const usdcxUsdValue = `$${usdcxBalance}`;
+  const cbtcUsdValue = "$0.00"; // TODO: Add BTC price feed
+
   const tokens = [
     { symbol: "CC", name: "CC", balance: ccBalance, value: usdValue, change: portfolioChange.percent, icon: "canton", color: "#00D4AA" },
-    { symbol: "USDCX", name: "USDCX", balance: "0.00", value: "$0.00", change: "+0.00%", icon: "usdc", color: "#2775CA" },
-    { symbol: "cBTC", name: "cBTC", balance: "0.00", value: "$0.00", change: "+0.00%", icon: "cbtc", color: "#F7931A" },
+    { symbol: "USDCX", name: "USDCX", balance: usdcxBalance, value: usdcxUsdValue, change: "+0.00%", icon: "usdc", color: "#2775CA" },
+    { symbol: "cBTC", name: "cBTC", balance: cbtcBalance, value: cbtcUsdValue, change: "+0.00%", icon: "cbtc", color: "#F7931A" },
   ];
 
   const recentTxs = transactions.slice(0, 4).map(tx => ({
     id: tx.id,
     txHash: tx.txHash || tx.id,
     type: tx.type,
-    amount: `${tx.type === 'send' ? '-' : '+'}${tx.amount} CC`,
+    amount: `${tx.type === 'send' ? '-' : '+'}${tx.amount} ${tx.token || 'CC'}`,
     address: tx.counterparty ? tx.counterparty.slice(0, 12) + '...' : 'Unknown',
     date: new Date(tx.timestamp).toLocaleDateString(),
   }));
@@ -3958,6 +4078,26 @@ function Dashboard({ onNavigate, hasPendingTasks = true }: { onNavigate: (screen
   const openTxInExplorer = (txHash: string) => {
     const explorerUrl = `https://devnet.ccview.io/tx/${txHash}`;
     window.open(explorerUrl, '_blank');
+  };
+
+  // Calculate total pending amount (with safety check)
+  const totalPendingAmount = (pendingTransfers || []).reduce((sum, t) => sum + parseFloat(t.amount || '0'), 0).toFixed(2);
+
+  // Handle accepting pending transfers
+  const handleAcceptPending = async (pin: string): Promise<boolean> => {
+    setPendingAcceptError(null);
+    const result = await acceptPendingTransfers(pin);
+    if (result.success) {
+      setShowPendingPinModal(false);
+      try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+      // Refresh balance after accepting
+      refreshBalance();
+      return true;
+    } else {
+      setPendingAcceptError(result.error || 'Failed to accept transfers');
+      try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
+      return false;
+    }
   };
 
   return (
@@ -4157,6 +4297,69 @@ function Dashboard({ onNavigate, hasPendingTasks = true }: { onNavigate: (screen
         </div>
       </div>
 
+      {/* Pending Transfers Banner */}
+      {pendingTransfers.length > 0 && (
+        <div className="px-4 mb-4">
+          <motion.div
+            className="rounded-2xl p-4 relative overflow-hidden cursor-pointer"
+            style={{
+              background: "linear-gradient(135deg, rgba(243, 255, 151, 0.15) 0%, rgba(135, 92, 255, 0.15) 100%)",
+              border: "1px solid rgba(243, 255, 151, 0.3)"
+            }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => {
+              try { window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("medium"); } catch {}
+              setShowPendingPinModal(true);
+            }}
+            animate={{
+              boxShadow: [
+                "0 0 10px rgba(243, 255, 151, 0.2)",
+                "0 0 20px rgba(243, 255, 151, 0.4)",
+                "0 0 10px rgba(243, 255, 151, 0.2)"
+              ]
+            }}
+            transition={{ duration: 2, repeat: Infinity }}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full flex items-center justify-center bg-[#F3FF97]/20">
+                <span className="material-symbols-outlined text-[#F3FF97] text-2xl">pending</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-[#FFFFFC] font-bold">
+                  {pendingTransfers.length} Pending Transfer{pendingTransfers.length > 1 ? 's' : ''}
+                </p>
+                <p className="text-[#A89F91] text-sm">
+                  +{totalPendingAmount} CC waiting to be claimed
+                </p>
+              </div>
+              <motion.div
+                className="px-4 py-2 rounded-xl bg-[#F3FF97] text-[#030206] font-bold text-sm"
+                whileHover={{ scale: 1.05 }}
+              >
+                {isAcceptingTransfers ? 'Claiming...' : 'Claim'}
+              </motion.div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* PIN Modal for Pending Transfers */}
+      <AnimatePresence>
+        {showPendingPinModal && (
+          <PendingTransfersPinModal
+            pendingCount={pendingTransfers.length}
+            totalAmount={totalPendingAmount}
+            isLoading={isAcceptingTransfers}
+            error={pendingAcceptError}
+            onSubmit={handleAcceptPending}
+            onClose={() => {
+              setShowPendingPinModal(false);
+              setPendingAcceptError(null);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
       {/* Recent Activity */}
       <div className="px-4">
         <div className="flex items-center justify-between mb-3">
@@ -4338,10 +4541,10 @@ interface TransactionConfirmationProps {
 
 function TransactionConfirmation({ pendingTransaction, onConfirm, onCancel }: TransactionConfirmationProps) {
   const { getUsdValue } = usePrice();
-  const ESTIMATED_NETWORK_FEE = 0.001; // Estimated network fee in CC
+  const estimatedNetworkFee = parseFloat(NETWORK_FEES.estimatedTransferFee);
 
   const amount = parseFloat(pendingTransaction.amount) || 0;
-  const total = amount + ESTIMATED_NETWORK_FEE;
+  const total = amount + estimatedNetworkFee;
   const usdAmount = getUsdValue(amount);
   const usdTotal = getUsdValue(total);
 
@@ -4437,7 +4640,7 @@ function TransactionConfirmation({ pendingTransaction, onConfirm, onCancel }: Tr
                   <span className="text-taupe">Network Fee</span>
                   <span className="text-xs text-yellow-500 bg-yellow-500/10 px-2 py-0.5 rounded-full">estimated</span>
                 </div>
-                <p className="text-white font-medium">~{ESTIMATED_NETWORK_FEE.toFixed(4)} CC</p>
+                <p className="text-white font-medium">~{estimatedNetworkFee.toFixed(4)} CC</p>
               </div>
             </div>
 
@@ -4516,7 +4719,7 @@ const TOKEN_OPTIONS = [
 
 // ==================== SEND SCREEN ====================
 function SendScreen({ onBack }: { onBack: () => void }) {
-  const { wallet, sendTransfer, isTransferring, transferError, refreshBalance } = useWalletContext();
+  const { wallet, balances, sendTransfer, isTransferring, transferError, refreshBalance } = useWalletContext();
   const security = useSecurity();
   const [recipient, setRecipient] = useState("");
   const [recipientPartyId, setRecipientPartyId] = useState("");
@@ -4539,13 +4742,16 @@ function SendScreen({ onBack }: { onBack: () => void }) {
   const isMobile = typeof window !== 'undefined' &&
     ['android', 'ios'].includes(String(window.Telegram?.WebApp?.platform || ''));
 
+  // Get token balances from multi-token state
   const ccBalance = wallet?.balance ? parseFloat(wallet.balance) : 0;
+  const usdcxBalance = balances.USDCx ? parseFloat(balances.USDCx.amount) : 0;
+  const cbtcBalance = balances.cBTC ? parseFloat(balances.cBTC.amount) : 0;
 
-  // Token balances - CC from wallet, others are 0 for now (not yet implemented)
+  // Token balances - now using real multi-token balances
   const tokenBalances: Record<string, number> = {
     'CC': ccBalance,
-    'cBTC': 0,
-    'USDCX': 0,
+    'cBTC': cbtcBalance,
+    'USDCX': usdcxBalance,
   };
 
   // Get balance for selected token
@@ -5170,7 +5376,7 @@ interface SwapPreviewData {
 }
 
 function SwapScreen({ onBack }: { onBack: () => void }) {
-  const { wallet, transactions } = useWalletContext();
+  const { wallet, balances, transactions, refreshBalance } = useWalletContext();
   const { price } = usePrice();
   const [fromAmount, setFromAmount] = useState("");
   const [activeTab, setActiveTab] = useState<'swap' | 'history'>('swap');
@@ -5188,13 +5394,25 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
   const [slippageTolerance, setSlippageTolerance] = useState(0.5); // 0.5%
   const [showSlippageSettings, setShowSlippageSettings] = useState(false);
 
-  const ccBalance = wallet?.balance ? parseFloat(wallet.balance) : 0;
+  // PIN Modal for swap execution
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pin, setPin] = useState("");
+  const [pinError, setPinError] = useState("");
 
-  // Token balances
+  // Quote state
+  const [quoteId, setQuoteId] = useState<string | null>(null);
+  const [isLoadingQuote, setIsLoadingQuote] = useState(false);
+
+  // Get token balances from multi-token state
+  const ccBalance = wallet?.balance ? parseFloat(wallet.balance) : 0;
+  const usdcxBalance = balances.USDCx ? parseFloat(balances.USDCx.amount) : 0;
+  const cbtcBalance = balances.cBTC ? parseFloat(balances.cBTC.amount) : 0;
+
+  // Token balances - using real multi-token balances
   const tokenBalances: Record<string, number> = {
     'CC': ccBalance,
-    'cBTC': 0,
-    'USDCX': 0,
+    'cBTC': cbtcBalance,
+    'USDCX': usdcxBalance,
   };
 
   // Get token info by symbol
@@ -5210,45 +5428,41 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
     window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
   };
 
-  // Mock swap history - In production, this would come from API
-  const swapHistory: SwapTransaction[] = [
-    {
-      id: 'swap_1',
-      fromToken: 'CC',
-      toToken: 'USDCX',
-      fromAmount: '100.00',
-      toAmount: '0.50',
-      rate: '0.005',
-      status: 'completed',
-      txHash: '00000001792ba70c37cdfb0e6c51eb91f2ed0968f8deedb767d00123456789ab',
-      timestamp: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-      networkFee: '0.001'
-    },
-    {
-      id: 'swap_2',
-      fromToken: 'CC',
-      toToken: 'cBTC',
-      fromAmount: '500.00',
-      toAmount: '0.00025',
-      rate: '0.0000005',
-      status: 'completed',
-      txHash: '00000001792ba70c37cdfb0e6c51eb91f2ed0968f8deedb767d00987654321cd',
-      timestamp: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-      networkFee: '0.001'
-    },
-    {
-      id: 'swap_3',
-      fromToken: 'USDCX',
-      toToken: 'CC',
-      fromAmount: '1.00',
-      toAmount: '200.00',
-      rate: '200',
-      status: 'pending',
-      txHash: '00000001792ba70c37cdfb0e6c51eb91f2ed0968f8deedb767d00abcdef1234ef',
-      timestamp: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-      networkFee: '0.01'
-    },
-  ];
+  // Swap history from API
+  const [swapHistory, setSwapHistory] = useState<SwapTransaction[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+
+  // Load swap history when history tab is selected
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadSwapHistory();
+    }
+  }, [activeTab]);
+
+  const loadSwapHistory = async () => {
+    setIsLoadingHistory(true);
+    try {
+      const result = await api.getSwapHistory(20, 0);
+      const mappedHistory: SwapTransaction[] = result.swaps.map(swap => ({
+        id: swap.id,
+        fromToken: swap.fromToken,
+        toToken: swap.toToken,
+        fromAmount: swap.fromAmount,
+        toAmount: swap.toAmount,
+        rate: (parseFloat(swap.toAmount) / parseFloat(swap.fromAmount)).toFixed(6),
+        status: swap.status === 'completed' ? 'completed' :
+                swap.status === 'failed' || swap.status === 'refund_failed' ? 'failed' : 'pending',
+        txHash: swap.treasuryToUserTxHash || swap.userToTreasuryTxHash || swap.id,
+        timestamp: swap.createdAt,
+        networkFee: swap.fee,
+      }));
+      setSwapHistory(mappedHistory);
+    } catch (error) {
+      console.error('Failed to load swap history:', error);
+    } finally {
+      setIsLoadingHistory(false);
+    }
+  };
 
   // Format timestamp for display
   const formatSwapDate = (timestamp: string) => {
@@ -5319,8 +5533,8 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
     return 'text-green-400';
   };
 
-  // Handle swap preview
-  const handleSwapPreview = () => {
+  // Handle swap preview - fetch quote from API
+  const handleSwapPreview = async () => {
     if (!fromAmount || parseFloat(fromAmount) <= 0) {
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
       return;
@@ -5333,59 +5547,127 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
       return;
     }
 
-    const toAmount = calculateToAmount(fromAmount, fromToken.symbol, toToken.symbol);
-    const priceImpact = calculatePriceImpact(fromAmount);
-    const minReceived = (parseFloat(toAmount) * (1 - slippageTolerance / 100)).toFixed(
-      toToken.symbol === 'cBTC' ? 8 : 2
-    );
+    // Only CC <-> USDCX swaps are supported
+    if (!['CC', 'USDCX'].includes(fromToken.symbol) || !['CC', 'USDCX'].includes(toToken.symbol)) {
+      setSwapError('Only CC ↔ USDCX swaps are supported');
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+      return;
+    }
 
-    const previewData: SwapPreviewData = {
-      fromToken,
-      toToken,
-      fromAmount,
-      toAmount,
-      toAmountMin: minReceived,
-      exchangeRate: getExchangeRate(fromToken.symbol, toToken.symbol).toString(),
-      priceImpact,
-      slippage: slippageTolerance,
-      networkFee: '0.001',
-      networkFeeUsd: '0.002',
-      estimatedTime: '~5 sec',
-      route: fromToken.symbol === toToken.symbol ? [fromToken.symbol] : [fromToken.symbol, toToken.symbol],
-    };
-
-    setSwapPreviewData(previewData);
+    setIsLoadingQuote(true);
     setSwapError(null);
-    setShowSwapPreview(true);
-    window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("medium");
+
+    try {
+      // Fetch real quote from API
+      const quote = await api.getSwapQuote(
+        fromToken.symbol as 'CC' | 'USDCx',
+        toToken.symbol as 'CC' | 'USDCx',
+        fromAmount,
+        'exactIn'
+      );
+
+      setQuoteId(quote.quoteId);
+
+      const priceImpact = quote.priceImpact || calculatePriceImpact(fromAmount);
+      const minReceived = (parseFloat(quote.toAmount) * (1 - slippageTolerance / 100)).toFixed(
+        toToken.symbol === 'cBTC' ? 8 : 2
+      );
+
+      const previewData: SwapPreviewData = {
+        fromToken,
+        toToken,
+        fromAmount: quote.fromAmount,
+        toAmount: quote.toAmount,
+        toAmountMin: minReceived,
+        exchangeRate: quote.exchangeRate,
+        priceImpact,
+        slippage: slippageTolerance,
+        networkFee: quote.fee,
+        networkFeeUsd: `$${(parseFloat(quote.fee) * (price || 0.005)).toFixed(4)}`,
+        estimatedTime: '~10 sec',
+        route: [fromToken.symbol, toToken.symbol],
+      };
+
+      setSwapPreviewData(previewData);
+      setShowSwapPreview(true);
+      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("medium");
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to get quote';
+      setSwapError(errorMsg);
+      window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
+    } finally {
+      setIsLoadingQuote(false);
+    }
   };
 
-  // Execute swap
+  // Show PIN modal for swap execution
+  const handleConfirmSwap = () => {
+    if (!swapPreviewData || !quoteId) return;
+    setPin("");
+    setPinError("");
+    setShowPinModal(true);
+  };
+
+  // Execute swap with PIN
   const executeSwap = async () => {
-    if (!swapPreviewData) return;
+    if (!swapPreviewData || !quoteId || !pin) return;
 
     setIsSwapping(true);
     setSwapError(null);
+    setShowPinModal(false);
     window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("heavy");
 
     try {
-      // Simulate swap execution - in production, this would call the Canton Network
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Get user share from keystore and decrypt with PIN
+      const { getEncryptedShare } = await import('../crypto/keystore');
+      const { decryptWithPin } = await import('../crypto/pin');
+
+      const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
+      const telegramId = tgUser?.id?.toString() || 'dev-user';
+
+      const stored = await getEncryptedShare(telegramId);
+      if (!stored) {
+        throw new Error('Wallet key not found');
+      }
+
+      const userShareHex = await decryptWithPin(
+        stored.encryptedShare,
+        stored.iv,
+        stored.salt,
+        pin
+      );
+
+      // Execute swap via API
+      const result = await api.executeSwap(quoteId, userShareHex);
+
+      if (!result.success) {
+        throw new Error(result.error || 'Swap failed');
+      }
 
       // Success
       setSwapSuccess(true);
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success");
+
+      // Refresh balances
+      await refreshBalance();
 
       // Reset after delay
       setTimeout(() => {
         setShowSwapPreview(false);
         setSwapSuccess(false);
         setSwapPreviewData(null);
+        setQuoteId(null);
         setFromAmount("");
       }, 2000);
 
     } catch (error) {
-      setSwapError('Swap failed. Please try again.');
+      const errorMsg = error instanceof Error ? error.message : 'Swap failed';
+      if (errorMsg.includes('decrypt') || errorMsg.includes('PIN')) {
+        setPinError('Invalid PIN');
+        setShowPinModal(true);
+      } else {
+        setSwapError(errorMsg);
+      }
       window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error");
     } finally {
       setIsSwapping(false);
@@ -5600,7 +5882,7 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-taupe text-sm">Network Fee</span>
-                <span className="text-white text-sm">~0.001 CC ($0.002)</span>
+                <span className="text-white text-sm">~{NETWORK_FEES.estimatedTransferFee} CC</span>
               </div>
             </div>
 
@@ -6028,7 +6310,7 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
                           : 'bg-gradient-to-r from-purple to-lilac'
                     }`}
                     whileTap={{ scale: isSwapping ? 1 : 0.98 }}
-                    onClick={executeSwap}
+                    onClick={handleConfirmSwap}
                     disabled={isSwapping}
                   >
                     {isSwapping ? (
@@ -6051,6 +6333,94 @@ function SwapScreen({ onBack }: { onBack: () => void }) {
                   </p>
                 </div>
               )}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* PIN Modal for Swap */}
+      <AnimatePresence>
+        {showPinModal && (
+          <motion.div
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => !isSwapping && setShowPinModal(false)}
+          >
+            <motion.div
+              className="bg-[#1a1a2e] rounded-2xl p-6 w-full max-w-sm border border-white/10"
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-xl font-bold text-white text-center mb-2">Enter PIN</h3>
+              <p className="text-taupe text-center text-sm mb-6">
+                Enter your PIN to confirm the swap
+              </p>
+
+              {/* PIN Input */}
+              <div className="flex justify-center gap-2 mb-4">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <div
+                    key={i}
+                    className={`w-10 h-12 rounded-lg border-2 flex items-center justify-center text-xl font-bold ${
+                      pin.length > i
+                        ? 'border-purple bg-purple/20 text-white'
+                        : 'border-white/20 text-transparent'
+                    }`}
+                  >
+                    {pin.length > i ? '•' : ''}
+                  </div>
+                ))}
+              </div>
+
+              {pinError && (
+                <p className="text-red-400 text-center text-sm mb-4">{pinError}</p>
+              )}
+
+              {/* Number Pad */}
+              <div className="grid grid-cols-3 gap-2 mb-4">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, '', 0, 'del'].map((num, idx) => (
+                  <button
+                    key={idx}
+                    className={`h-14 rounded-xl text-xl font-bold transition-all ${
+                      num === ''
+                        ? 'invisible'
+                        : num === 'del'
+                        ? 'bg-white/5 text-taupe hover:bg-white/10'
+                        : 'bg-white/10 text-white hover:bg-white/20'
+                    }`}
+                    onClick={() => {
+                      if (num === 'del') {
+                        setPin((p) => p.slice(0, -1));
+                        setPinError("");
+                      } else if (typeof num === 'number' && pin.length < 6) {
+                        const newPin = pin + num;
+                        setPin(newPin);
+                        setPinError("");
+                        if (newPin.length === 6) {
+                          // Auto-submit on 6 digits
+                          setTimeout(() => executeSwap(), 100);
+                        }
+                      }
+                      window.Telegram?.WebApp?.HapticFeedback?.impactOccurred("light");
+                    }}
+                    disabled={isSwapping}
+                  >
+                    {num === 'del' ? '⌫' : num}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                className="w-full py-3 rounded-xl bg-white/5 text-taupe font-medium"
+                onClick={() => setShowPinModal(false)}
+                disabled={isSwapping}
+              >
+                Cancel
+              </button>
             </motion.div>
           </motion.div>
         )}
@@ -7819,13 +8189,55 @@ function SettingsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }
   const [oneStepTransfers, setOneStepTransfers] = useState(true);
   const [daUtilityTokens, setDaUtilityTokens] = useState(false);
   const [autoMergeUtxo, setAutoMergeUtxo] = useState(true);
+  const [isLoadingPrefs, setIsLoadingPrefs] = useState(true);
+  const [isSavingPrefs, setIsSavingPrefs] = useState(false);
 
-
+  // Load preferences from backend
   useEffect(() => {
     if (hasWallet) {
       checkUtxoStatus();
+      // Load user preferences
+      api.getPreferences()
+        .then(prefs => {
+          setOneStepTransfers(prefs.oneStepTransfers);
+          setAutoMergeUtxo(prefs.autoMergeUtxo);
+        })
+        .catch(err => console.warn('Failed to load preferences:', err))
+        .finally(() => setIsLoadingPrefs(false));
+    } else {
+      setIsLoadingPrefs(false);
     }
   }, [hasWallet, checkUtxoStatus]);
+
+  // Handler for one-step transfers toggle
+  const handleOneStepTransfersToggle = async () => {
+    const newValue = !oneStepTransfers;
+    setOneStepTransfers(newValue);
+    setIsSavingPrefs(true);
+    try {
+      await api.updatePreferences({ oneStepTransfers: newValue });
+    } catch (err) {
+      console.error('Failed to save preference:', err);
+      setOneStepTransfers(!newValue); // Revert on error
+    } finally {
+      setIsSavingPrefs(false);
+    }
+  };
+
+  // Handler for auto merge toggle
+  const handleAutoMergeToggle = async () => {
+    const newValue = !autoMergeUtxo;
+    setAutoMergeUtxo(newValue);
+    setIsSavingPrefs(true);
+    try {
+      await api.updatePreferences({ autoMergeUtxo: newValue });
+    } catch (err) {
+      console.error('Failed to save preference:', err);
+      setAutoMergeUtxo(!newValue); // Revert on error
+    } finally {
+      setIsSavingPrefs(false);
+    }
+  };
 
   const handleMergeClick = () => {
     setPin("");
@@ -7918,8 +8330,9 @@ function SettingsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }
                   </div>
                 </div>
                 <button
-                  className={`w-12 h-7 rounded-full transition-colors ${oneStepTransfers ? 'bg-purple' : 'bg-white/20'}`}
-                  onClick={() => setOneStepTransfers(!oneStepTransfers)}
+                  className={`w-12 h-7 rounded-full transition-colors ${oneStepTransfers ? 'bg-purple' : 'bg-white/20'} ${isSavingPrefs || isLoadingPrefs ? 'opacity-50' : ''}`}
+                  onClick={handleOneStepTransfersToggle}
+                  disabled={isSavingPrefs || isLoadingPrefs}
                 >
                   <motion.div
                     className="w-5 h-5 bg-white rounded-full shadow-md"
@@ -7968,8 +8381,9 @@ function SettingsScreen({ onNavigate }: { onNavigate: (screen: Screen) => void }
                   </div>
                 </div>
                 <button
-                  className={`w-12 h-7 rounded-full transition-colors ${autoMergeUtxo ? 'bg-purple' : 'bg-white/20'}`}
-                  onClick={() => setAutoMergeUtxo(!autoMergeUtxo)}
+                  className={`w-12 h-7 rounded-full transition-colors ${autoMergeUtxo ? 'bg-purple' : 'bg-white/20'} ${isSavingPrefs || isLoadingPrefs ? 'opacity-50' : ''}`}
+                  onClick={handleAutoMergeToggle}
+                  disabled={isSavingPrefs || isLoadingPrefs}
                 >
                   <motion.div
                     className="w-5 h-5 bg-white rounded-full shadow-md"
@@ -10358,7 +10772,7 @@ function CNSScreen({ onBack }: { onBack: () => void }) {
                 <div className="border-t border-white/10 pt-3 mt-3 space-y-2">
                   <div className="flex justify-between items-center">
                     <span className="text-white/60 text-sm">Network Fee</span>
-                    <span className="text-white/80 text-sm">~0.001 CC</span>
+                    <span className="text-white/80 text-sm">~{NETWORK_FEES.estimatedTransferFee} CC</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-white/60 text-sm">Registration Fee</span>
@@ -11076,9 +11490,16 @@ function TelegramAppContent() {
     if (!isOnboarded) {
       switch (navigation.screen) {
         case "onboarding":
-          // Go to email setup for full onboarding flow
+          // Go to email setup for full onboarding flow (or skip in dev mode)
+          const isDevBypass = typeof window !== 'undefined' && window.location.hostname === 'localhost';
           const handleContinue = () => {
-            navigate("email-setup");
+            if (isDevBypass) {
+              // DEV MODE: Skip email verification, go directly to PIN setup
+              setIsEmailVerified(true);
+              navigate("pin-setup");
+            } else {
+              navigate("email-setup");
+            }
           };
           return <OnboardingScreen onContinue={handleContinue} onExisting={() => navigate("recovery-email")} />;
         case "email-setup":
@@ -11560,8 +11981,11 @@ export default function TelegramApp() {
 
     const username = tg?.initDataUnsafe?.user?.username?.toLowerCase();
 
-    // Development mode only - allow access for testing
-    if (process.env.NODE_ENV === 'development') {
+    // Development mode or localhost - allow access for testing
+    const isLocalhost = typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+
+    if (process.env.NODE_ENV === 'development' || isLocalhost) {
       setIsAllowed(true);
       return;
     }

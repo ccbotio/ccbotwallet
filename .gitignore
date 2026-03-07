@@ -8,10 +8,16 @@ build
 .next
 .turbo
 
-# Environment
+# Environment - NEVER commit these
 .env
+.env.*
+!.env.example
+!.env.*.example
 .env.local
-.env.*.local
+.env.production
+.env.production.local
+.env.development
+.env.development.local
 
 # IDE
 .idea
@@ -38,6 +44,39 @@ coverage
 
 # Local/sensitive files
 CLAUDE.md
-.env.example
 docker/.env.production
 docker/.env.production.example
+
+# Secrets (extra safety)
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials.json
+secrets/
+.secrets/
+**/secrets/
+**/.secrets/
+
+# App-specific environment files
+apps/bot/.env
+apps/bot/.env.*
+!apps/bot/.env.example
+
+apps/mini-app/.env
+apps/mini-app/.env.*
+apps/mini-app/.env.local
+apps/mini-app/.env.production
+!apps/mini-app/.env.example
+
+# Docker environment
+docker/.env
+docker/.env.*
+!docker/.env.example
+
+# Never commit private keys or tokens
+**/private-key*
+**/private_key*
+**/*token*.txt
+**/*secret*.txt

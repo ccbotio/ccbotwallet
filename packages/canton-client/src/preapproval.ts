@@ -1,5 +1,7 @@
 import type { CantonConfig, TransferPreapproval } from './types/index.js';
 import { AuthTokenProvider } from './auth.js';
+import { fetchWithRetry, fetchWithTimeout } from './utils/fetch-with-retry.js';
+import { CANTON_TIMEOUTS, RETRY_CONFIG } from '@repo/shared/constants';
 
 /**
  * TransferPreapproval management for Canton Network.
@@ -26,13 +28,18 @@ export class PreapprovalManager {
     const jsonApiUrl = this.config.jsonApiUrl || this.config.ledgerApiUrl;
     const headers = await this.auth.getHeaders();
 
-    // Step 1: Prepare the preapproval creation
-    const prepareResponse = await fetch(
+    // Step 1: Prepare the preapproval creation (safe to retry)
+    const prepareResponse = await fetchWithRetry(
       `${jsonApiUrl}/api/validator/v0/wallet/preapproval/prepare`,
       {
         method: 'POST',
         headers,
         body: JSON.stringify({ party_id: partyId }),
+        timeout: CANTON_TIMEOUTS.preapproval,
+        retries: 2,
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       }
     );
 
@@ -51,7 +58,8 @@ export class PreapprovalManager {
     const signatureBytes = signHash(hashBytes);
 
     // Step 3: Execute the preapproval
-    const executeResponse = await fetch(
+    // CRITICAL: NO RETRY - duplicate preapproval risk!
+    const executeResponse = await fetchWithTimeout(
       `${jsonApiUrl}/api/validator/v0/wallet/preapproval/execute`,
       {
         method: 'POST',
@@ -64,6 +72,7 @@ export class PreapprovalManager {
             format: 'ed25519',
           },
         }),
+        timeout: CANTON_TIMEOUTS.preapproval,
       }
     );
 
@@ -94,9 +103,17 @@ export class PreapprovalManager {
     const headers = await this.auth.getHeaders();
 
     try {
-      const response = await fetch(
+      // Safe to retry GET requests
+      const response = await fetchWithRetry(
         `${jsonApiUrl}/api/validator/v0/wallet/preapproval?party_id=${encodeURIComponent(partyId)}`,
-        { headers }
+        {
+          headers,
+          timeout: CANTON_TIMEOUTS.balance,
+          retries: 2,
+          backoffBase: RETRY_CONFIG.backoffBase,
+          backoffMax: RETRY_CONFIG.backoffMax,
+          retryOnStatus: RETRY_CONFIG.retryableStatus,
+        }
       );
 
       if (!response.ok) return null;
@@ -131,7 +148,8 @@ export class PreapprovalManager {
     const jsonApiUrl = this.config.jsonApiUrl || this.config.ledgerApiUrl;
     const headers = await this.auth.getHeaders();
 
-    const prepareResponse = await fetch(
+    // Safe to retry prepare
+    const prepareResponse = await fetchWithRetry(
       `${jsonApiUrl}/api/validator/v0/wallet/preapproval/cancel/prepare`,
       {
         method: 'POST',
@@ -140,6 +158,11 @@ export class PreapprovalManager {
           contract_id: contractId,
           party_id: partyId,
         }),
+        timeout: CANTON_TIMEOUTS.preapproval,
+        retries: 2,
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       }
     );
 
@@ -156,7 +179,8 @@ export class PreapprovalManager {
     const hashBytes = hexToBytes(prepareData.hash);
     const signatureBytes = signHash(hashBytes);
 
-    const executeResponse = await fetch(
+    // CRITICAL: NO RETRY - duplicate cancel operation risk!
+    const executeResponse = await fetchWithTimeout(
       `${jsonApiUrl}/api/validator/v0/wallet/preapproval/cancel/execute`,
       {
         method: 'POST',
@@ -169,6 +193,7 @@ export class PreapprovalManager {
             format: 'ed25519',
           },
         }),
+        timeout: CANTON_TIMEOUTS.preapproval,
       }
     );
 

@@ -215,22 +215,41 @@ export const walletHandlers = {
     }
 
     const agent = getCantonAgent();
+    const sdk = agent.getSDK();
 
-    // Try to get balance from Canton (or simulation), fallback to 0 if unavailable
-    let amount = '0';
-    let locked = '0';
+    // Get all token balances (CC and USDCx)
+    const balances: Array<{ token: string; amount: string; locked: string }> = [];
+
     try {
-      const balance = await agent.getBalance(wallet.partyId);
-      amount = balance.amount;
-      locked = balance.locked;
+      // Get CC balance
+      const ccBalance = await sdk.getTokenBalance(wallet.partyId, 'CC');
+      balances.push({
+        token: 'CC',
+        amount: ccBalance.amount,
+        locked: ccBalance.locked,
+      });
     } catch (error) {
-      // Canton network may not be available in development
-      console.warn('Failed to fetch balance from Canton:', error);
+      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Failed to fetch CC balance from Canton');
+      balances.push({ token: 'CC', amount: '0', locked: '0' });
+    }
+
+    try {
+      // Get USDCx balance
+      const usdcxBalance = await sdk.getTokenBalance(wallet.partyId, 'USDCx');
+      balances.push({
+        token: 'USDCx',
+        amount: usdcxBalance.amount,
+        locked: usdcxBalance.locked,
+      });
+    } catch (error) {
+      // USDCx may not be available for all users
+      logger.warn({ error: error instanceof Error ? error.message : String(error) }, 'Failed to fetch USDCx balance from Canton');
+      balances.push({ token: 'USDCx', amount: '0', locked: '0' });
     }
 
     return reply.send({
       success: true,
-      data: [{ token: 'CC', amount, locked }],
+      data: balances,
     });
   },
 
@@ -649,6 +668,338 @@ export const walletHandlers = {
       return reply.status(400).send({
         success: false,
         error: { code: 'RECOVERY_FAILED', message },
+      });
+    }
+  },
+
+  /**
+   * POST /wallet/preapproval
+   * Create a TransferPreapproval for the wallet to receive Token Standard transfers.
+   */
+  async createPreapproval(request: FastifyRequest, reply: FastifyReply) {
+    const telegramId = getAuthTelegramId(request);
+
+    if (!telegramId) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Missing authentication' },
+      });
+    }
+
+    // Find user
+    const [user] = await db.select().from(users).where(eq(users.telegramId, telegramId)).limit(1);
+    if (!user) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+      });
+    }
+
+    // Find wallet
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, user.id)).limit(1);
+    if (!wallet) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'WALLET_NOT_FOUND', message: 'Wallet not found' },
+      });
+    }
+
+    try {
+      const walletService = getWalletService();
+      const result = await walletService.createPreapproval(telegramId, wallet.partyId);
+
+      logger.info({ walletId: wallet.id, partyId: wallet.partyId, preapprovalId: result.contractId }, 'Preapproval created');
+
+      return reply.send({
+        success: true,
+        data: {
+          preapprovalContractId: result.contractId,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to create preapproval';
+      logger.error({ err: error, walletId: wallet.id }, 'Preapproval creation failed');
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'PREAPPROVAL_FAILED', message },
+      });
+    }
+  },
+
+  /**
+   * GET /wallet/pending-transfers
+   * List pending incoming transfers awaiting acceptance.
+   */
+  async listPendingTransfers(request: FastifyRequest, reply: FastifyReply) {
+    const telegramId = getAuthTelegramId(request);
+
+    if (!telegramId) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Missing authentication' },
+      });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.telegramId, telegramId)).limit(1);
+    if (!user) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+      });
+    }
+
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, user.id)).limit(1);
+    if (!wallet) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'WALLET_NOT_FOUND', message: 'Wallet not found' },
+      });
+    }
+
+    try {
+      const walletService = getWalletService();
+      const pending = await walletService.listPendingTransfers(wallet.partyId);
+
+      return reply.send({
+        success: true,
+        data: {
+          pendingTransfers: pending,
+          count: pending.length,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to list pending transfers';
+      logger.error({ err: error, walletId: wallet.id }, 'Failed to list pending transfers');
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'LIST_PENDING_FAILED', message },
+      });
+    }
+  },
+
+  /**
+   * POST /wallet/accept-transfers
+   * Accept all pending incoming transfers (Token Standard 2-step transfers).
+   * This converts TransferInstruction contracts into Holding contracts.
+   */
+  async acceptPendingTransfers(request: FastifyRequest, reply: FastifyReply) {
+    const telegramId = getAuthTelegramId(request);
+
+    if (!telegramId) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Missing authentication' },
+      });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.telegramId, telegramId)).limit(1);
+    if (!user) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+      });
+    }
+
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, user.id)).limit(1);
+    if (!wallet) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'WALLET_NOT_FOUND', message: 'Wallet not found' },
+      });
+    }
+
+    try {
+      const walletService = getWalletService();
+      const result = await walletService.acceptPendingTransfers(telegramId, wallet.partyId);
+
+      logger.info(
+        { walletId: wallet.id, accepted: result.accepted, failed: result.failed },
+        'Pending transfers processed'
+      );
+
+      return reply.send({
+        success: true,
+        data: {
+          accepted: result.accepted,
+          failed: result.failed,
+          errors: result.errors,
+          message: result.accepted > 0
+            ? `Accepted ${String(result.accepted)} transfer(s)`
+            : 'No pending transfers to accept',
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to accept transfers';
+      logger.error({ err: error, walletId: wallet.id }, 'Failed to accept pending transfers');
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'ACCEPT_FAILED', message },
+      });
+    }
+  },
+
+  /**
+   * POST /wallet/reject-transfer
+   * Reject a specific pending incoming transfer (Token Standard 2-step transfer).
+   * This declines the TransferInstruction, returning funds to sender.
+   */
+  async rejectPendingTransfer(request: FastifyRequest, reply: FastifyReply) {
+    const telegramId = getAuthTelegramId(request);
+
+    if (!telegramId) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Missing authentication' },
+      });
+    }
+
+    const rejectSchema = z.object({
+      transferInstructionCid: z.string().min(1, 'Transfer instruction contract ID required'),
+      userShareHex: z.string().min(1, 'User share required'),
+    });
+
+    const body = rejectSchema.parse(request.body);
+
+    const [user] = await db.select().from(users).where(eq(users.telegramId, telegramId)).limit(1);
+    if (!user) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+      });
+    }
+
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, user.id)).limit(1);
+    if (!wallet) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'WALLET_NOT_FOUND', message: 'Wallet not found' },
+      });
+    }
+
+    try {
+      const walletService = getWalletService();
+      const result = await walletService.rejectPendingTransfer(
+        wallet.id,
+        body.transferInstructionCid,
+        body.userShareHex
+      );
+
+      if (!result.success) {
+        return reply.status(400).send({
+          success: false,
+          error: { code: 'REJECT_FAILED', message: result.error || 'Failed to reject transfer' },
+        });
+      }
+
+      logger.info(
+        { walletId: wallet.id, transferInstructionCid: body.transferInstructionCid },
+        'Pending transfer rejected'
+      );
+
+      return reply.send({
+        success: true,
+        data: {
+          message: 'Transfer rejected successfully',
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reject transfer';
+      logger.error({ err: error, walletId: wallet.id }, 'Failed to reject pending transfer');
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'REJECT_FAILED', message },
+      });
+    }
+  },
+
+  /**
+   * GET /wallet/preferences
+   * Get user wallet preferences (auto-merge, one-step transfers).
+   */
+  async getPreferences(request: FastifyRequest, reply: FastifyReply) {
+    const telegramId = getAuthTelegramId(request);
+
+    if (!telegramId) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Missing authentication' },
+      });
+    }
+
+    const [user] = await db.select().from(users).where(eq(users.telegramId, telegramId)).limit(1);
+    if (!user) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+      });
+    }
+
+    return reply.send({
+      success: true,
+      data: {
+        autoMergeUtxo: user.autoMergeUtxo,
+        oneStepTransfers: user.oneStepTransfers,
+      },
+    });
+  },
+
+  /**
+   * PUT /wallet/preferences
+   * Update user wallet preferences (auto-merge, one-step transfers).
+   */
+  async updatePreferences(request: FastifyRequest, reply: FastifyReply) {
+    const telegramId = getAuthTelegramId(request);
+
+    if (!telegramId) {
+      return reply.status(401).send({
+        success: false,
+        error: { code: 'UNAUTHORIZED', message: 'Missing authentication' },
+      });
+    }
+
+    const preferencesSchema = z.object({
+      autoMergeUtxo: z.boolean().optional(),
+      oneStepTransfers: z.boolean().optional(),
+    });
+
+    const body = preferencesSchema.parse(request.body);
+
+    const [user] = await db.select().from(users).where(eq(users.telegramId, telegramId)).limit(1);
+    if (!user) {
+      return reply.status(404).send({
+        success: false,
+        error: { code: 'USER_NOT_FOUND', message: 'User not found' },
+      });
+    }
+
+    try {
+      const updateData: Record<string, boolean> = {};
+      if (body.autoMergeUtxo !== undefined) {
+        updateData.autoMergeUtxo = body.autoMergeUtxo;
+      }
+      if (body.oneStepTransfers !== undefined) {
+        updateData.oneStepTransfers = body.oneStepTransfers;
+      }
+
+      if (Object.keys(updateData).length > 0) {
+        await db.update(users).set(updateData).where(eq(users.id, user.id));
+      }
+
+      logger.info({ userId: user.id, preferences: updateData }, 'User preferences updated');
+
+      return reply.send({
+        success: true,
+        data: {
+          autoMergeUtxo: body.autoMergeUtxo ?? user.autoMergeUtxo,
+          oneStepTransfers: body.oneStepTransfers ?? user.oneStepTransfers,
+        },
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to update preferences';
+      logger.error({ err: error, userId: user.id }, 'Failed to update preferences');
+      return reply.status(500).send({
+        success: false,
+        error: { code: 'UPDATE_FAILED', message },
       });
     }
   },

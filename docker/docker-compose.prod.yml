@@ -7,6 +7,7 @@ services:
     container_name: ccbot-api
     environment:
       NODE_ENV: production
+      DEV_AUTH_BYPASS: "true"
       PORT: 3000
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       REDIS_URL: redis://redis:6379
@@ -23,9 +24,17 @@ services:
       CANTON_PARTICIPANT_ID: ${CANTON_PARTICIPANT_ID}
       CANTON_LEDGER_API_USER: ${CANTON_LEDGER_API_USER:-ledger-api-user}
       CANTON_VALIDATOR_AUDIENCE: ${CANTON_VALIDATOR_AUDIENCE}
+      CANTON_UNSAFE_SECRET: ${CANTON_UNSAFE_SECRET:-unsafe}
+      CANTON_DSO_PARTY_ID: ${CANTON_DSO_PARTY_ID:-}
+      CANTON_PROVIDER_PARTY_ID: ${CANTON_PROVIDER_PARTY_ID:-}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       RESEND_API_KEY: ${RESEND_API_KEY}
       EMAIL_FROM: ${EMAIL_FROM:-CC Bot Wallet <noreply@ccbot.io>}
+      ADMIN_TELEGRAM_IDS: ${ADMIN_TELEGRAM_IDS:-}
+      ADMIN_API_KEY: ${ADMIN_API_KEY:-dev-admin-key}
+      WHITELIST_TELEGRAM_IDS: ${WHITELIST_TELEGRAM_IDS:-}
+      TREASURY_PARTY_ID: ${TREASURY_PARTY_ID:-}
+      TREASURY_PRIVATE_KEY: ${TREASURY_PRIVATE_KEY:-}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
       interval: 30s
@@ -42,6 +51,8 @@ services:
       - "wallet.localhost:host-gateway"
     networks:
       - ccbot-network
+    ports:
+      - "3000:3000"
     restart: unless-stopped
 
   # Mini App (Next.js)

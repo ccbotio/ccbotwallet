@@ -1,4 +1,6 @@
 import type { AuthToken, CantonConfig } from './types/index.js';
+import { fetchWithRetry } from './utils/fetch-with-retry.js';
+import { CANTON_TIMEOUTS, RETRY_CONFIG } from '@repo/shared/constants';
 
 /**
  * AuthTokenProvider manages JWT tokens for Canton validator API authentication.
@@ -43,12 +45,17 @@ export class AuthTokenProvider {
       throw new Error('Validator URL required for non-devnet auth');
     }
 
-    const response = await fetch(`${validatorUrl}/api/auth/token`, {
+    const response = await fetchWithRetry(`${validatorUrl}/api/auth/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         participantId: this.config.participantId,
       }),
+      timeout: CANTON_TIMEOUTS.auth,
+      retries: RETRY_CONFIG.maxRetries,
+      backoffBase: RETRY_CONFIG.backoffBase,
+      backoffMax: RETRY_CONFIG.backoffMax,
+      retryOnStatus: RETRY_CONFIG.retryableStatus,
     });
 
     if (!response.ok) {

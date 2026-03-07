@@ -17,6 +17,10 @@ export const users = pgTable('users', {
   isVerified: boolean('is_verified').default(false).notNull(),
   streakCount: integer('streak_count').default(0).notNull(),
   lastActiveAt: timestamp('last_active_at'),
+  /** User preference: Auto-merge UTXOs when >10 (requires MergeDelegation) */
+  autoMergeUtxo: boolean('auto_merge_utxo').default(true).notNull(),
+  /** User preference: Enable 1-step transfers via TransferPreapproval */
+  oneStepTransfers: boolean('one_step_transfers').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -30,6 +34,10 @@ export const wallets = pgTable('wallets', {
   publicKey: varchar('public_key', { length: 512 }),
   isPrimary: boolean('is_primary').default(true).notNull(),
   transferNonce: integer('transfer_nonce').default(0).notNull(),
+  /** MergeDelegation contract ID - enables auto UTXO merge without PIN */
+  mergeDelegationCid: varchar('merge_delegation_cid', { length: 256 }),
+  /** TransferPreapproval contract ID - enables 1-step incoming transfers */
+  transferPreapprovalCid: varchar('transfer_preapproval_cid', { length: 256 }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => [
   index('idx_wallet_user').on(table.userId),
@@ -349,3 +357,191 @@ export const loginAttempts = pgTable('login_attempts', {
 
 export type LoginAttempt = typeof loginAttempts.$inferSelect;
 export type NewLoginAttempt = typeof loginAttempts.$inferInsert;
+
+// ==================== Swap Tables ====================
+
+// Swap quotes - temporary quotes with expiration
+export const swapQuotes = pgTable('swap_quotes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  // Quote details
+  fromToken: varchar('from_token', { length: 16 }).notNull(), // 'CC' or 'USDCx'
+  toToken: varchar('to_token', { length: 16 }).notNull(), // 'CC' or 'USDCx'
+  fromAmount: varchar('from_amount', { length: 64 }).notNull(),
+  toAmount: varchar('to_amount', { length: 64 }).notNull(),
+  // Pricing
+  rate: varchar('rate', { length: 64 }).notNull(), // Exchange rate at quote time
+  fee: varchar('fee', { length: 64 }).notNull(), // Fee in fromToken
+  feePercentage: varchar('fee_percentage', { length: 16 }).notNull(), // e.g., "0.3"
+  ccPriceUsd: varchar('cc_price_usd', { length: 64 }).notNull(), // CC price at quote time
+  // Status
+  status: varchar('status', { length: 16 }).default('pending').notNull(), // 'pending', 'executed', 'expired', 'cancelled'
+  // Expiration
+  expiresAt: timestamp('expires_at').notNull(),
+  executedAt: timestamp('executed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('idx_swap_quote_user').on(table.userId),
+  index('idx_swap_quote_status').on(table.status),
+  index('idx_swap_quote_expires').on(table.expiresAt),
+]);
+
+// Swap transactions - completed swaps
+// Status flow: pending → user_sent → completed
+//                     ↘ failed → refund_pending → refunded
+//                     ↘ failed (with refund_failed)
+export const swapTransactions = pgTable('swap_transactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  quoteId: uuid('quote_id')
+    .references(() => swapQuotes.id, { onDelete: 'set null' }),
+  // Swap details
+  fromToken: varchar('from_token', { length: 16 }).notNull(),
+  toToken: varchar('to_token', { length: 16 }).notNull(),
+  fromAmount: varchar('from_amount', { length: 64 }).notNull(),
+  toAmount: varchar('to_amount', { length: 64 }).notNull(),
+  fee: varchar('fee', { length: 64 }).notNull(),
+  // User party for refunds
+  userPartyId: varchar('user_party_id', { length: 256 }),
+  // Transaction hashes
+  userToTreasuryTxHash: varchar('user_to_treasury_tx_hash', { length: 256 }),
+  treasuryToUserTxHash: varchar('treasury_to_user_tx_hash', { length: 256 }),
+  // Refund tracking
+  refundTxHash: varchar('refund_tx_hash', { length: 256 }),
+  refundAmount: varchar('refund_amount', { length: 64 }),
+  refundedAt: timestamp('refunded_at'),
+  refundReason: varchar('refund_reason', { length: 512 }),
+  refundAttempts: integer('refund_attempts').default(0).notNull(),
+  // Status: 'pending', 'user_sent', 'completed', 'failed', 'refund_pending', 'refunded', 'refund_failed'
+  status: varchar('status', { length: 20 }).default('pending').notNull(),
+  failureReason: varchar('failure_reason', { length: 512 }),
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+}, (table) => [
+  index('idx_swap_tx_user').on(table.userId),
+  index('idx_swap_tx_status').on(table.status),
+  index('idx_swap_tx_created').on(table.createdAt),
+]);
+
+// Treasury state - tracks treasury balances and configuration
+export const treasuryState = pgTable('treasury_state', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  // Singleton config - only one row
+  partyId: varchar('party_id', { length: 256 }).notNull().unique(),
+  // Reserve tracking (updated after each swap)
+  ccReserve: varchar('cc_reserve', { length: 64 }).default('0').notNull(),
+  usdcxReserve: varchar('usdcx_reserve', { length: 64 }).default('0').notNull(),
+  // Configuration
+  feePercentage: varchar('fee_percentage', { length: 16 }).default('0.3').notNull(),
+  maxSwapAmountCc: varchar('max_swap_amount_cc', { length: 64 }).default('10000').notNull(),
+  maxSwapAmountUsdcx: varchar('max_swap_amount_usdcx', { length: 64 }).default('10000').notNull(),
+  minSwapAmountCc: varchar('min_swap_amount_cc', { length: 64 }).default('1').notNull(),
+  minSwapAmountUsdcx: varchar('min_swap_amount_usdcx', { length: 64 }).default('0.1').notNull(),
+  // Status
+  isActive: boolean('is_active').default(true).notNull(),
+  pausedReason: varchar('paused_reason', { length: 256 }),
+  // Stats
+  totalSwapsCount: integer('total_swaps_count').default(0).notNull(),
+  totalFeesCollectedCc: varchar('total_fees_collected_cc', { length: 64 }).default('0').notNull(),
+  totalFeesCollectedUsdcx: varchar('total_fees_collected_usdcx', { length: 64 }).default('0').notNull(),
+  // Timestamps
+  lastSwapAt: timestamp('last_swap_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export type SwapQuote = typeof swapQuotes.$inferSelect;
+export type NewSwapQuote = typeof swapQuotes.$inferInsert;
+export type SwapTransaction = typeof swapTransactions.$inferSelect;
+export type NewSwapTransaction = typeof swapTransactions.$inferInsert;
+export type TreasuryState = typeof treasuryState.$inferSelect;
+export type NewTreasuryState = typeof treasuryState.$inferInsert;
+
+// ==================== Bridge Tables ====================
+
+/**
+ * Bridge Transactions - Tracks USDC<->USDCx bridging via Circle xReserve
+ *
+ * Deposit Flow (Ethereum → Canton):
+ *   deposit_initiated → eth_tx_pending → eth_tx_confirmed → attestation_pending
+ *   → attestation_received → mint_pending → mint_completed → completed
+ *
+ * Withdrawal Flow (Canton → Ethereum):
+ *   withdrawal_initiated → burn_pending → burn_completed → attestation_pending
+ *   → attestation_received → eth_release_pending → eth_release_completed → completed
+ */
+export const bridgeTransactions = pgTable('bridge_transactions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  walletId: uuid('wallet_id')
+    .references(() => wallets.id, { onDelete: 'set null' }),
+
+  // Bridge direction
+  type: varchar('type', { length: 16 }).notNull(), // 'deposit' | 'withdrawal'
+  fromChain: varchar('from_chain', { length: 16 }).notNull(), // 'ethereum' | 'canton'
+  toChain: varchar('to_chain', { length: 16 }).notNull(), // 'canton' | 'ethereum'
+
+  // Amounts
+  fromAmount: varchar('from_amount', { length: 64 }).notNull(), // Amount being sent
+  toAmount: varchar('to_amount', { length: 64 }), // Amount received (after fees)
+  fee: varchar('fee', { length: 64 }), // Bridge fee
+
+  // Addresses/Parties
+  fromAddress: varchar('from_address', { length: 256 }), // Ethereum address (for deposits)
+  toAddress: varchar('to_address', { length: 256 }), // Ethereum address (for withdrawals)
+  cantonPartyId: varchar('canton_party_id', { length: 256 }).notNull(),
+
+  // Ethereum transaction details
+  ethTxHash: varchar('eth_tx_hash', { length: 128 }),
+  ethBlockNumber: integer('eth_block_number'),
+  ethConfirmations: integer('eth_confirmations').default(0),
+
+  // Canton transaction details
+  cantonTxHash: varchar('canton_tx_hash', { length: 256 }),
+  cantonUpdateId: varchar('canton_update_id', { length: 256 }),
+
+  // Circle xReserve attestation
+  attestationHash: varchar('attestation_hash', { length: 256 }),
+  attestationStatus: varchar('attestation_status', { length: 32 }), // 'pending' | 'complete' | 'failed'
+  attestationReceivedAt: timestamp('attestation_received_at'),
+
+  // For deposits: DepositAttestation contract ID on Canton
+  depositAttestationCid: varchar('deposit_attestation_cid', { length: 256 }),
+  // For withdrawals: BurnIntent contract ID on Canton
+  burnIntentCid: varchar('burn_intent_cid', { length: 256 }),
+
+  // Status tracking
+  // Deposit: deposit_initiated → eth_tx_pending → eth_tx_confirmed → attestation_pending
+  //          → attestation_received → mint_pending → mint_completed → completed
+  // Withdrawal: withdrawal_initiated → burn_pending → burn_completed → attestation_pending
+  //             → attestation_received → eth_release_pending → eth_release_completed → completed
+  status: varchar('status', { length: 32 }).default('initiated').notNull(),
+  failureReason: varchar('failure_reason', { length: 512 }),
+
+  // Retry tracking
+  retryCount: integer('retry_count').default(0).notNull(),
+  lastRetryAt: timestamp('last_retry_at'),
+  nextRetryAt: timestamp('next_retry_at'),
+
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'),
+}, (table) => [
+  index('idx_bridge_tx_user').on(table.userId),
+  index('idx_bridge_tx_status').on(table.status),
+  index('idx_bridge_tx_type').on(table.type),
+  index('idx_bridge_tx_eth_hash').on(table.ethTxHash),
+  index('idx_bridge_tx_attestation_pending').on(table.attestationStatus),
+  index('idx_bridge_tx_created').on(table.createdAt),
+]);
+
+export type BridgeTransaction = typeof bridgeTransactions.$inferSelect;
+export type NewBridgeTransaction = typeof bridgeTransactions.$inferInsert;

@@ -1,5 +1,7 @@
 import type { CantonConfig, HoldingUtxo, TokenBalance } from './types/index.js';
 import { AuthTokenProvider } from './auth.js';
+import { fetchWithRetry } from './utils/fetch-with-retry.js';
+import { CANTON_TIMEOUTS, RETRY_CONFIG } from '@repo/shared/constants';
 
 /**
  * Balance and UTXO management for Canton Network.
@@ -22,9 +24,17 @@ export class BalanceManager {
     const headers = await this.auth.getHeaders();
 
     try {
-      const response = await fetch(
+      // Safe to retry balance queries
+      const response = await fetchWithRetry(
         `${validatorUrl}/api/validator/v0/admin/external-party/balance?party_id=${encodeURIComponent(partyId)}`,
-        { headers }
+        {
+          headers,
+          timeout: CANTON_TIMEOUTS.balance,
+          retries: 2,
+          backoffBase: RETRY_CONFIG.backoffBase,
+          backoffMax: RETRY_CONFIG.backoffMax,
+          retryOnStatus: RETRY_CONFIG.retryableStatus,
+        }
       );
 
       if (!response.ok) {
@@ -102,7 +112,8 @@ export class BalanceManager {
     const headers = await this.auth.getHeaders();
 
     try {
-      const response = await fetch(`${jsonApiUrl}/v2/state/active-contracts`, {
+      // Safe to retry UTXO queries
+      const response = await fetchWithRetry(`${jsonApiUrl}/v2/state/active-contracts`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -117,6 +128,11 @@ export class BalanceManager {
             },
           },
         }),
+        timeout: CANTON_TIMEOUTS.balance,
+        retries: 2,
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       });
 
       if (!response.ok) {
@@ -167,13 +183,19 @@ export class BalanceManager {
     const headers = await this.auth.getHeaders();
 
     try {
-      const response = await fetch(`${jsonApiUrl}/api/validator/v0/wallet/merge-utxos`, {
+      // Merge is partially idempotent - retry with caution (1 retry)
+      const response = await fetchWithRetry(`${jsonApiUrl}/api/validator/v0/wallet/merge-utxos`, {
         method: 'POST',
         headers,
         body: JSON.stringify({
           party_id: partyId,
           contract_ids: utxos.map((u) => u.contractId),
         }),
+        timeout: CANTON_TIMEOUTS.preapproval,
+        retries: 1, // Limited retry for merge
+        backoffBase: RETRY_CONFIG.backoffBase,
+        backoffMax: RETRY_CONFIG.backoffMax,
+        retryOnStatus: RETRY_CONFIG.retryableStatus,
       });
 
       if (!response.ok) {

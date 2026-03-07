@@ -2,6 +2,21 @@ import { eq, and, gt, lt, isNull } from 'drizzle-orm';
 import { db } from '../../db/index.js';
 import { passkeySessions } from '../../db/schema.js';
 import { randomBytes, createHash } from 'crypto';
+import { createLogger } from '@repo/shared/logger';
+
+const logger = createLogger('passkey-session');
+
+// Helper to check if drizzle update/delete affected rows
+// Different drivers return different properties (rowCount, changes, count)
+function getAffectedRows(result: unknown): number {
+  if (result && typeof result === 'object') {
+    const r = result as Record<string, unknown>;
+    if (typeof r.rowCount === 'number') return r.rowCount;
+    if (typeof r.changes === 'number') return r.changes;
+    if (typeof r.count === 'number') return r.count;
+  }
+  return 0;
+}
 
 const SESSION_EXPIRY_MINUTES = 24 * 60; // 24 hours (dev mode)
 
@@ -69,7 +84,7 @@ export class PasskeySessionService {
       expiresAt,
     });
 
-    console.log(`[PasskeySession] Created session ${sessionId} for wallet ${params.walletId}, expires at ${expiresAt}`);
+    logger.info('Created session', { sessionId, walletId: params.walletId, expiresAt: expiresAt.toISOString() });
 
     return { sessionId, expiresAt };
   }
@@ -95,7 +110,7 @@ export class PasskeySessionService {
       .limit(1);
 
     if (!session) {
-      console.log(`[PasskeySession] Session not found or expired: ${sessionId}`);
+      logger.debug('Session not found or expired', { sessionId });
       return null;
     }
 
@@ -130,7 +145,7 @@ export class PasskeySessionService {
       .limit(1);
 
     if (!session) {
-      console.log(`[PasskeySession] Session not found or expired: ${sessionId}`);
+      logger.debug('Session not found or expired for internal lookup', { sessionId });
       return null;
     }
 
@@ -177,7 +192,7 @@ export class PasskeySessionService {
       .limit(1);
 
     if (!session) {
-      console.log(`[PasskeySession] Session not found or expired: ${sessionId}`);
+      logger.debug('Session not found or expired for PKCE verification', { sessionId });
       return { success: false, error: 'Session not found or expired' };
     }
 
@@ -187,7 +202,7 @@ export class PasskeySessionService {
       .digest('base64url');
 
     if (computedChallenge !== session.codeChallenge) {
-      console.log(`[PasskeySession] PKCE verification failed for session ${sessionId} - code_verifier does not match code_challenge`);
+      logger.warn('PKCE verification failed - code_verifier does not match', { sessionId });
       return { success: false, error: 'PKCE verification failed' };
     }
 
@@ -207,8 +222,8 @@ export class PasskeySessionService {
         )
       );
 
-    const updated = (result as any).rowCount > 0 || (result as any).changes > 0;
-    console.log(`[PasskeySession] Completed session ${sessionId} with PKCE verification: ${updated}`);
+    const updated = getAffectedRows(result) > 0;
+    logger.info('Completed session with PKCE verification', { sessionId, updated });
 
     if (!updated) {
       return { success: false, error: 'Failed to complete session' };
@@ -269,7 +284,7 @@ export class PasskeySessionService {
       .digest('base64url');
 
     if (computedChallenge !== session.codeChallenge) {
-      console.log(`[PasskeySession] PKCE verification failed for session ${sessionId}`);
+      logger.warn('PKCE verification failed during status check', { sessionId });
       return { status: 'invalid' };
     }
 
@@ -327,9 +342,9 @@ export class PasskeySessionService {
         )
       );
 
-    const deleted = (result as any).rowCount || 0;
+    const deleted = getAffectedRows(result);
     if (deleted > 0) {
-      console.log(`[PasskeySession] Cleaned up ${deleted} expired sessions`);
+      logger.info('Cleaned up expired sessions', { count: deleted });
     }
 
     return deleted;
@@ -373,7 +388,7 @@ export class PasskeySessionService {
       expiresAt,
     });
 
-    console.log(`[PasskeySession] Created passkey-only session ${sessionId} for telegram ${params.telegramId}`);
+    logger.info('Created passkey-only session', { sessionId, telegramId: params.telegramId });
 
     return { sessionId, expiresAt };
   }
@@ -396,7 +411,7 @@ export class PasskeySessionService {
       .limit(1);
 
     if (!session) {
-      console.log(`[PasskeySession] Passkey-only session not found or expired: ${sessionId}`);
+      logger.debug('Passkey-only session not found or expired', { sessionId });
       return null;
     }
 
@@ -431,11 +446,11 @@ export class PasskeySessionService {
       .limit(1);
 
     if (!session) {
-      console.log(`[PasskeySession] Passkey-only session not found or expired: ${sessionId}`);
+      logger.debug('Passkey-only session not found or expired for completion', { sessionId });
       return { success: false, error: 'Session not found or expired' };
     }
 
-    console.log(`[PasskeySession] Found session: status=${session.status}, walletId=${session.walletId}, expires=${session.expiresAt}`);
+    logger.debug('Found session for completion', { sessionId, status: session.status, walletId: session.walletId });
 
     // Store the credential data - status stays 'pending' until PKCE is verified via polling
     // We'll store publicKeySpki in the encryptedUserShare field (repurposed for passkey-only)
@@ -457,9 +472,9 @@ export class PasskeySessionService {
       );
 
     // Debug: log the full result to understand drizzle's return format
-    console.log(`[PasskeySession] Update result:`, JSON.stringify(result));
-    const updated = (result as any).rowCount > 0 || (result as any).changes > 0 || (result as any).count > 0;
-    console.log(`[PasskeySession] Stored credential for passkey-only session ${sessionId}: ${updated}`);
+    logger.debug('Update result for passkey-only session', { sessionId, result: JSON.stringify(result) });
+    const updated = getAffectedRows(result) > 0;
+    logger.info('Stored credential for passkey-only session', { sessionId, updated });
 
     return { success: updated };
   }
@@ -493,7 +508,7 @@ export class PasskeySessionService {
       .digest('base64url');
 
     if (computedChallenge !== session.codeChallenge) {
-      console.log(`[PasskeySession] PKCE verification failed for passkey-only session ${sessionId}`);
+      logger.warn('PKCE verification failed for passkey-only session', { sessionId });
       return { status: 'invalid' };
     }
 

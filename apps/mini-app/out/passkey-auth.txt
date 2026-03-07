@@ -1,21 +1,73 @@
 1:"$Sreact.fragment"
-2:I[8746,["177","static/chunks/app/layout-92b9f9102d23c17e.js"],""]
-3:I[7814,[],""]
-4:I[1004,[],""]
-5:I[8327,[],"ClientPageRoot"]
-6:I[2550,["876","static/chunks/876-b99df3c99017ff13.js","13","static/chunks/13-72f082c1f2702af7.js","626","static/chunks/app/passkey-auth/page-417fe016a00406b7.js"],"default"]
-9:I[1599,[],"OutletBoundary"]
-b:I[2222,[],"AsyncMetadataOutlet"]
-d:I[1599,[],"ViewportBoundary"]
-f:I[1599,[],"MetadataBoundary"]
-10:"$Sreact.suspense"
-12:I[6190,[],""]
-:HL["/_next/static/css/149c74ac391af8dd.css","style"]
-0:{"P":null,"b":"XzG1ktxH5SRpl81CvOAQ-","p":"","c":["","passkey-auth"],"i":false,"f":[[["",{"children":["passkey-auth",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/149c74ac391af8dd.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","link",null,{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"}],["$","$L2",null,{"src":"https://telegram.org/js/telegram-web-app.js","strategy":"beforeInteractive"}]]}],["$","body",null,{"suppressHydrationWarning":true,"children":["$","div",null,{"id":"app-root","children":[["$","div",null,{"className":"loading-overlay","children":["$","div",null,{"className":"animate-spin w-8 h-8 border-2 border-[#875CFF] border-t-transparent rounded-full"}]}],["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]]}]}]]}]]}],{"children":["passkey-auth",["$","$1","c",{"children":[null,["$","$L3",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L4",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],{"children":["__PAGE__",["$","$1","c",{"children":[["$","$L5",null,{"Component":"$6","searchParams":{},"params":{},"promises":["$@7","$@8"]}],null,["$","$L9",null,{"children":["$La",["$","$Lb",null,{"promise":"$@c"}]]}]]}],{},null,false]},null,false]},null,false],["$","$1","h",{"children":[null,[["$","$Ld",null,{"children":"$Le"}],null],["$","$Lf",null,{"children":["$","div",null,{"hidden":true,"children":["$","$10",null,{"fallback":null,"children":"$L11"}]}]}]]}],false]],"m":"$undefined","G":["$12",[]],"s":false,"S":true}
-7:{}
-8:"$0:f:0:1:2:children:2:children:1:props:children:0:props:params"
-e:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no"}],["$","meta","2",{"name":"theme-color","content":"#030206"}]]
-a:null
-13:I[5902,[],"IconMark"]
-c:{"metadata":[["$","title","0",{"children":"CC Bot Wallet"}],["$","meta","1",{"name":"description","content":"Your crypto, simplified"}],["$","link","2",{"rel":"icon","href":"/ccbotlogo.png"}],["$","link","3",{"rel":"apple-touch-icon","href":"/ccbotlogo.png"}],["$","$L13","4",{}]],"error":null,"digest":"$undefined"}
-11:"$c:metadata"
+7:I[3683,[],""]
+:HL["/_next/static/css/0fe627adad6a3c0d.css","style"]
+2:Tdbb,
+              (function() {
+                var isLocalhost = window.location.hostname === 'localhost';
+                if (isLocalhost) {
+                  // Dev mode - set up complete mock Telegram WebApp
+                  var eventHandlers = {};
+                  window.Telegram = {
+                    WebApp: {
+                      initData: 'dev_mode_555666777',
+                      initDataUnsafe: { user: { id: 555666777, first_name: 'Dev', username: 'devuser', language_code: 'en' } },
+                      ready: function() {},
+                      expand: function() {},
+                      close: function() {},
+                      setHeaderColor: function() {},
+                      setBackgroundColor: function() {},
+                      enableClosingConfirmation: function() {},
+                      disableClosingConfirmation: function() {},
+                      isVersionAtLeast: function() { return true; },
+                      openLink: function(url) { window.open(url, '_blank'); },
+                      openTelegramLink: function(url) { window.open(url, '_blank'); },
+                      showPopup: function(params, cb) { if(cb) cb(); },
+                      showAlert: function(msg, cb) { alert(msg); if(cb) cb(); },
+                      showConfirm: function(msg, cb) { if(cb) cb(confirm(msg)); },
+                      onEvent: function(event, cb) { eventHandlers[event] = eventHandlers[event] || []; eventHandlers[event].push(cb); },
+                      offEvent: function(event, cb) { if(eventHandlers[event]) eventHandlers[event] = eventHandlers[event].filter(function(h){return h!==cb;}); },
+                      sendData: function(data) { console.log('[TG Mock] sendData:', data); },
+                      switchInlineQuery: function(query) { console.log('[TG Mock] switchInlineQuery:', query); },
+                      HapticFeedback: { impactOccurred: function(){}, notificationOccurred: function(){}, selectionChanged: function(){} },
+                      MainButton: { show: function(){}, hide: function(){}, setText: function(){}, onClick: function(){}, offClick: function(){}, setParams: function(){}, enable: function(){}, disable: function(){}, showProgress: function(){}, hideProgress: function(){}, isVisible: false, isActive: true, isProgressVisible: false, text: '', color: '#875CFF', textColor: '#ffffff' },
+                      BackButton: { show: function(){}, hide: function(){}, onClick: function(){}, offClick: function(){}, isVisible: false },
+                      themeParams: { bg_color: '#0a0812', text_color: '#ffffff', hint_color: '#999999', button_color: '#875CFF', button_text_color: '#ffffff', secondary_bg_color: '#1a1a2e' },
+                      colorScheme: 'dark',
+                      isExpanded: true,
+                      viewportHeight: 800,
+                      viewportStableHeight: 800,
+                      headerColor: '#0a0812',
+                      backgroundColor: '#0a0812',
+                      platform: 'tdesktop',
+                      version: '7.0'
+                    }
+                  };
+                  console.log('[DEV] Telegram mock initialized for localhost');
+                } else {
+                  // Production - load real Telegram SDK
+                  var script = document.createElement('script');
+                  script.src = 'https://telegram.org/js/telegram-web-app.js';
+                  document.head.appendChild(script);
+                }
+              })();
+            0:{"P":null,"b":"vusYjMVmVXzXQMQu3capJ","p":"","c":["","passkey-auth"],"i":false,"f":[[["",{"children":["passkey-auth",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/0fe627adad6a3c0d.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","link",null,{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}]]}],"$L3"]}]]}],{"children":["passkey-auth","$L4",{"children":["__PAGE__","$L5",{},null,false]},null,false]},null,false],"$L6",false]],"m":"$undefined","G":["$7",[]],"s":false,"S":true}
+8:I[6369,[],""]
+9:I[5829,[],""]
+a:I[8280,[],"ClientPageRoot"]
+b:I[4994,["618","static/chunks/618-02e917778db1e079.js","149","static/chunks/149-98d68113bebf4ad2.js","626","static/chunks/app/passkey-auth/page-df5a762104989c47.js"],"default"]
+e:I[804,[],"OutletBoundary"]
+10:I[8973,[],"AsyncMetadataOutlet"]
+12:I[804,[],"ViewportBoundary"]
+14:I[804,[],"MetadataBoundary"]
+15:"$Sreact.suspense"
+3:["$","body",null,{"suppressHydrationWarning":true,"children":["$","div",null,{"id":"app-root","style":{"width":"100%"},"children":[["$","div",null,{"className":"loading-overlay","children":["$","div",null,{"className":"animate-spin w-8 h-8 border-2 border-[#875CFF] border-t-transparent rounded-full"}]}],["$","$L8",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L9",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[[["$","title",null,{"children":"404: This page could not be found."}],["$","div",null,{"style":{"fontFamily":"system-ui,\"Segoe UI\",Roboto,Helvetica,Arial,sans-serif,\"Apple Color Emoji\",\"Segoe UI Emoji\"","height":"100vh","textAlign":"center","display":"flex","flexDirection":"column","alignItems":"center","justifyContent":"center"},"children":["$","div",null,{"children":[["$","style",null,{"dangerouslySetInnerHTML":{"__html":"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}"}}],["$","h1",null,{"className":"next-error-h1","style":{"display":"inline-block","margin":"0 20px 0 0","padding":"0 23px 0 0","fontSize":24,"fontWeight":500,"verticalAlign":"top","lineHeight":"49px"},"children":404}],["$","div",null,{"style":{"display":"inline-block"},"children":["$","h2",null,{"style":{"fontSize":14,"fontWeight":400,"lineHeight":"49px","margin":0},"children":"This page could not be found."}]}]]}]}]],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]]}]}]
+4:["$","$1","c",{"children":[null,["$","$L8",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L9",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}]
+5:["$","$1","c",{"children":[["$","$La",null,{"Component":"$b","searchParams":{},"params":{},"promises":["$@c","$@d"]}],null,["$","$Le",null,{"children":["$Lf",["$","$L10",null,{"promise":"$@11"}]]}]]}]
+6:["$","$1","h",{"children":[null,[["$","$L12",null,{"children":"$L13"}],null],["$","$L14",null,{"children":["$","div",null,{"hidden":true,"children":["$","$15",null,{"fallback":null,"children":"$L16"}]}]}]]}]
+c:{}
+d:"$5:props:children:0:props:params"
+13:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no"}],["$","meta","2",{"name":"theme-color","content":"#030206"}]]
+f:null
+17:I[8677,[],"IconMark"]
+11:{"metadata":[["$","title","0",{"children":"CC Bot Wallet"}],["$","meta","1",{"name":"description","content":"Your crypto, simplified"}],["$","link","2",{"rel":"icon","href":"/ccbotlogo.png"}],["$","link","3",{"rel":"apple-touch-icon","href":"/ccbotlogo.png"}],["$","$L17","4",{}]],"error":null,"digest":"$undefined"}
+16:"$11:metadata"

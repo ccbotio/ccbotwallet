@@ -20,17 +20,24 @@ let sdkClient: OfficialSDKClient | null = null;
  */
 export function getCantonSDK(): OfficialSDKClient {
   if (!sdkClient) {
+    // Determine if using unsafe auth (devnet/localnet or explicit CANTON_UNSAFE_SECRET)
+    const hasUnsafeSecret = !!env.CANTON_UNSAFE_SECRET;
+    const isDevnet = env.CANTON_NETWORK === 'devnet' || env.NODE_ENV !== 'production';
+    const useUnsafeAuth = isDevnet || hasUnsafeSecret;
+
     const config: OfficialSDKConfig = {
       network: env.CANTON_NETWORK,
       ledgerApiUrl: env.CANTON_LEDGER_API_URL ?? '',
       jsonApiUrl: env.CANTON_LEDGER_API_URL ?? '',
       participantId: env.CANTON_PARTICIPANT_ID ?? '',
       validatorUrl: env.CANTON_VALIDATOR_API_URL ?? env.CANTON_LEDGER_API_URL ?? '',
+      scanUrl: env.CANTON_SCAN_URL,
       ledgerApiUser: env.CANTON_LEDGER_API_USER ?? 'ledger-api-user',
       validatorAudience: env.CANTON_VALIDATOR_AUDIENCE ?? 'https://validator.example.com',
-      // Official SDK specific config - use unsafe auth for devnet
-      useUnsafeAuth: env.CANTON_NETWORK === 'devnet' || env.NODE_ENV !== 'production',
-      unsafeSecret: env.APP_SECRET,
+      // Use unsafe auth if devnet or CANTON_UNSAFE_SECRET is set
+      useUnsafeAuth,
+      // Use CANTON_UNSAFE_SECRET if set, otherwise 'unsafe' for devnet or APP_SECRET for production
+      unsafeSecret: env.CANTON_UNSAFE_SECRET || (isDevnet ? 'unsafe' : env.APP_SECRET),
       ...(env.CANTON_DSO_PARTY_ID && { dsoPartyId: env.CANTON_DSO_PARTY_ID }),
       ...(env.CANTON_PROVIDER_PARTY_ID && { providerPartyId: env.CANTON_PROVIDER_PARTY_ID }),
     };

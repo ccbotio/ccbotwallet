@@ -2,6 +2,7 @@ import type { FastifyPluginCallback } from 'fastify';
 import { redis } from '../../lib/redis.js';
 import { getCantonAgent } from '../../services/canton/index.js';
 import { logger } from '../../lib/logger.js';
+import { getMetrics, getMetricsContentType } from '../../lib/metrics.js';
 
 export const healthRoutes: FastifyPluginCallback = (fastify, _opts, done) => {
   /**
@@ -134,6 +135,22 @@ export const healthRoutes: FastifyPluginCallback = (fastify, _opts, done) => {
           message: 'Failed to check faucet availability',
         },
       });
+    }
+  });
+
+  /**
+   * GET /health/metrics
+   * Prometheus metrics endpoint
+   */
+  fastify.get('/metrics', async (_request, reply) => {
+    try {
+      const metrics = await getMetrics();
+      return reply
+        .header('Content-Type', getMetricsContentType())
+        .send(metrics);
+    } catch (error) {
+      logger.error({ err: error }, 'Failed to collect metrics');
+      return reply.status(500).send('Error collecting metrics');
     }
   });
 

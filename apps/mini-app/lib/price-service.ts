@@ -1,23 +1,27 @@
 /**
- * CC Price Service
+ * Price Service
  *
- * Provides CC token price data and USD calculations.
- * Fetches real price from Canton Network via backend API.
+ * Provides CC and BTC token price data and USD calculations.
+ * Fetches real prices from Canton Network and CoinGecko via backend API.
  */
 
 import api from './api';
 
 export interface PriceData {
-  price: number;           // Current CC price in USD
+  price: number;           // Current price in USD
   change24h: number;       // 24h change percentage
   change24hUsd: number;    // 24h change in USD (for portfolio)
-  round: number;           // Current Canton round
+  round: number;           // Current Canton round (CC only)
   lastUpdated: Date;
 }
 
 // Store for tracking price history (for 24h change calculation)
 let priceHistory: { timestamp: number; price: number }[] = [];
 let lastFetchedPrice: number | null = null;
+
+// BTC price history tracking
+let btcPriceHistory: { timestamp: number; price: number }[] = [];
+let lastFetchedBtcPrice: number | null = null;
 
 /**
  * Parse price from string or number (backend may return either)
@@ -94,23 +98,72 @@ export async function fetchCCPrice(): Promise<PriceData> {
 }
 
 /**
- * Calculate USD value of CC balance
+ * Fetch current BTC price data from CoinGecko via backend API
  */
-export function calculateUsdValue(ccBalance: string | number, price: number): number {
-  const balance = typeof ccBalance === 'string' ? parseFloat(ccBalance) : ccBalance;
-  return balance * price;
+export async function fetchBTCPrice(): Promise<PriceData> {
+  try {
+    // Fetch from backend API
+    const priceData = await api.getBTCPrice();
+
+    // Parse price as number (API returns string for precision)
+    const price = parsePrice(priceData.price);
+    const change24h = parseFloat(priceData.change24h || '0');
+
+    // Record in history
+    const now = Date.now();
+    btcPriceHistory.push({ timestamp: now, price });
+
+    // Keep only last 24h + buffer
+    const cutoff = now - 25 * 60 * 60 * 1000;
+    btcPriceHistory = btcPriceHistory.filter(p => p.timestamp > cutoff);
+
+    // Store for reference
+    if (lastFetchedBtcPrice === null) {
+      lastFetchedBtcPrice = price;
+    }
+
+    // Calculate USD change based on 24h percentage
+    const usdChange = price * (change24h / 100);
+
+    return {
+      price,
+      change24h,
+      change24hUsd: usdChange,
+      round: 0, // BTC doesn't have Canton rounds
+      lastUpdated: new Date(),
+    };
+  } catch (error) {
+    console.error('Failed to fetch BTC price from API:', error);
+
+    // Return fallback values
+    return {
+      price: lastFetchedBtcPrice || 97000,
+      change24h: 0,
+      change24hUsd: 0,
+      round: 0,
+      lastUpdated: new Date(),
+    };
+  }
+}
+
+/**
+ * Calculate USD value of token balance
+ */
+export function calculateUsdValue(balance: string | number, price: number): number {
+  const balanceNum = typeof balance === 'string' ? parseFloat(balance) : balance;
+  return balanceNum * price;
 }
 
 /**
  * Calculate portfolio change in USD
  */
 export function calculatePortfolioChange(
-  ccBalance: string | number,
+  balance: string | number,
   price: number,
   change24hPercent: number
 ): number {
-  const balance = typeof ccBalance === 'string' ? parseFloat(ccBalance) : ccBalance;
-  const currentValue = balance * price;
+  const balanceNum = typeof balance === 'string' ? parseFloat(balance) : balance;
+  const currentValue = balanceNum * price;
   const previousValue = currentValue / (1 + change24hPercent / 100);
   return currentValue - previousValue;
 }
