@@ -22,6 +22,7 @@ import ansRoutes from './routes/ans.js';
 import agentRoutes from './routes/agent.js';
 import swapRoutes from './routes/swap.js';
 import adminRoutes from './routes/admin.js';
+import dappRoutes from './routes/dapp.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 export const server = Fastify({
@@ -59,6 +60,7 @@ export async function initServer() {
   await server.register(agentRoutes, { prefix: '/api/agent' });
   await server.register(swapRoutes, { prefix: '/api/swap' });
   await server.register(adminRoutes, { prefix: '/api/admin' });
+  await server.register(dappRoutes, { prefix: '/api/dapp' });
 
   await server.listen({ port: env.PORT, host: env.HOST });
   logger.info({ port: env.PORT }, 'Server started');

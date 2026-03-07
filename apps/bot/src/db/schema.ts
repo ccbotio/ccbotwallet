@@ -545,3 +545,95 @@ export const bridgeTransactions = pgTable('bridge_transactions', {
 
 export type BridgeTransaction = typeof bridgeTransactions.$inferSelect;
 export type NewBridgeTransaction = typeof bridgeTransactions.$inferInsert;
+
+// ==================== CIP-103 dApp Session Tables ====================
+
+/**
+ * dApp Sessions - Temporary sessions for CIP-103 JSON-RPC requests
+ *
+ * Each session represents a request from an external dApp that needs user approval.
+ * Sessions expire after 15 minutes and support PKCE for security.
+ *
+ * Status flow:
+ *   pending → awaiting_user → approved → completed
+ *                          ↘ rejected
+ *                          ↘ expired
+ */
+export const dappSessions = pgTable('dapp_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: varchar('session_id', { length: 64 }).notNull().unique(),
+
+  // PKCE (Proof Key for Code Exchange)
+  codeChallenge: varchar('code_challenge', { length: 128 }).notNull(),
+
+  // dApp information
+  dappOrigin: varchar('dapp_origin', { length: 512 }).notNull(),
+  dappName: varchar('dapp_name', { length: 128 }),
+  dappIcon: varchar('dapp_icon', { length: 512 }),
+  callbackUrl: varchar('callback_url', { length: 1024 }).notNull(),
+
+  // JSON-RPC request
+  method: varchar('method', { length: 64 }).notNull(),
+  params: jsonb('params'),
+  requestId: varchar('request_id', { length: 128 }),
+
+  // User binding (set when user approves)
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  walletId: uuid('wallet_id').references(() => wallets.id, { onDelete: 'cascade' }),
+
+  // Session status
+  status: varchar('status', { length: 16 }).default('pending').notNull(),
+
+  // Result (set on completion)
+  result: jsonb('result'),
+  errorCode: integer('error_code'),
+  errorMessage: varchar('error_message', { length: 512 }),
+
+  // Security tracking
+  requestIp: varchar('request_ip', { length: 64 }),
+  userAgent: varchar('user_agent', { length: 512 }),
+
+  // Timestamps
+  expiresAt: timestamp('expires_at').notNull(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+}, (table) => [
+  index('idx_dapp_session_user').on(table.userId),
+  index('idx_dapp_session_status').on(table.status),
+  index('idx_dapp_session_expires').on(table.expiresAt),
+]);
+
+/**
+ * dApp Connections - Persistent connections between users and dApps
+ *
+ * When a user approves a 'connect' request, a connection is created.
+ * Connections can be revoked by the user at any time.
+ */
+export const dappConnections = pgTable('dapp_connections', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  walletId: uuid('wallet_id').notNull().references(() => wallets.id, { onDelete: 'cascade' }),
+
+  // dApp identification
+  dappOrigin: varchar('dapp_origin', { length: 512 }).notNull(),
+  dappName: varchar('dapp_name', { length: 128 }),
+
+  // Connection status
+  isActive: boolean('is_active').default(true).notNull(),
+
+  // Granted permissions (JSON array of permission strings)
+  permissions: jsonb('permissions').default([]),
+
+  // Timestamps
+  connectedAt: timestamp('connected_at').defaultNow().notNull(),
+  lastUsedAt: timestamp('last_used_at').defaultNow().notNull(),
+  disconnectedAt: timestamp('disconnected_at'),
+}, (table) => [
+  index('idx_dapp_connection_user').on(table.userId),
+  index('idx_dapp_connection_origin').on(table.dappOrigin),
+]);
+
+export type DappSession = typeof dappSessions.$inferSelect;
+export type NewDappSession = typeof dappSessions.$inferInsert;
+export type DappConnection = typeof dappConnections.$inferSelect;
+export type NewDappConnection = typeof dappConnections.$inferInsert;

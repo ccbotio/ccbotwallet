@@ -61,6 +61,8 @@ services:
       context: ..
       dockerfile: apps/mini-app/Dockerfile
     container_name: ccbot-mini-app
+    ports:
+      - "3001:3001"
     environment:
       NODE_ENV: production
       NEXT_PUBLIC_API_URL: ${TELEGRAM_WEBHOOK_URL:-https://localhost}/api

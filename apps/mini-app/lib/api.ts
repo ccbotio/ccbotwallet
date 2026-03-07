@@ -1304,6 +1304,104 @@ class ApiClient {
     }>('/api/agent/clear', { method: 'POST' });
     return result.data;
   }
+
+  // ==================== CIP-103 dApp Session ====================
+
+  /**
+   * Get dApp session details (for approval page)
+   */
+  async getDappSession(sessionId: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        sessionId: string;
+        method: string;
+        params?: unknown;
+        dappOrigin: string;
+        dappName?: string;
+        dappIcon?: string;
+        status: string;
+        expiresAt: string;
+        createdAt: string;
+      };
+    }>(`/api/dapp/session/${encodeURIComponent(sessionId)}`);
+    return result.data;
+  }
+
+  /**
+   * Approve a dApp session
+   */
+  async approveDappSession(sessionId: string, userShareHex?: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        redirectUrl?: string;
+      };
+      error?: {
+        code: string;
+        message: string;
+      };
+    }>(`/api/dapp/session/${encodeURIComponent(sessionId)}/approve`, {
+      method: 'POST',
+      body: userShareHex ? { userShareHex } : {},
+    });
+
+    if (!result.success && result.error) {
+      throw new Error(result.error.message);
+    }
+
+    return result.data;
+  }
+
+  /**
+   * Reject a dApp session
+   */
+  async rejectDappSession(sessionId: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        redirectUrl?: string;
+      };
+    }>(`/api/dapp/session/${encodeURIComponent(sessionId)}/reject`, {
+      method: 'POST',
+    });
+    return result.data;
+  }
+
+  /**
+   * Get active dApp connections
+   */
+  async getDappConnections() {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        connections: Array<{
+          id: string;
+          dappOrigin: string;
+          dappName?: string;
+          permissions: string[];
+          connectedAt: string;
+          lastUsedAt: string;
+        }>;
+      };
+    }>('/api/dapp/connections');
+    return result.data.connections;
+  }
+
+  /**
+   * Disconnect a dApp
+   */
+  async disconnectDapp(connectionId: string) {
+    const result = await this.request<{
+      success: boolean;
+      data: {
+        disconnected: boolean;
+      };
+    }>(`/api/dapp/connections/${encodeURIComponent(connectionId)}`, {
+      method: 'DELETE',
+    });
+    return result.data;
+  }
 }
 
 export const api = new ApiClient();

@@ -36,3 +36,6 @@ export type SendTransactionInput = z.infer<typeof sendTransactionSchema>;
 export type UserProfileInput = z.infer<typeof userProfileSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;
 export type VerificationRequestInput = z.infer<typeof verificationRequestSchema>;
+
+// Re-export CIP-103 validation schemas
+export * from './cip103.js';

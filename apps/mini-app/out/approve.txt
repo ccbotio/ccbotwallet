@@ -50,11 +50,11 @@
                   document.head.appendChild(script);
                 }
               })();
-            0:{"P":null,"b":"BvfUvPsGbhL9TGxqo11s4","p":"","c":["","passkey-access-denied"],"i":false,"f":[[["",{"children":["passkey-access-denied",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/602453d45fa3e2f0.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","link",null,{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}]]}],"$L3"]}]]}],{"children":["passkey-access-denied","$L4",{"children":["__PAGE__","$L5",{},null,false]},null,false]},null,false],"$L6",false]],"m":"$undefined","G":["$7",[]],"s":false,"S":true}
+            0:{"P":null,"b":"BvfUvPsGbhL9TGxqo11s4","p":"","c":["","approve"],"i":false,"f":[[["",{"children":["approve",{"children":["__PAGE__",{}]}]},"$undefined","$undefined",true],["",["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/css/602453d45fa3e2f0.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]],["$","html",null,{"lang":"en","suppressHydrationWarning":true,"children":[["$","head",null,{"children":[["$","link",null,{"rel":"stylesheet","href":"https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"}],["$","script",null,{"dangerouslySetInnerHTML":{"__html":"$2"}}]]}],"$L3"]}]]}],{"children":["approve","$L4",{"children":["__PAGE__","$L5",{},null,false]},null,false]},null,false],"$L6",false]],"m":"$undefined","G":["$7",[]],"s":false,"S":true}
 8:I[6369,[],""]
 9:I[5829,[],""]
 a:I[8280,[],"ClientPageRoot"]
-b:I[3976,["618","static/chunks/618-02e917778db1e079.js","74","static/chunks/app/passkey-access-denied/page-8e36be08b6d489f2.js"],"default"]
+b:I[2276,["618","static/chunks/618-02e917778db1e079.js","917","static/chunks/917-91e8e3fae6b7abd4.js","72","static/chunks/app/approve/page-78e77c4867b79c88.js"],"default"]
 e:I[804,[],"OutletBoundary"]
 10:I[8973,[],"AsyncMetadataOutlet"]
 12:I[804,[],"ViewportBoundary"]

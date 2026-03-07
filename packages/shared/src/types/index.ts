@@ -73,3 +73,6 @@ export interface PaginatedResponse<T> {
   pageSize: number;
   hasMore: boolean;
 }
+
+// Re-export CIP-103 types
+export * from './cip103.js';
