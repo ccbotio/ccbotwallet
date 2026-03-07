@@ -16,7 +16,7 @@ import {
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null;
 
 // DEV MODE: Uses extended code validity (24 hours instead of 5 minutes)
-const DEV_MODE = true;
+const DEV_MODE = false;
 
 // Code validity: 5 minutes in production, 24 hours in dev
 const EMAIL_CODE_EXPIRY_MINUTES = DEV_MODE

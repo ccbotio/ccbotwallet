@@ -20,8 +20,11 @@ export function middleware(request: NextRequest) {
   const hasTgWebAppData = url.searchParams.has('tgWebAppData') ||
                           url.searchParams.has('tgWebAppStartParam');
 
+  // iOS Telegram WebView: Mobile/XXXXX at end of UA, no Safari
+  const isIOSWebView = /Mobile\/[0-9A-Z]+\s*$/i.test(userAgent) && !/Safari/i.test(userAgent);
+
   // Allow if any Telegram indicator is present
-  const isTelegramAccess = isTelegramUA || isTelegramReferer || hasTgWebAppData;
+  const isTelegramAccess = isTelegramUA || isTelegramReferer || hasTgWebAppData || isIOSWebView;
 
   // Allow health checks and API routes
   const isHealthCheck = url.pathname === '/health' || url.pathname === '/api/health';

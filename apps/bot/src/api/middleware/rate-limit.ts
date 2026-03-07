@@ -8,7 +8,7 @@ import { logger } from '../../lib/logger.js';
 // DEV MODE: All rate limits disabled for testing
 // Set to false in production
 // ============================================================
-const DEV_MODE = true;
+const DEV_MODE = false;
 
 // ============================================================
 // HELPER FUNCTIONS

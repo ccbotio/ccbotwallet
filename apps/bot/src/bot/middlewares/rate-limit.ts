@@ -3,7 +3,7 @@ import { redis } from '../../lib/redis.js';
 import { RATE_LIMITS } from '../../config/constants.js';
 
 // DEV MODE: Disable rate limits
-const DEV_MODE = true;
+const DEV_MODE = false;
 
 export async function rateLimitMiddleware(ctx: Context, next: NextFunction) {
   if (DEV_MODE) {

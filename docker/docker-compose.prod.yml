@@ -7,7 +7,7 @@ services:
     container_name: ccbot-api
     environment:
       NODE_ENV: production
-      DEV_AUTH_BYPASS: "true"
+      DEV_AUTH_BYPASS: "false"
       PORT: 3000
       DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@postgres:5432/${DB_NAME}
       REDIS_URL: redis://redis:6379
