@@ -15,6 +15,11 @@ RUN pnpm install --frozen-lockfile
 
 # Build shared packages first, then mini-app with production env
 RUN pnpm turbo build --filter=@repo/shared
+
+# Set API URL for production build (NEXT_PUBLIC_ vars are inlined at build time)
+ARG NEXT_PUBLIC_API_URL=https://app.ccbot.io/api
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
 RUN cd apps/mini-app && NODE_ENV=production pnpm build
 
 # Production stage - serve static files with nginx
