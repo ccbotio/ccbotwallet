@@ -1125,9 +1125,26 @@ function EmailVerifyScreen({
 
       if (newCode.length === 6) {
         // Auto-verify when 6 digits entered
-        setTimeout(() => {
+        setTimeout(async () => {
           setCode(newCode);
           // Trigger verification
+          setIsLoading(true);
+          setError("");
+          try {
+            const result = await api.verifyEmailCode(email, newCode);
+            if (result.verified) {
+              try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("success"); } catch {}
+              onComplete();
+            } else {
+              setError("Invalid verification code");
+              try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
+            }
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Verification failed");
+            try { window.Telegram?.WebApp?.HapticFeedback?.notificationOccurred("error"); } catch {}
+          } finally {
+            setIsLoading(false);
+          }
         }, 100);
       }
     }
