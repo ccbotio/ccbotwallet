@@ -11550,9 +11550,8 @@ function TelegramAppContent() {
             />
           );
         case "email-verify":
-          // DEV BYPASS: Skip passkey for now, go directly to PIN setup
-          // TODO: Re-enable passkey when Safari redirect is fixed
-          return <EmailVerifyScreen email={userEmail} onComplete={() => { setIsEmailVerified(true); navigate("pin-setup"); }} onBack={goBack} onResend={handleResendCode} />;
+          // After email verification, go to passkey setup, then PIN
+          return <EmailVerifyScreen email={userEmail} onComplete={() => { setIsEmailVerified(true); navigate("passkey-mandatory"); }} onBack={goBack} onResend={handleResendCode} />;
         case "passkey-recovery":
           return (
             <PasskeyRecovery
