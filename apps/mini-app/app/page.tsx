@@ -11981,22 +11981,9 @@ export default function TelegramApp() {
 
     const username = tg?.initDataUnsafe?.user?.username?.toLowerCase();
 
-    // Development mode or localhost - allow access for testing
-    const isLocalhost = typeof window !== 'undefined' &&
-      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
-
-    if (process.env.NODE_ENV === 'development' || isLocalhost) {
-      setIsAllowed(true);
-      return;
-    }
-
-    // Production: strict whitelist check
-    if (username && ALLOWED_USERS.includes(username)) {
-      setIsAllowed(true);
-    } else {
-      // Not in whitelist or no user - block access
-      setIsAllowed(false);
-    }
+    // Backend handles whitelist via WHITELIST_TELEGRAM_IDS
+    // Frontend always allows access, backend will block unauthorized users
+    setIsAllowed(true);
   }, []);
 
   // Loading state - keep background solid to prevent flash
