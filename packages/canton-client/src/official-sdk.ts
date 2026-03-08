@@ -653,12 +653,12 @@ export class OfficialSDKClient {
       partyHint
     );
 
-    // Extract public key from partyId or use fingerprint
-    const publicKey = result.publicKeyFingerprint || '';
+    // Return actual public key in hex format (not fingerprint)
+    const publicKeyHex = Buffer.from(keyPair.publicKey).toString('hex');
 
     return {
       partyId: result.partyId,
-      publicKey,
+      publicKey: publicKeyHex,
       topologyTxHashes: result.topologyTransactions || [],
     };
   }
@@ -804,6 +804,137 @@ export class OfficialSDKClient {
       receiver: partyId,
       provider: providerParty,
     };
+  }
+
+  // --- Validator Setup Proposal ---
+
+  /**
+   * Complete the validator setup proposal for an external party.
+   * This creates ValidatorRight + TransferPreapproval contracts via the validator API.
+   * Required for the wallet to receive transfers on mainnet.
+   */
+  async completeValidatorSetup(
+    partyId: string,
+    publicKeyHex: string,
+    privateKeyHex: string
+  ): Promise<{ validatorRightCid: string; transferPreapprovalCid: string } | null> {
+    const validatorUrl = this.config.validatorUrl || this.config.ledgerApiUrl;
+    if (!validatorUrl) {
+      logger.warn('No validator URL configured, skipping setup proposal');
+      return null;
+    }
+
+    const token = await this.getAuthToken();
+    const headers = {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    };
+
+    try {
+      // Step 1: Create setup proposal
+      logger.debug('Creating setup proposal', { partyId });
+      const createResponse = await fetch(
+        `${validatorUrl}/api/validator/v0/admin/external-party/setup-proposal`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ user_party_id: partyId }),
+        }
+      );
+
+      let contractId: string;
+      if (createResponse.ok) {
+        const createData = await createResponse.json() as { contract_id: string };
+        contractId = createData.contract_id;
+      } else {
+        const errorText = await createResponse.text();
+        // Check if proposal already exists
+        const match = errorText.match(/ContractId\(([^)]+)\)/);
+        if (match && match[1]) {
+          contractId = match[1];
+          logger.debug('Using existing setup proposal', { contractId });
+        } else {
+          logger.warn('Failed to create setup proposal', { error: errorText });
+          return null;
+        }
+      }
+
+      // Step 2: Prepare acceptance
+      logger.debug('Preparing setup proposal acceptance', { contractId });
+      const prepareResponse = await fetch(
+        `${validatorUrl}/api/validator/v0/admin/external-party/setup-proposal/prepare-accept`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            contract_id: contractId,
+            user_party_id: partyId,
+          }),
+        }
+      );
+
+      if (!prepareResponse.ok) {
+        const errorText = await prepareResponse.text();
+        logger.warn('Failed to prepare setup proposal acceptance', { error: errorText });
+        return null;
+      }
+
+      const prepareData = await prepareResponse.json() as {
+        transaction: string;
+        tx_hash: string;
+      };
+
+      // Step 3: Sign the tx_hash
+      const seed = Buffer.from(privateKeyHex, 'hex');
+      const keyPair = nacl.sign.keyPair.fromSeed(seed);
+      const txHashBytes = Buffer.from(prepareData.tx_hash, 'hex');
+      const signature = nacl.sign.detached(txHashBytes, keyPair.secretKey);
+      const signatureHex = Buffer.from(signature).toString('hex');
+
+      // Step 4: Submit acceptance
+      logger.debug('Submitting setup proposal acceptance');
+      const submitResponse = await fetch(
+        `${validatorUrl}/api/validator/v0/admin/external-party/setup-proposal/submit-accept`,
+        {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            contract_id: contractId,
+            submission: {
+              party_id: partyId,
+              public_key: publicKeyHex,
+              transaction: prepareData.transaction,
+              signed_tx_hash: signatureHex,
+            },
+          }),
+        }
+      );
+
+      if (!submitResponse.ok) {
+        const errorText = await submitResponse.text();
+        logger.warn('Failed to submit setup proposal acceptance', { error: errorText });
+        return null;
+      }
+
+      const submitData = await submitResponse.json() as {
+        transfer_preapproval_contract_id: string;
+        update_id: string;
+        validator_right_contract_id?: string;
+      };
+
+      logger.info('Validator setup completed', {
+        partyId,
+        preapprovalCid: submitData.transfer_preapproval_contract_id,
+      });
+
+      return {
+        validatorRightCid: submitData.validator_right_contract_id || '',
+        transferPreapprovalCid: submitData.transfer_preapproval_contract_id,
+      };
+    } catch (error) {
+      logger.error('Error completing validator setup', { error: String(error) });
+      return null;
+    }
   }
 
   // --- USDCx Bridge (xReserve) ---
@@ -1702,7 +1833,9 @@ export class OfficialSDKClient {
   // --- Wallet Setup ---
 
   /**
-   * Full wallet setup: create party + TransferPreapproval.
+   * Full wallet setup: create party + complete validator setup proposal.
+   * The validator setup proposal creates ValidatorRight + TransferPreapproval
+   * contracts which are required for the wallet to receive transfers.
    */
   async setupWallet(
     privateKeyHex: string,
@@ -1711,14 +1844,31 @@ export class OfficialSDKClient {
     // Step 1: Create external party
     const party = await this.createExternalParty(privateKeyHex, displayName);
 
-    // Step 2: Create TransferPreapproval
     const result: WalletSetupResult = { partyId: party.partyId };
 
+    // Step 2: Complete validator setup proposal (creates ValidatorRight + TransferPreapproval)
+    // This is required for the wallet to receive transfers on mainnet
     try {
-      const preapproval = await this.createPreapproval(party.partyId, privateKeyHex);
-      result.preapprovalContractId = preapproval.contractId;
-    } catch {
-      // Non-fatal: wallet can function without preapproval
+      const setupResult = await this.completeValidatorSetup(
+        party.partyId,
+        party.publicKey,
+        privateKeyHex
+      );
+      if (setupResult) {
+        result.preapprovalContractId = setupResult.transferPreapprovalCid;
+        logger.info('Wallet setup completed with validator proposal', {
+          partyId: party.partyId,
+          preapprovalCid: setupResult.transferPreapprovalCid,
+        });
+      } else {
+        // Fallback to direct preapproval creation (for devnet/localnet)
+        logger.debug('Validator setup not available, trying direct preapproval');
+        const preapproval = await this.createPreapproval(party.partyId, privateKeyHex);
+        result.preapprovalContractId = preapproval.contractId;
+      }
+    } catch (error) {
+      logger.warn('Failed to complete wallet setup', { error: String(error) });
+      // Non-fatal: wallet can function without preapproval, but won't receive transfers
     }
 
     return result;
