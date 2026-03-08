@@ -1302,6 +1302,19 @@ function EmailVerifyScreen({
 
         {error && <p className="text-red-500 text-sm mb-3">{error}</p>}
 
+        {/* Verify Button */}
+        <button
+          className={`w-full py-3 rounded-xl font-medium mb-4 ${
+            code.length === 6 && !isLoading
+              ? "bg-purple text-white"
+              : "bg-white/10 text-taupe"
+          }`}
+          onClick={handleVerify}
+          disabled={code.length !== 6 || isLoading}
+        >
+          {isLoading ? "Verifying..." : "Verify Code"}
+        </button>
+
         <p className="text-taupe/60 text-xs mb-4 text-center">
           Tap boxes to open keyboard, long-press to paste
         </p>
