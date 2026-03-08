@@ -7,6 +7,7 @@ import {
   scheduleSwapRefundJob,
   scheduleBridgePollingJob,
   scheduleTreasuryMonitorJob,
+  scheduleAutoAcceptTransfersJob,
 } from './jobs/index.js';
 import { initCantonAgent, shutdownCantonAgent, getCantonAgent } from './services/canton/index.js';
 import { initBridgeService } from './services/bridge/index.js';
@@ -53,6 +54,9 @@ async function main() {
 
   // Schedule bridge polling job (polls Circle API for attestations)
   await scheduleBridgePollingJob();
+
+  // Schedule auto-accept transfers job (accepts pending transfers for users with setting enabled)
+  await scheduleAutoAcceptTransfersJob();
 
   await initServer();
 

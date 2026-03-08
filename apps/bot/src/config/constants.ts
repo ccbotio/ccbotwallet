@@ -125,6 +125,7 @@ export const JOB_QUEUES = {
   swapRefund: 'swap-refund',
   bridgePolling: 'bridge-polling',
   treasuryMonitor: 'treasury-monitor',
+  autoAcceptTransfers: 'auto-accept-transfers',
 } as const;
 
 export const UTXO_MERGE_CONFIG = {
@@ -154,4 +155,8 @@ export const TREASURY_MONITOR_CONFIG = {
   lowBalanceThresholdCc: 100, // Alert when CC < 100
   lowBalanceThresholdUsdcx: 100, // Alert when USDCx < 100
   criticalThreshold: 10, // Critical when balance < 10
+} as const;
+
+export const AUTO_ACCEPT_TRANSFERS_CONFIG = {
+  checkIntervalMs: 1 * 60 * 1000, // Check every 1 minute
 } as const;

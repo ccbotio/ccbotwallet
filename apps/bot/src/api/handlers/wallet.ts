@@ -939,6 +939,7 @@ export const walletHandlers = {
       data: {
         autoMergeUtxo: user.autoMergeUtxo,
         oneStepTransfers: user.oneStepTransfers,
+        autoAcceptTransfers: user.autoAcceptTransfers,
       },
     });
   },
@@ -960,6 +961,7 @@ export const walletHandlers = {
     const preferencesSchema = z.object({
       autoMergeUtxo: z.boolean().optional(),
       oneStepTransfers: z.boolean().optional(),
+      autoAcceptTransfers: z.boolean().optional(),
     });
 
     const body = preferencesSchema.parse(request.body);
@@ -980,6 +982,9 @@ export const walletHandlers = {
       if (body.oneStepTransfers !== undefined) {
         updateData.oneStepTransfers = body.oneStepTransfers;
       }
+      if (body.autoAcceptTransfers !== undefined) {
+        updateData.autoAcceptTransfers = body.autoAcceptTransfers;
+      }
 
       if (Object.keys(updateData).length > 0) {
         await db.update(users).set(updateData).where(eq(users.id, user.id));
@@ -992,6 +997,7 @@ export const walletHandlers = {
         data: {
           autoMergeUtxo: body.autoMergeUtxo ?? user.autoMergeUtxo,
           oneStepTransfers: body.oneStepTransfers ?? user.oneStepTransfers,
+          autoAcceptTransfers: body.autoAcceptTransfers ?? user.autoAcceptTransfers,
         },
       });
     } catch (error) {

@@ -1,7 +1,7 @@
 import { Queue, Worker } from 'bullmq';
 import { eq, and, lt } from 'drizzle-orm';
 import { logger } from '../lib/logger.js';
-import { JOB_QUEUES, UTXO_MERGE_CONFIG, CANTON_SYNC_CONFIG, SWAP_REFUND_CONFIG, BRIDGE_POLLING_CONFIG, TREASURY_MONITOR_CONFIG } from '../config/constants.js';
+import { JOB_QUEUES, UTXO_MERGE_CONFIG, CANTON_SYNC_CONFIG, SWAP_REFUND_CONFIG, BRIDGE_POLLING_CONFIG, TREASURY_MONITOR_CONFIG, AUTO_ACCEPT_TRANSFERS_CONFIG } from '../config/constants.js';
 import { env } from '../config/env.js';
 import { db, wallets, users, transactions, swapTransactions } from '../db/index.js';
 import { getCantonAgent } from '../services/canton/index.js';
@@ -31,6 +31,7 @@ export const cantonSyncQueue = new Queue(JOB_QUEUES.cantonSync, { connection });
 export const swapRefundQueue = new Queue(JOB_QUEUES.swapRefund, { connection });
 export const bridgePollingQueue = new Queue(JOB_QUEUES.bridgePolling, { connection });
 export const treasuryMonitorQueue = new Queue(JOB_QUEUES.treasuryMonitor, { connection });
+export const autoAcceptTransfersQueue = new Queue(JOB_QUEUES.autoAcceptTransfers, { connection });
 
 export function initWorkers() {
   // Notification Worker - Sends Telegram and email notifications
@@ -641,6 +642,103 @@ export function initWorkers() {
     { connection }
   );
 
+  // Auto Accept Transfers Worker - Auto-accepts pending transfers for users with setting enabled
+  // NOTE: This supplements the Canton sync job which also auto-accepts.
+  // This job runs more frequently to ensure faster acceptance of incoming transfers.
+  new Worker(
+    JOB_QUEUES.autoAcceptTransfers,
+    async (job) => {
+      logger.info({ jobId: job.id }, 'Processing auto-accept transfers job');
+
+      try {
+        const agent = getCantonAgent();
+        const sdk = agent.getSDK();
+
+        // Import WalletService dynamically to avoid circular deps
+        const { WalletService } = await import('../services/wallet/index.js');
+        const walletService = new WalletService(sdk);
+
+        // Get all users with autoAcceptTransfers enabled
+        const usersWithAutoAccept = await db
+          .select({
+            id: users.id,
+            telegramId: users.telegramId,
+          })
+          .from(users)
+          .where(eq(users.autoAcceptTransfers, true));
+
+        let totalAccepted = 0;
+        let totalFailed = 0;
+        let walletsProcessed = 0;
+
+        for (const user of usersWithAutoAccept) {
+          // Get user's wallets
+          const userWallets = await db
+            .select()
+            .from(wallets)
+            .where(eq(wallets.userId, user.id));
+
+          for (const wallet of userWallets) {
+            try {
+              // Use WalletService which handles key derivation internally
+              const result = await walletService.acceptPendingTransfers(user.telegramId, wallet.partyId);
+
+              if (result.accepted > 0) {
+                walletsProcessed++;
+                totalAccepted += result.accepted;
+                totalFailed += result.failed;
+
+                logger.info(
+                  { walletId: wallet.id, partyId: wallet.partyId, accepted: result.accepted },
+                  'Auto-accepted pending transfers'
+                );
+
+                // Queue notifications for accepted transfers
+                // Note: Notifications are sent per-wallet, not per-transfer for efficiency
+                if (result.accepted > 0) {
+                  try {
+                    await queueNotification({
+                      type: 'incoming_transfer',
+                      telegramId: user.telegramId,
+                      data: {
+                        count: result.accepted,
+                        autoAccepted: true,
+                      },
+                    });
+                  } catch (notifyError) {
+                    logger.error(
+                      { err: notifyError, walletId: wallet.id },
+                      'Failed to queue auto-accept notification'
+                    );
+                  }
+                }
+              }
+            } catch (acceptError) {
+              logger.error(
+                { err: acceptError, walletId: wallet.id },
+                'Failed to auto-accept transfers for wallet'
+              );
+            }
+          }
+        }
+
+        logger.info(
+          {
+            usersChecked: usersWithAutoAccept.length,
+            walletsProcessed,
+            totalAccepted,
+            totalFailed,
+          },
+          'Auto-accept transfers job completed'
+        );
+      } catch (error) {
+        logger.error({ err: error }, 'Auto-accept transfers job failed');
+        throw error;
+      }
+    },
+    { connection }
+  );
+
   logger.info('Workers initialized');
 }
 
@@ -794,4 +892,31 @@ export async function scheduleTreasuryMonitorJob() {
   );
 
   logger.info({ intervalMs: TREASURY_MONITOR_CONFIG.checkIntervalMs }, 'Treasury monitor job scheduled');
+}
+
+/**
+ * Schedule the auto-accept transfers job to run periodically.
+ * Auto-accepts pending incoming transfers for users with autoAcceptTransfers enabled.
+ */
+export async function scheduleAutoAcceptTransfersJob() {
+  // Remove any existing repeatable jobs
+  const existingJobs = await autoAcceptTransfersQueue.getRepeatableJobs();
+  for (const job of existingJobs) {
+    await autoAcceptTransfersQueue.removeRepeatableByKey(job.key);
+  }
+
+  // Add new repeatable job
+  await autoAcceptTransfersQueue.add(
+    'auto-accept',
+    {},
+    {
+      repeat: {
+        every: AUTO_ACCEPT_TRANSFERS_CONFIG.checkIntervalMs,
+      },
+      removeOnComplete: 100,
+      removeOnFail: 50,
+    }
+  );
+
+  logger.info({ intervalMs: AUTO_ACCEPT_TRANSFERS_CONFIG.checkIntervalMs }, 'Auto-accept transfers job scheduled');
 }

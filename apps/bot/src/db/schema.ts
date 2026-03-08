@@ -21,6 +21,8 @@ export const users = pgTable('users', {
   autoMergeUtxo: boolean('auto_merge_utxo').default(true).notNull(),
   /** User preference: Enable 1-step transfers via TransferPreapproval */
   oneStepTransfers: boolean('one_step_transfers').default(true).notNull(),
+  /** User preference: Auto-accept pending incoming transfers */
+  autoAcceptTransfers: boolean('auto_accept_transfers').default(true).notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });

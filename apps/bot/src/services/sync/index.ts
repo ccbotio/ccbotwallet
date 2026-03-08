@@ -178,6 +178,11 @@ export class TransactionSyncService {
       const [user] = await db.select().from(users).where(eq(users.id, wallet.userId)).limit(1);
       if (!user) return 0;
 
+      // Check if user has auto-accept transfers enabled
+      if (!user.autoAcceptTransfers) {
+        return 0;
+      }
+
       // Use WalletService to accept pending transfers
       const walletService = new WalletService(this.sdk);
       const result = await walletService.acceptPendingTransfers(user.telegramId, partyId);
