@@ -11159,7 +11159,12 @@ function TasksScreen({ onBack, tasks, setTasks }: { onBack: () => void; tasks: T
 
 // ==================== MAIN APP ====================
 function TelegramAppContent() {
-  const { isAuthLoading, hasWallet, isWalletLoading, wallet, createWallet, createWalletWithPasskeyCredential, recoveryCode, userShareHex, clearRecoveryCode, user } = useWalletContext();
+  const { isAuthLoading, hasWallet, isWalletLoading, wallet, createWallet, createWalletWithPasskeyCredential, recoveryCode, userShareHex, clearRecoveryCode, user, isWhitelisted } = useWalletContext();
+
+  // Block non-whitelisted users after auth
+  if (!isAuthLoading && !isWhitelisted) {
+    return <ComingSoonScreen />;
+  }
   const security = useSecurity();
 
   const [showSplash, setShowSplash] = useState(process.env.NODE_ENV !== 'development');
